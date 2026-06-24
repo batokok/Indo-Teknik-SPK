@@ -1,0 +1,6 @@
+{
+  "name": "IT Indo Teknik ERP",
+  "description": "Automotive workshop ERP system and high-density data management dashboard for IT Indo Teknik.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

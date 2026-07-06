@@ -349,6 +349,15 @@ const MechanicDashboard: React.FC = () => {
         date: new Date().toISOString()
       };
       
+      const updatedHistory = activeWO.milestoneHistory ? [...activeWO.milestoneHistory] : [];
+      const newMilestone = 'Kalibrasi Akhir & Quality Control';
+      const newLog = {
+        milestone: newMilestone,
+        timestamp: new Date().toISOString(),
+        updatedBy: currentUser?.name || 'Mekanik'
+      };
+      const newHistory = [...updatedHistory, newLog];
+
       updateWorkOrder(id, {
         currentDivision: nextDivision,
         status: 'QUEUE',
@@ -356,16 +365,29 @@ const MechanicDashboard: React.FC = () => {
         startedAt: undefined,
         isBlocked: false,
         blockedReason: undefined,
-        divisionNotes: [...(activeWO.divisionNotes || []), noteEntry]
+        divisionNotes: [...(activeWO.divisionNotes || []), noteEntry],
+        currentMilestone: newMilestone,
+        milestoneHistory: newHistory
       });
       showToast(`Pekerjaan divisi selesai! Work Order otomatis diteruskan ke Divisi ${getDivisionLabel(nextDivision)}.`);
     } else {
+      const updatedHistory = activeWO.milestoneHistory ? [...activeWO.milestoneHistory] : [];
+      const newMilestone = 'Selesai & Siap Diserahkan';
+      const newLog = {
+        milestone: newMilestone,
+        timestamp: new Date().toISOString(),
+        updatedBy: currentUser?.name || 'Mekanik'
+      };
+      const newHistory = [...updatedHistory, newLog];
+
       updateWorkOrder(id, {
         currentDivision: 'SA',
         status: 'COMPLETED',
         startedAt: undefined,
         isBlocked: false,
-        blockedReason: undefined
+        blockedReason: undefined,
+        currentMilestone: newMilestone,
+        milestoneHistory: newHistory
       });
       showToast(`Pekerjaan selesai seluruhnya! Berhasil mengirim sinyal sinkronisasi ke Front Office.`);
     }
@@ -1143,57 +1165,6 @@ const MechanicDashboard: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Form Pengisian Hasil Tes Awal */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-5 shadow-sm space-y-4">
-                    <div className="border-b border-slate-200 pb-3">
-                      <h4 className="text-xs font-black text-slate-800 uppercase flex items-center gap-1.5">
-                        📊 PENGUKURAN SEBELUM PERBAIKAN (BEFORE CALIBRATION)
-                      </h4>
-                      <p className="text-[11px] text-slate-500 mt-1">Masukkan data pengukuran awal dari mesin diesel test bench sebelum komponen dibongkar.</p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {/* Spray Volume Before */}
-                      <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-xs">
-                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Volume Semprotan Sebelum (cc)</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. 40.5 cc"
-                          className="w-full text-xs font-bold p-2.5 border border-slate-300 rounded focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-white"
-                          value={activeWO.calibrationData?.volumeSemprotan?.sebelum || ''}
-                          onChange={(e) => handleUpdateCalibration('volumeSemprotan', 'sebelum', e.target.value)}
-                        />
-                        <p className="text-[9px] text-slate-400 mt-1">Volume cairan yang disemprotkan injector.</p>
-                      </div>
-
-                      {/* Backleak Flow Before */}
-                      <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-xs">
-                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Debit Backleak Sebelum (cc)</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. 24.2 cc"
-                          className="w-full text-xs font-bold p-2.5 border border-slate-300 rounded focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-white"
-                          value={activeWO.calibrationData?.debitBackleak?.sebelum || ''}
-                          onChange={(e) => handleUpdateCalibration('debitBackleak', 'sebelum', e.target.value)}
-                        />
-                        <p className="text-[9px] text-slate-400 mt-1">Volume cairan yang kembali ke saluran buang.</p>
-                      </div>
-
-                      {/* Opening Pressure Before */}
-                      <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-xs">
-                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Tekanan Pembukaan Sebelum (Bar)</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. 1350 Bar"
-                          className="w-full text-xs font-bold p-2.5 border border-slate-300 rounded focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-white"
-                          value={activeWO.calibrationData?.tekanan?.sebelum || ''}
-                          onChange={(e) => handleUpdateCalibration('tekanan', 'sebelum', e.target.value)}
-                        />
-                        <p className="text-[9px] text-slate-400 mt-1">Tekanan pembukaan katup nozzle.</p>
-                      </div>
-                    </div>
-                  </div>
-
                   {/* Navigation Button Footer Step 2 */}
                   <div className="mt-6 flex justify-between gap-3 border-t border-slate-200 pt-4">
                     <button
@@ -1454,65 +1425,44 @@ const MechanicDashboard: React.FC = () => {
                       <p className="text-[11px] text-slate-500 mt-1">Masukkan hasil kalibrasi akhir sesudah perbaikan dilakukan. Pastikan nilai berada dalam range spesifikasi.</p>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4">
-                      {/* Spray Volume After vs Before */}
-                      <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-xs grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                        <div>
-                          <span className="text-[10px] font-black text-slate-400 block uppercase tracking-wider">Kondisi Sebelum</span>
-                          <span className="text-xs font-mono font-black text-rose-600 block bg-rose-50 p-2 rounded mt-1 border border-rose-100">
-                            {activeWO.calibrationData?.volumeSemprotan?.sebelum || 'Belum Diinput'}
-                          </span>
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-black text-slate-700 uppercase mb-1.5">Volume Semprotan Sesudah (cc) <span className="text-red-500">*</span></label>
-                          <input
-                            type="text"
-                            placeholder="e.g. 52.5 cc"
-                            className="w-full text-xs font-bold p-2.5 border border-slate-300 rounded focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-white text-slate-800"
-                            value={activeWO.calibrationData?.volumeSemprotan?.sesudah || ''}
-                            onChange={(e) => handleUpdateCalibration('volumeSemprotan', 'sesudah', e.target.value)}
-                          />
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Spray Volume After */}
+                      <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-xs">
+                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Volume Semprotan Sesudah (cc) <span className="text-red-500">*</span></label>
+                        <input
+                          type="text"
+                          placeholder="e.g. 52.5 cc"
+                          className="w-full text-xs font-bold p-2.5 border border-slate-300 rounded focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-white text-slate-800"
+                          value={activeWO.calibrationData?.volumeSemprotan?.sesudah || ''}
+                          onChange={(e) => handleUpdateCalibration('volumeSemprotan', 'sesudah', e.target.value)}
+                        />
+                        <p className="text-[9px] text-slate-400 mt-1">Volume cairan sesudah perbaikan dilakukan.</p>
                       </div>
 
-                      {/* Backleak Flow After vs Before */}
-                      <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-xs grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                        <div>
-                          <span className="text-[10px] font-black text-slate-400 block uppercase tracking-wider">Kondisi Sebelum</span>
-                          <span className="text-xs font-mono font-black text-rose-600 block bg-rose-50 p-2 rounded mt-1 border border-rose-100">
-                            {activeWO.calibrationData?.debitBackleak?.sebelum || 'Belum Diinput'}
-                          </span>
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-black text-slate-700 uppercase mb-1.5">Debit Backleak Sesudah (cc) <span className="text-red-500">*</span></label>
-                          <input
-                            type="text"
-                            placeholder="e.g. 10.2 cc"
-                            className="w-full text-xs font-bold p-2.5 border border-slate-300 rounded focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-white text-slate-800"
-                            value={activeWO.calibrationData?.debitBackleak?.sesudah || ''}
-                            onChange={(e) => handleUpdateCalibration('debitBackleak', 'sesudah', e.target.value)}
-                          />
-                        </div>
+                      {/* Backleak Flow After */}
+                      <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-xs">
+                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Debit Backleak Sesudah (cc) <span className="text-red-500">*</span></label>
+                        <input
+                          type="text"
+                          placeholder="e.g. 10.2 cc"
+                          className="w-full text-xs font-bold p-2.5 border border-slate-300 rounded focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-white text-slate-800"
+                          value={activeWO.calibrationData?.debitBackleak?.sesudah || ''}
+                          onChange={(e) => handleUpdateCalibration('debitBackleak', 'sesudah', e.target.value)}
+                        />
+                        <p className="text-[9px] text-slate-400 mt-1">Debit backleak sesudah perbaikan dilakukan.</p>
                       </div>
 
-                      {/* Opening Pressure After vs Before */}
-                      <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-xs grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                        <div>
-                          <span className="text-[10px] font-black text-slate-400 block uppercase tracking-wider">Kondisi Sebelum</span>
-                          <span className="text-xs font-mono font-black text-rose-600 block bg-rose-50 p-2 rounded mt-1 border border-rose-100">
-                            {activeWO.calibrationData?.tekanan?.sebelum || 'Belum Diinput'}
-                          </span>
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-black text-slate-700 uppercase mb-1.5">Tekanan Pembukaan Sesudah (Bar) <span className="text-red-500">*</span></label>
-                          <input
-                            type="text"
-                            placeholder="e.g. 1600 Bar"
-                            className="w-full text-xs font-bold p-2.5 border border-slate-300 rounded focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-white text-slate-800"
-                            value={activeWO.calibrationData?.tekanan?.sesudah || ''}
-                            onChange={(e) => handleUpdateCalibration('tekanan', 'sesudah', e.target.value)}
-                          />
-                        </div>
+                      {/* Opening Pressure After */}
+                      <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-xs">
+                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Tekanan Pembukaan Sesudah (Bar) <span className="text-red-500">*</span></label>
+                        <input
+                          type="text"
+                          placeholder="e.g. 1600 Bar"
+                          className="w-full text-xs font-bold p-2.5 border border-slate-300 rounded focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-white text-slate-800"
+                          value={activeWO.calibrationData?.tekanan?.sesudah || ''}
+                          onChange={(e) => handleUpdateCalibration('tekanan', 'sesudah', e.target.value)}
+                        />
+                        <p className="text-[9px] text-slate-400 mt-1">Tekanan pembukaan sesudah perbaikan dilakukan.</p>
                       </div>
                     </div>
                   </div>

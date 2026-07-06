@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../store/AppContext';
 import { WorkOrder, Priority, PartLog, WOStatus, CalibrationData, CalibrationMetric } from '../types';
-import { Play, Pause, CheckCircle, AlertTriangle, Timer, Clock, Send, Lock, Wrench, ClipboardList, AlertCircle, Search } from 'lucide-react';
+import { Play, Pause, CheckCircle, AlertTriangle, Timer, Clock, Send, Lock, Wrench, ClipboardList, AlertCircle, Search, Compass, Check } from 'lucide-react';
+import { GENERAL_TRACKING_MILESTONES } from './PublicTrackingView';
 
 const CALIBRATION_SPECS_DB = [
   { p_n: '0445110305', brand: 'Bosch', name: 'Toyota Hilux / Fortuner 2KD-FTV', pressure: '1600 Bar / 160 MPa', volume: '52.5 ± 2.5 cc', backleak: 'Max 12.0 cc' },
@@ -33,9 +34,56 @@ const parseEstimasiToSeconds = (estimasi: string): number => {
   return 3600;
 };
 
+const getDivisionLabel = (div: string) => {
+  if (div === 'SUPPLY_PUMP' || div === 'MECHANIC') return 'Fuel Pump';
+  if (div === 'COMMON_RAIL') return 'Common Rail';
+  return div.replace(/_/g, ' ');
+};
+
+const isWorkOrderAssignedToUser = (wo: WorkOrder, user: any, usersList: any[]): boolean => {
+  if (!user || !wo.mechanicId) return false;
+  
+  const cleanId = wo.mechanicId.trim().toLowerCase();
+  const cleanUserId = (user.id || '').trim().toLowerCase();
+  const cleanUsername = (user.username || '').trim().toLowerCase();
+  const cleanName = (user.name || '').trim().toLowerCase();
+  
+  if (cleanId === cleanUserId || cleanId === cleanUsername || cleanId === cleanName) return true;
+  
+  if (usersList && usersList.length > 0) {
+    const assignedUser = usersList.find(u => 
+      u.id.trim().toLowerCase() === cleanId || 
+      u.username.trim().toLowerCase() === cleanId || 
+      u.name.trim().toLowerCase() === cleanId
+    );
+    if (assignedUser) {
+      const cleanAssignedUsername = assignedUser.username.trim().toLowerCase();
+      const cleanAssignedId = assignedUser.id.trim().toLowerCase();
+      const cleanAssignedName = assignedUser.name.trim().toLowerCase();
+      if (
+        cleanAssignedUsername === cleanUsername || 
+        cleanAssignedId === cleanUserId || 
+        cleanAssignedName === cleanName
+      ) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
+};
+
 const MechanicDashboard: React.FC = () => {
-  const { workOrders, updateWorkOrder, currentUser, addPartLog } = useApp();
+  const { workOrders, updateWorkOrder, currentUser, addPartLog, isLoading, users } = useApp();
   const [activeWO, setActiveWO] = useState<WorkOrder | null>(null);
+  const [mobileView, setMobileView] = useState<'QUEUE' | 'WORKSPACE'>('QUEUE');
+  const [activeStep, setActiveStep] = useState<number>(1);
+
+  useEffect(() => {
+    if (activeWO?.id) {
+      setActiveStep(1);
+    }
+  }, [activeWO?.id]);
 
   // Specs Lookup State
   const [specsSearch, setSpecsSearch] = useState('');
@@ -52,6 +100,10 @@ const MechanicDashboard: React.FC = () => {
   // Manual Log Input State (Module 4)
   const [findings, setFindings] = useState('');
   const [notes, setNotes] = useState('');
+
+  // Transfer WO State
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const [transferNote, setTransferNote] = useState('');
 
   // Toast message state for FO sync alerts
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -99,6 +151,23 @@ const MechanicDashboard: React.FC = () => {
     }
   }, [workOrders, activeWO?.id]);
 
+  const hasRestoredRef = useRef(false);
+
+  // Auto-restore active work order if this mechanic already has an in-progress job
+  useEffect(() => {
+    if (!hasRestoredRef.current && !activeWO && currentUser && workOrders.length > 0) {
+      const existingJob = workOrders.find(
+        wo => wo.status === 'IN_PROGRESS' && isWorkOrderAssignedToUser(wo, currentUser, users)
+      );
+      if (existingJob) {
+        setActiveWO(existingJob);
+        setMobileView('WORKSPACE');
+        showToast(`Sesi kerja WO ${existingJob.id} dipulihkan secara otomatis.`);
+        hasRestoredRef.current = true;
+      }
+    }
+  }, [workOrders, currentUser, activeWO, users]);
+
   const showToast = (message: string) => {
     setToastMessage(message);
     setTimeout(() => {
@@ -137,6 +206,15 @@ const MechanicDashboard: React.FC = () => {
   // Sort queue list: Priority 1 first, then order of entry
   const queueList = [...workOrders]
     .filter(wo => wo.status !== 'COMPLETED')
+    .filter(wo => {
+      const isAssignedToMe = isWorkOrderAssignedToUser(wo, currentUser, users);
+
+      if (currentUser?.role === 'COMMON_RAIL') {
+        return wo.currentDivision === 'COMMON_RAIL' && (!wo.mechanicId || isAssignedToMe);
+      }
+      // Fuel Pump Mechanics & Foreman can only see tasks explicitly assigned to them
+      return (!wo.currentDivision || wo.currentDivision === 'SUPPLY_PUMP') && isAssignedToMe;
+    })
     .sort((a, b) => {
       if (a.priority !== b.priority) return a.priority - b.priority;
       return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
@@ -162,6 +240,13 @@ const MechanicDashboard: React.FC = () => {
     });
     
     showToast(`Pekerjaan untuk WO ${wo.id} berhasil dimulai.`);
+    setMobileView('WORKSPACE');
+  };
+
+  const handleResumeJob = (wo: WorkOrder) => {
+    setActiveWO(wo);
+    showToast(`Membuka kembali lembar kerja WO ${wo.id}`);
+    setMobileView('WORKSPACE');
   };
 
   const handlePauseClick = () => {
@@ -189,6 +274,7 @@ const MechanicDashboard: React.FC = () => {
       });
       setPauseModalOpen(false);
       setActiveWO(null);
+      setMobileView('QUEUE');
       showToast(`Pekerjaan dijedakan. Status: [Tertunda Parts]`);
     } else {
       // Opsi 2: Hidden defect - transition to details input
@@ -244,14 +330,73 @@ const MechanicDashboard: React.FC = () => {
   };
 
   const handleComplete = (id: string) => {
-    updateWorkOrder(id, {
-      status: 'COMPLETED',
-      startedAt: undefined,
-      isBlocked: false,
-      blockedReason: undefined
-    });
+    if (!activeWO) return;
+    
+    // Check if there's a next division in the flow
+    let nextDivision: 'SUPPLY_PUMP' | 'COMMON_RAIL' | 'SA' | undefined = undefined;
+    if (activeWO.divisionFlow && activeWO.currentDivision) {
+      const currentIndex = activeWO.divisionFlow.indexOf(activeWO.currentDivision as any);
+      if (currentIndex !== -1 && currentIndex < activeWO.divisionFlow.length - 1) {
+        nextDivision = activeWO.divisionFlow[currentIndex + 1];
+      }
+    }
+
+    if (nextDivision) {
+      const noteEntry = {
+        from: currentUser?.role || 'MECHANIC',
+        to: nextDivision,
+        note: 'Selesai di divisi sebelumnya (Otomatis berdasarkan Alur SPK)',
+        date: new Date().toISOString()
+      };
+      
+      updateWorkOrder(id, {
+        currentDivision: nextDivision,
+        status: 'QUEUE',
+        mechanicId: undefined,
+        startedAt: undefined,
+        isBlocked: false,
+        blockedReason: undefined,
+        divisionNotes: [...(activeWO.divisionNotes || []), noteEntry]
+      });
+      showToast(`Pekerjaan divisi selesai! Work Order otomatis diteruskan ke Divisi ${getDivisionLabel(nextDivision)}.`);
+    } else {
+      updateWorkOrder(id, {
+        currentDivision: 'SA',
+        status: 'COMPLETED',
+        startedAt: undefined,
+        isBlocked: false,
+        blockedReason: undefined
+      });
+      showToast(`Pekerjaan selesai seluruhnya! Berhasil mengirim sinyal sinkronisasi ke Front Office.`);
+    }
+    
     setActiveWO(null);
-    showToast(`Pekerjaan selesai! Berhasil mengirim sinyal sinkronisasi real-time ke Front Office.`);
+    setMobileView('QUEUE');
+  };
+
+  const handleTransferWO = () => {
+    if (!activeWO) return;
+    const targetDivision = currentUser?.role === 'COMMON_RAIL' ? 'SUPPLY_PUMP' : 'COMMON_RAIL';
+    const noteEntry = {
+      from: currentUser?.role || 'MECHANIC',
+      to: targetDivision,
+      note: transferNote,
+      date: new Date().toISOString()
+    };
+    
+    updateWorkOrder(activeWO.id, {
+      currentDivision: targetDivision,
+      status: 'QUEUE',
+      mechanicId: undefined,
+      startedAt: undefined,
+      divisionNotes: [...(activeWO.divisionNotes || []), noteEntry]
+    });
+    
+    setTransferModalOpen(false);
+    setTransferNote('');
+    setActiveWO(null);
+    setMobileView('QUEUE');
+    showToast(`Work Order berhasil dikirim ke Divisi ${getDivisionLabel(targetDivision)}.`);
   };
 
   const handleToggleTodo = (actionId: string, isChecked: boolean) => {
@@ -275,6 +420,10 @@ const MechanicDashboard: React.FC = () => {
   
   const handleUpdateCalibration = (metric: keyof CalibrationData, field: keyof CalibrationMetric, value: string) => {
     if (!activeWO) return;
+    
+    // Sanitize to allow only safe numeric, decimal, punctuation, and range symbols
+    const sanitizedValue = value.replace(/[^0-9a-zA-Z.,\/\-\s]/g, '');
+    
     const currentCal = activeWO.calibrationData || {
       volumeSemprotan: { sebelum: '', sesudah: '' },
       debitBackleak: { sebelum: '', sesudah: '' },
@@ -285,7 +434,7 @@ const MechanicDashboard: React.FC = () => {
       ...currentCal,
       [metric]: {
         ...currentCal[metric],
-        [field]: value
+        [field]: sanitizedValue
       }
     };
 
@@ -356,6 +505,63 @@ const MechanicDashboard: React.FC = () => {
   const estimasiSeconds = parseEstimasiToSeconds(activeWO?.estimasiPengerjaan || '');
   const isTimerCritical = currentElapsed >= 0.8 * estimasiSeconds;
 
+  if (isLoading) {
+    return (
+      <div className="p-4 print:hidden flex flex-col lg:flex-row gap-4 h-full bg-slate-100 min-h-screen text-slate-900">
+        {/* Left column (Queue list) */}
+        <div className="w-full lg:w-96 flex flex-col gap-4 animate-pulse">
+          <div className="bg-white rounded-lg p-4 border border-slate-200 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="h-5 bg-slate-200 rounded w-40"></div>
+              <div className="h-5 bg-slate-200 rounded-full w-8"></div>
+            </div>
+            {/* Search filter skeleton */}
+            <div className="h-9 bg-slate-100 rounded w-full"></div>
+            
+            {/* Queue items skeletons */}
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="p-3 bg-slate-50 rounded border border-slate-150 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div className="h-4 bg-slate-200 rounded w-20"></div>
+                    <div className="h-4 bg-slate-200 rounded w-16"></div>
+                  </div>
+                  <div className="h-3 bg-slate-200 rounded w-32"></div>
+                  <div className="h-3 bg-slate-200 rounded w-48"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Right column (Workspace) */}
+        <div className="flex-1 bg-white rounded-lg p-6 border border-slate-200 shadow-sm space-y-6 animate-pulse">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-150">
+            <div className="space-y-2">
+              <div className="h-6 bg-slate-200 rounded w-48"></div>
+              <div className="h-4 bg-slate-200 rounded w-32"></div>
+            </div>
+            <div className="flex gap-2">
+              <div className="h-9 bg-slate-200 rounded w-28"></div>
+              <div className="h-9 bg-slate-200 rounded w-28"></div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div className="h-5 bg-slate-200 rounded w-36"></div>
+              <div className="h-24 bg-slate-100 rounded w-full"></div>
+            </div>
+            <div className="space-y-4">
+              <div className="h-5 bg-slate-200 rounded w-36"></div>
+              <div className="h-24 bg-slate-100 rounded w-full"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 print:hidden flex flex-col lg:flex-row gap-4 h-full bg-slate-100 min-h-screen text-slate-900">
       
@@ -367,8 +573,34 @@ const MechanicDashboard: React.FC = () => {
         </div>
       )}
 
+      {/* Mobile Tab View Controls */}
+      <div className="flex bg-slate-200 p-1 rounded-lg lg:hidden shrink-0 mb-2">
+        <button
+          type="button"
+          onClick={() => setMobileView('QUEUE')}
+          className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${
+            mobileView === 'QUEUE' 
+              ? 'bg-[#1e293b] text-white shadow-md' 
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          Antrean SPK ({queueList.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileView('WORKSPACE')}
+          className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-md transition-all flex items-center justify-center gap-1.5 ${
+            mobileView === 'WORKSPACE' 
+              ? 'bg-[#1e293b] text-white shadow-md' 
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          Ruang Kerja {activeWO && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>}
+        </button>
+      </div>
+
       {/* Left Column: Queue List */}
-      <div className="w-full lg:w-1/3 flex flex-col">
+      <div id="mechanic-queue" className={`w-full lg:w-1/3 flex-col ${mobileView === 'QUEUE' ? 'flex' : 'hidden lg:flex'}`}>
         <section className="bg-slate-850 bg-[#1e293b] text-white rounded-lg shadow-lg flex-1 flex flex-col overflow-hidden border border-slate-700">
           <div className="p-4 border-b border-slate-700 bg-slate-900">
             <div className="flex justify-between items-center">
@@ -431,11 +663,59 @@ const MechanicDashboard: React.FC = () => {
                         </button>
                       )}
 
-                      {wo.status === 'IN_PROGRESS' && !isActive && (
-                        <div className="text-[9px] text-amber-400 font-bold uppercase tracking-wider flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
-                          Sedang Dikerjakan Mekanik Lain
-                        </div>
+                      {wo.status === 'IN_PROGRESS' && (
+                        isActive ? (
+                          <div className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                            Sedang Aktif
+                          </div>
+                        ) : isWorkOrderAssignedToUser(wo, currentUser, users) ? (
+                          <div className="flex gap-1.5">
+                            <button 
+                              onClick={() => handleResumeJob(wo)} 
+                              className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold rounded uppercase transition-colors flex items-center gap-1 shadow-md"
+                            >
+                              <Play className="w-3 h-3" /> LANJUTKAN KERJA
+                            </button>
+                            <button 
+                              onClick={() => {
+                                updateWorkOrder(wo.id, { mechanicId: currentUser?.id });
+                                handleResumeJob(wo);
+                              }} 
+                              className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 text-[9px] font-bold rounded uppercase transition-colors flex items-center gap-1 shadow-xs border border-slate-600"
+                              title="Force unlock / re-sync status jika sesi terputus"
+                            >
+                              Force Resume
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col gap-1.5 items-end">
+                            <div className="text-[9px] text-amber-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
+                              Dikerjakan Mekanik Lain
+                            </div>
+                            <button 
+                              onClick={() => {
+                                if (window.confirm(`Pekerjaan ini sedang dikerjakan mekanik lain. Apakah Anda yakin ingin melakukan FORCE OVERRIDE / mengambil alih pekerjaan ini?`)) {
+                                  updateWorkOrder(wo.id, { 
+                                    mechanicId: currentUser?.id, 
+                                    status: 'IN_PROGRESS',
+                                    startedAt: new Date().toISOString()
+                                  });
+                                  handleResumeJob({
+                                    ...wo,
+                                    mechanicId: currentUser?.id,
+                                    status: 'IN_PROGRESS',
+                                    startedAt: new Date().toISOString()
+                                  });
+                                }
+                              }}
+                              className="px-2 py-0.5 bg-rose-900/50 hover:bg-rose-800 text-rose-200 text-[8px] font-bold rounded uppercase border border-rose-700/50 transition-colors"
+                            >
+                              Force Takeover
+                            </button>
+                          </div>
+                        )
                       )}
 
                       {wo.status === 'PENDING_APPROVAL' && (
@@ -454,7 +734,7 @@ const MechanicDashboard: React.FC = () => {
       </div>
 
       {/* Right Column: Active Workspace Panel */}
-      <div className="w-full lg:w-2/3 flex flex-col">
+      <div className={`w-full lg:w-2/3 flex-col ${mobileView === 'WORKSPACE' ? 'flex' : 'hidden lg:flex'}`}>
         {!activeWO ? (
           <div className="bg-white rounded-lg shadow-lg border border-slate-200 h-full flex flex-col items-center justify-center p-12 text-center flex-1 min-h-[400px]">
              <Wrench className="w-16 h-16 text-slate-300 mb-4 animate-spin duration-1000" />
@@ -486,7 +766,7 @@ const MechanicDashboard: React.FC = () => {
                   </div>
                 </div>
                 <button 
-                  onClick={() => setActiveWO(null)}
+                  onClick={() => { setActiveWO(null); setMobileView('QUEUE'); }}
                   className="mt-8 px-6 py-2.5 bg-slate-800 hover:bg-slate-750 text-white font-bold text-xs rounded uppercase border border-slate-700 transition-all shadow-md flex items-center gap-2"
                 >
                   Kembali ke Antrean Kerja
@@ -509,7 +789,7 @@ const MechanicDashboard: React.FC = () => {
               </div>
 
               {/* Module 1 Live Timer & Action Controls */}
-              <div className="flex flex-col md:items-end gap-2 w-full md:w-auto">
+              <div id="mechanic-timer-action" className="flex flex-col md:items-end gap-2 w-full md:w-auto">
                 <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg">
                   <Clock className={`w-4 h-4 ${isTimerCritical ? 'text-[#ef4444] animate-pulse' : 'text-blue-400'}`} />
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">TIMER PRODUKSI:</span>
@@ -518,7 +798,23 @@ const MechanicDashboard: React.FC = () => {
                   </span>
                 </div>
                 
-                <div className="flex gap-2 w-full justify-end">
+                <div className="flex gap-2 w-full justify-end flex-wrap">
+                  {currentUser?.role === 'MECHANIC' && activeWO.status === 'IN_PROGRESS' && activeWO.divisionFlow?.includes('SUPPLY_PUMP') && activeWO.divisionFlow?.includes('COMMON_RAIL') && (
+                    <button 
+                      onClick={() => setTransferModalOpen(true)}
+                      className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-xs font-bold shadow-md uppercase tracking-wider flex items-center gap-1.5 transition-all"
+                    >
+                      <Send className="w-3.5 h-3.5" /> KE COMMON RAIL
+                    </button>
+                  )}
+                  {currentUser?.role === 'COMMON_RAIL' && activeWO.status === 'IN_PROGRESS' && activeWO.divisionFlow?.includes('SUPPLY_PUMP') && activeWO.divisionFlow?.includes('COMMON_RAIL') && (
+                    <button 
+                      onClick={() => setTransferModalOpen(true)}
+                      className="px-4 py-1.5 bg-orange-600 hover:bg-orange-500 text-white rounded text-xs font-bold shadow-md uppercase tracking-wider flex items-center gap-1.5 transition-all"
+                    >
+                      <Send className="w-3.5 h-3.5" /> KEMBALIKAN KE FILL PUMP
+                    </button>
+                  )}
                   {activeWO.status === 'IN_PROGRESS' && (
                     <button 
                       onClick={handlePauseClick} 
@@ -531,7 +827,7 @@ const MechanicDashboard: React.FC = () => {
                     onClick={() => handleComplete(activeWO.id)} 
                     className="px-4 py-1.5 bg-emerald-600 text-white rounded text-xs font-bold shadow-md hover:bg-emerald-500 uppercase tracking-wider flex items-center gap-1.5 transition-all"
                   >
-                    <CheckCircle className="w-3.5 h-3.5" /> SIAP QC
+                    <CheckCircle className="w-3.5 h-3.5" /> SELESAI / KE SA
                   </button>
                 </div>
               </div>
@@ -539,325 +835,877 @@ const MechanicDashboard: React.FC = () => {
 
             {/* Active Workspace Form Container */}
             <div className="p-4 flex-1 overflow-y-auto">
-              
-              {/* MODULE 1: Pencarian Spesifikasi Standard Komponen */}
-              <div className="mb-6 bg-[#0f172a] text-white border border-slate-700 rounded-lg p-4 shadow-md">
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2">
-                    <Search className="w-4 h-4" />
-                    PENCARIAN SPESIFIKASI STANDARD KOMPONEN
-                  </h3>
-                  <span className="text-[9px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
-                    Database Standar Lab
-                  </span>
-                </div>
-                
-                <p className="text-[11px] text-slate-300 leading-relaxed mb-3">
-                  Masukkan Part Number (P/N) Bosch, Denso, atau Delphi untuk melihat standar tekanan pembukaan, debit semprotan, dan toleransi backleak.
-                </p>
 
-                <div className="relative mb-3">
-                  <input
-                    type="text"
-                    placeholder="Cari berdasarkan P/N (contoh: 0445110305) atau model mesin..."
-                    className="w-full bg-slate-900 border border-slate-700 rounded p-2.5 pl-9 text-xs text-white focus:outline-none focus:border-emerald-500"
-                    value={specsSearch}
-                    onChange={(e) => setSpecsSearch(e.target.value)}
-                  />
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+              {/* FIVE-STEP WIZARD STEPPER HEADER */}
+              <div className="mb-6 bg-slate-900 text-white rounded-xl p-4 shadow-lg border border-slate-700">
+                <div className="flex items-center justify-between flex-wrap gap-2 mb-4 border-b border-slate-800 pb-3">
+                  <div>
+                    <h3 className="text-xs font-black uppercase tracking-widest text-emerald-400">
+                      📋 PROSEDUR OPERASIONAL LABORATORIUM DIESEL
+                    </h3>
+                    <p className="text-[10px] text-slate-400 mt-1">Selesaikan 5 langkah pengujian dan perbaikan komponen berikut.</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-emerald-950/40 text-emerald-400 border border-emerald-800 px-2.5 py-1 rounded-full text-[10px] font-bold">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    LANGKAH {activeStep} DARI 5
+                  </div>
                 </div>
 
-                {specsSearch.trim() !== '' && (
-                  <div className="space-y-3 mt-2">
-                    {specsSearch.trim() !== '' && CALIBRATION_SPECS_DB.filter(s => 
-                      s.p_n.toLowerCase().includes(specsSearch.toLowerCase()) || 
-                      s.name.toLowerCase().includes(specsSearch.toLowerCase()) || 
-                      s.brand.toLowerCase().includes(specsSearch.toLowerCase())
-                    ).length === 0 ? (
-                      <p className="text-[11px] text-slate-400 italic">Tidak ditemukan spesifikasi yang cocok dengan kata kunci "{specsSearch}".</p>
-                    ) : (
-                      CALIBRATION_SPECS_DB.filter(s => 
-                        s.p_n.toLowerCase().includes(specsSearch.toLowerCase()) || 
-                        s.name.toLowerCase().includes(specsSearch.toLowerCase()) || 
-                        s.brand.toLowerCase().includes(specsSearch.toLowerCase())
-                      ).map((spec) => (
-                        <div key={spec.p_n} className="bg-slate-900 border border-slate-700 rounded p-3 text-xs">
-                          <div className="flex flex-col sm:flex-row justify-between items-start gap-2 border-b border-slate-700 pb-2 mb-2">
-                            <div>
-                              <span className="font-mono font-black text-emerald-400 tracking-wider text-xs">{spec.p_n}</span>
-                              <span className="ml-2 font-black text-white">{spec.brand}</span>
-                            </div>
-                            <span className="text-[10px] bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded font-bold border border-emerald-800">
-                              {spec.name}
-                            </span>
-                          </div>
-                          
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center text-[11px]">
-                            <div className="bg-slate-850 p-2 rounded border border-slate-800">
-                              <div className="text-slate-400 font-bold mb-0.5">Tekanan Pembukaan</div>
-                              <div className="font-mono text-white font-black">{spec.pressure}</div>
-                            </div>
-                            <div className="bg-slate-850 p-2 rounded border border-slate-800">
-                              <div className="text-slate-400 font-bold mb-0.5">Debit Semprotan</div>
-                              <div className="font-mono text-white font-black">{spec.volume}</div>
-                            </div>
-                            <div className="bg-slate-850 p-2 rounded border border-slate-800">
-                              <div className="text-slate-400 font-bold mb-0.5">Toleransi Backleak</div>
-                              <div className="font-mono text-white font-black">{spec.backleak}</div>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-
-                {specsSearch.trim() === '' && (
-                  <div className="border-t border-slate-800 pt-3 mt-2">
-                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">Paling Sering Dicari:</div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {CALIBRATION_SPECS_DB.slice(0, 4).map((spec) => (
-                        <button
-                          key={spec.p_n}
-                          type="button"
-                          onClick={() => setSpecsSearch(spec.p_n)}
-                          className="text-[10px] bg-slate-900 hover:bg-slate-850 border border-slate-700 text-slate-300 font-mono px-2 py-1 rounded transition-colors"
-                        >
-                          {spec.p_n} ({spec.brand})
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Customer Voice Card */}
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg shadow-sm">
-                <h3 className="text-[10px] font-black text-red-800 uppercase tracking-wider mb-1 flex items-center gap-1">
-                  <AlertCircle className="w-3.5 h-3.5" /> KELUHAN UTAMA KONSUMEN (CUSTOMER VOICE)
-                </h3>
-                <p className="text-xs text-red-950 leading-relaxed font-semibold">{activeWO.customerVoice || 'Tidak ada deskripsi keluhan'}</p>
-              </div>
-
-              {/* Module 2: MANIFES KOMPONEN DITERIMA */}
-              <div className="mb-6 bg-slate-50 border border-slate-200 rounded-lg p-4 shadow-sm">
-                <h3 className="text-xs font-black text-slate-800 uppercase mb-3 flex items-center gap-2">
-                  <span className="bg-slate-800 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black">1</span>
-                  MANIFES KOMPONEN MASUK DARI FRONT OFFICE
-                </h3>
-                {!activeWO.looseParts || activeWO.looseParts.length === 0 ? (
-                  <p className="text-xs text-slate-500 italic text-center py-2">Tidak ada data manifes komponen yang diinput SA.</p>
-                ) : (
-                  <div className="overflow-x-auto border border-slate-200 rounded-lg shadow-sm">
-                    <table className="w-full text-xs text-left">
-                      <thead className="text-[10px] text-slate-700 uppercase bg-slate-100 border-b border-slate-200 font-bold">
-                        <tr>
-                          <th className="px-3 py-2 font-black">Keterangan</th>
-                          <th className="px-3 py-2 font-black">Part Number (P/N)</th>
-                          <th className="px-3 py-2 font-black">Kondisi Fisik Luar</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200 bg-white">
-                        {activeWO.looseParts.map((p, idx) => (
-                          <tr key={p.id || idx} className="hover:bg-slate-550 hover:bg-slate-50">
-                            <td className="px-3 py-2.5 font-bold text-slate-800">{p.description || '-'}</td>
-                            <td className="px-3 py-2.5 font-mono text-slate-800">{p.partNumber || '-'}</td>
-                            <td className="px-3 py-2.5 text-slate-800">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                p.physicalCondition?.toLowerCase() === 'ok' 
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                                  : 'bg-amber-50 text-amber-700 border border-amber-200'
-                              }`}>
-                                {p.physicalCondition || 'OK'}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-
-              {/* Module 3: DAFTAR TINDAKAN & CHECKLIST */}
-              <div className="mb-6 bg-slate-50 border border-slate-200 rounded-lg p-4 shadow-sm">
-                <h3 className="text-xs font-black text-slate-800 uppercase mb-3 flex items-center gap-2">
-                  <span className="bg-slate-800 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black">2</span>
-                  DAFTAR TINDAKAN & PANDUAN KERJA MEKANIK
-                </h3>
-                {!activeWO.todoActions || activeWO.todoActions.length === 0 ? (
-                  <p className="text-xs text-slate-500 italic text-center py-2">Tidak ada tindakan panduan kerja dari Service Advisor.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {activeWO.todoActions.map((action) => (
-                      <label 
-                        key={action.id} 
-                        className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                          action.completed 
-                            ? 'bg-emerald-50 border-emerald-200' 
-                            : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
+                <div className="flex items-center justify-between gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                  {[
+                    { step: 1, title: 'VERIFIKASI', subtitle: 'Intake Komponen', icon: '🔍' },
+                    { step: 2, title: 'TES AWAL', subtitle: 'Calibration Before', icon: '📊' },
+                    { step: 3, title: 'PERBAIKAN', subtitle: 'Rehaul & Action', icon: '🔧' },
+                    { step: 4, title: 'TES AKHIR', subtitle: 'Calibration After', icon: '🚀' },
+                    { step: 5, title: 'REKONSILIASI', subtitle: 'Symptom & Finish', icon: '✅' },
+                  ].map((s) => {
+                    const isCompleted = activeStep > s.step;
+                    const isActive = activeStep === s.step;
+                    return (
+                      <button
+                        key={s.step}
+                        onClick={() => setActiveStep(s.step)}
+                        type="button"
+                        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border text-left min-w-[140px] transition-all cursor-pointer ${
+                          isActive
+                            ? 'bg-emerald-600 border-emerald-500 text-white shadow-md shadow-emerald-900/30 font-black'
+                            : isCompleted
+                            ? 'bg-emerald-950/20 border-emerald-900/40 text-emerald-300'
+                            : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-750'
                         }`}
                       >
-                        <input 
-                          type="checkbox" 
-                          className="w-4.5 h-4.5 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500 mt-0.5 cursor-pointer"
-                          checked={!!action.completed}
-                          onChange={(e) => handleToggleTodo(action.id, e.target.checked)}
-                        />
-                        <div className="flex-1 text-xs">
-                          <div className="flex justify-between items-start gap-2">
-                            <span className={`font-bold ${action.completed ? 'text-slate-400 line-through' : 'text-slate-850 text-slate-800'}`}>
-                              {action.jenisPengerjaan}
-                            </span>
-                            <span className="font-mono text-slate-500 text-[10px] font-bold bg-slate-100 px-1.5 py-0.5 rounded">Qty: {action.qty}</span>
+                        <span className="text-sm shrink-0">{s.icon}</span>
+                        <div className="leading-tight">
+                          <div className="text-[10px] uppercase font-black tracking-wider flex items-center gap-1">
+                            Langkah {s.step}
+                            {isCompleted && <span className="text-emerald-400 font-bold">✓</span>}
                           </div>
-                          {action.catatanMekanik && (
-                            <p className="text-[11px] text-slate-500 mt-1 italic">Instruksi SA: {action.catatanMekanik}</p>
-                          )}
+                          <div className="text-[9px] font-semibold opacity-90 truncate">{s.subtitle}</div>
                         </div>
-                      </label>
-                    ))}
-                  </div>
-                )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
-              {/* Module 4: REHAUL LOG TEMUAN & MANUALLY INPUTS */}
-              <div className="mb-6 bg-slate-50 border border-slate-200 rounded-lg p-4 shadow-sm">
-                <h3 className="text-xs font-black text-slate-800 uppercase mb-3 flex items-center gap-2">
-                  <span className="bg-slate-800 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black">3</span>
-                  LOG TEMUAN KERUSAKAN & PENGGANTIAN SUKU CADANG DALAM
-                </h3>
-                
-                <form onSubmit={handleSubmitPartLog} className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm mb-4">
-                  <div className="grid grid-cols-1 gap-3.5 mb-3.5">
-                    <div>
-                      <label className="block text-[11px] font-black text-slate-700 uppercase mb-1">
-                        Temuan / Suku Cadang <span className="text-red-500">*</span>
-                      </label>
-                      <textarea 
-                        placeholder="Ketikkan secara manual temuan kerusakan atau suku cadang dalam yang diganti (Contoh: Ganti Valve Plate No. 3, Nozzle Tip Silinder 1 Macet)"
-                        className="w-full rounded border border-slate-300 p-2.5 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none leading-relaxed"
-                        rows={3}
-                        value={findings}
-                        onChange={e => setFindings(e.target.value)}
-                        required
-                      />
+              {/* STEP 1: VERIFIKASI KOMPONEN MASUK */}
+              {activeStep === 1 && (
+                <div className="space-y-6">
+                  {/* LIVE WORK TRACKING MILESTONE CARD */}
+                  <div className="bg-slate-900 text-white border border-slate-700 rounded-lg p-4 shadow-md">
+                    <div className="flex justify-between items-center mb-3">
+                      <h3 className="text-xs font-black uppercase tracking-widest text-blue-400 flex items-center gap-2">
+                        <Compass className="w-4 h-4 text-blue-400" />
+                        Pembaruan Tahapan Kerja Pelanggan (Live Tracking Milestone)
+                      </h3>
+                      <span className="text-[9px] bg-blue-950 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                        Customer Visibility: Live
+                      </span>
                     </div>
-                    <div>
-                      <label className="block text-[11px] font-black text-slate-700 uppercase mb-1">
-                        Catatan Tambahan (Notes)
-                      </label>
-                      <input 
-                        type="text"
-                        placeholder="Tambahkan catatan teknik atau keterangan lab penunjang..."
-                        className="w-full rounded border border-slate-300 p-2.5 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                        value={notes}
-                        onChange={e => setNotes(e.target.value)}
-                      />
+
+                    <p className="text-[11px] text-slate-300 leading-relaxed mb-3">
+                      Pilih tahapan pekerjaan saat ini. Pelanggan dapat memantau perkembangan ini secara real-time via QR code di SPK/Inspection Sheet mereka tanpa login.
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                          Tahapan Kerja Aktif:
+                        </label>
+                        <select
+                          className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white font-semibold focus:outline-none focus:border-blue-500"
+                          value={activeWO.currentMilestone || 'Intake & Verifikasi'}
+                          onChange={(e) => {
+                            const newMilestone = e.target.value;
+                            const updatedHistory = activeWO.milestoneHistory ? [...activeWO.milestoneHistory] : [];
+                            if (activeWO.currentMilestone !== newMilestone) {
+                              const newLog = {
+                                milestone: newMilestone,
+                                timestamp: new Date().toISOString(),
+                                updatedBy: currentUser?.name || 'Mekanik'
+                              };
+                              const newHistory = [...updatedHistory, newLog];
+
+                              updateWorkOrder(activeWO.id, {
+                                currentMilestone: newMilestone,
+                                milestoneHistory: newHistory
+                              });
+
+                              setActiveWO({
+                                ...activeWO,
+                                currentMilestone: newMilestone,
+                                milestoneHistory: newHistory
+                              });
+
+                              showToast(`Milestone pengerjaan diperbarui ke: ${newMilestone}`);
+                            }
+                          }}
+                        >
+                          {GENERAL_TRACKING_MILESTONES.map((m) => (
+                            <option key={m.id} value={m.label}>
+                              {m.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="bg-slate-950/40 p-2.5 rounded border border-slate-800 self-stretch flex flex-col justify-center">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status Live:</span>
+                        </div>
+                        <p className="text-[10.5px] font-mono text-emerald-400 font-bold mt-1.5 truncate">
+                          {activeWO.currentMilestone || 'Intake & Verifikasi'}
+                        </p>
+                        <p className="text-[8px] text-slate-500 mt-0.5">
+                          Setiap perubahan akan langsung mengupdate live tracking konsumen.
+                        </p>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex justify-end">
-                    <button 
-                      type="submit" 
-                      className="bg-slate-800 hover:bg-slate-900 text-white px-5 py-2 rounded text-xs font-black uppercase transition-colors shadow flex items-center gap-1"
+
+                  {/* Customer Voice Card */}
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg shadow-sm">
+                    <h3 className="text-[10px] font-black text-red-800 uppercase tracking-wider mb-1 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5" /> KELUHAN UTAMA KONSUMEN (CUSTOMER VOICE)
+                    </h3>
+                    <p className="text-xs text-red-950 leading-relaxed font-semibold">{activeWO.customerVoice || 'Tidak ada deskripsi keluhan'}</p>
+                  </div>
+
+                  {/* Division Transfer Notes */}
+                  {activeWO.divisionNotes && activeWO.divisionNotes.length > 0 && (
+                    <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg shadow-sm">
+                      <h3 className="text-[10px] font-black text-indigo-800 uppercase tracking-wider mb-2 flex items-center gap-1">
+                        <Send className="w-3.5 h-3.5" /> CATATAN ANTAR DIVISI
+                      </h3>
+                      <div className="space-y-2">
+                        {activeWO.divisionNotes.map((note, idx) => (
+                          <div key={idx} className="bg-white border border-indigo-100 rounded p-2.5 text-xs">
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="font-bold text-indigo-900 uppercase text-[9px] bg-indigo-100 px-1.5 py-0.5 rounded">
+                                Dari: {getDivisionLabel(note.from)} → Ke: {getDivisionLabel(note.to)}
+                              </span>
+                              <span className="text-[9px] text-slate-400 font-mono">
+                                {new Date(note.date).toLocaleString('id-ID', { hour12: false })}
+                              </span>
+                            </div>
+                            <p className="text-slate-700 italic">"{note.note}"</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Module 2: MANIFES KOMPONEN DITERIMA */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 shadow-sm">
+                    <h3 className="text-xs font-black text-slate-800 uppercase mb-3 flex items-center gap-2">
+                      <span className="bg-slate-800 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black">1</span>
+                      MANIFES KOMPONEN MASUK DARI FRONT OFFICE
+                    </h3>
+                    {!activeWO.looseParts || activeWO.looseParts.length === 0 ? (
+                      <p className="text-xs text-slate-500 italic text-center py-2">Tidak ada data manifes komponen yang diinput SA.</p>
+                    ) : (
+                      <div className="overflow-x-auto border border-slate-200 rounded-lg shadow-sm">
+                        <table className="w-full text-xs text-left">
+                          <thead className="text-[10px] text-slate-700 uppercase bg-slate-100 border-b border-slate-200 font-bold">
+                            <tr>
+                              <th className="px-3 py-2 font-black">Keterangan</th>
+                              <th className="px-3 py-2 font-black">Part Number (P/N)</th>
+                              <th className="px-3 py-2 font-black">Kondisi Fisik Luar</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200 bg-white">
+                            {activeWO.looseParts.map((p, idx) => (
+                              <tr key={p.id || idx} className="hover:bg-slate-50">
+                                <td className="px-3 py-2.5 font-bold text-slate-800">{p.description || '-'}</td>
+                                <td className="px-3 py-2.5 font-mono text-slate-800">{p.partNumber || '-'}</td>
+                                <td className="px-3 py-2.5 text-slate-800">
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                    p.physicalCondition?.toLowerCase() === 'ok' 
+                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                                      : 'bg-amber-50 text-amber-700 border border-amber-200'
+                                  }`}>
+                                    {p.physicalCondition || 'OK'}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Navigation Button Footer Step 1 */}
+                  <div className="mt-6 flex justify-end gap-3 border-t border-slate-200 pt-4">
+                    <button
+                      onClick={() => setActiveStep(2)}
+                      type="button"
+                      className="px-6 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-black uppercase rounded shadow-md flex items-center gap-2 transition-all cursor-pointer"
                     >
-                      <Send className="w-3 h-3" /> TAMBAH LOG
+                      Mulai Pengujian Tes Awal ➔
                     </button>
                   </div>
-                </form>
+                </div>
+              )}
 
-                {/* Module 4 Grid Table History */}
-                {activeWO.partLogs && activeWO.partLogs.length > 0 && (
-                  <div className="border border-slate-200 rounded-lg overflow-hidden shadow-sm">
-                    <table className="min-w-full divide-y divide-slate-200 text-xs">
-                      <thead className="bg-slate-100 text-slate-700">
-                        <tr>
-                          <th className="px-4 py-2.5 text-left font-black uppercase tracking-wider w-1/4">JAM / TANGGAL</th>
-                          <th className="px-4 py-2.5 text-left font-black uppercase tracking-wider w-1/2">TEMUAN / SUKU CADANG</th>
-                          <th className="px-4 py-2.5 text-left font-black uppercase tracking-wider w-1/4">CATATAN (NOTES)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-slate-200">
-                        {activeWO.partLogs.map((log, index) => (
-                          <tr key={log.id || index} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50 hover:bg-slate-100/50'}>
-                            <td className="px-4 py-2.5 whitespace-nowrap text-slate-500 font-mono font-bold">
-                              {new Date(log.date).toLocaleString('id-ID', { hour12: false })}
-                            </td>
-                            <td className="px-4 py-2.5 text-slate-800 font-bold leading-normal">{log.findings || 'Tidak ada temuan'}</td>
-                            <td className="px-4 py-2.5 text-slate-600 leading-normal">{log.notes || '-'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-
-              {/* MODULE 3: RANGKUMAN HASIL PERBAIKAN (BEFORE VS AFTER BUILDER) */}
-              <div className="mb-6 bg-slate-50 border border-slate-200 rounded-lg p-4 shadow-sm">
-                <h3 className="text-xs font-black text-slate-800 uppercase mb-3 flex items-center gap-2">
-                  <span className="bg-slate-800 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black">4</span>
-                  RANGKUMAN HASIL PERBAIKAN (BEFORE VS AFTER BUILDER)
-                </h3>
-                
-                <p className="text-[11px] text-slate-500 leading-relaxed mb-4">
-                  Berikut adalah keluhan pelanggan yang telah disetujui pada SPK awal (Kondisi Sebelum / Before). Silakan isi status pemulihan, tindakan teknis, atau kondisi akhir (Kondisi Sesudah / After) untuk setiap poin keluhan di bawah ini untuk mencetak rekap perbaikan resmi.
-                </p>
-
-                {(() => {
-                  const complaintLines = activeWO.customerVoice
-                    ? activeWO.customerVoice
-                        .split('\n')
-                        .map(l => l.trim())
-                        .filter(l => l.length > 0 && !l.includes('[TEMUAN HIDDEN DEFECT]'))
-                    : [];
-
-                  if (complaintLines.length === 0) {
-                    return (
-                      <div className="text-center py-4 bg-white border border-slate-150 rounded text-xs text-slate-400 italic">
-                        Tidak ada poin keluhan pelanggan yang terdaftar pada SPK ini.
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div className="space-y-3">
-                      {complaintLines.map((line, idx) => (
-                        <div key={idx} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm space-y-2">
-                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5 border-b border-slate-100 pb-2">
-                            <span className="text-[10px] bg-slate-100 text-slate-800 px-2 py-0.5 rounded font-black uppercase tracking-wider">
-                              Keluhan #{idx + 1}
-                            </span>
-                            <span className="text-[9px] text-slate-400 font-mono">Status Rekonsiliasi Perbaikan</span>
-                          </div>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                            {/* Before column (read-only symptom) */}
-                            <div className="bg-red-50/35 border border-red-150 rounded p-2.5">
-                              <span className="text-[9px] text-red-500 font-bold block uppercase tracking-wider mb-1">Sebelum / Gejala Keluhan (Before)</span>
-                              <p className="text-xs font-bold text-slate-800 leading-relaxed">
-                                {line}
-                              </p>
-                            </div>
-
-                            {/* After column (editable repair output) */}
-                            <div className="bg-emerald-50/25 border border-emerald-150 rounded p-2.5 flex flex-col justify-between">
-                              <span className="text-[9px] text-emerald-600 font-bold block uppercase tracking-wider mb-1">Sesudah / Status Perbaikan (After)</span>
-                              <input
-                                type="text"
-                                placeholder="Contoh: Kalibrasi ulang berhasil, komponen kembali normal / diganti komponen baru"
-                                className="w-full text-xs p-2 border border-slate-200 rounded outline-none focus:border-emerald-500 font-semibold bg-white text-slate-800"
-                                value={activeWO.repairResults?.[idx] || ''}
-                                onChange={(e) => handleUpdateRepairResult(idx, e.target.value)}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+              {/* STEP 2: TES AWAL & KALIBRASI SEBELUM PERBAIKAN */}
+              {activeStep === 2 && (
+                <div className="space-y-6">
+                  {/* MODULE 1: Pencarian Spesifikasi Standard Komponen */}
+                  <div id="specs-db-panel" className="bg-[#0f172a] text-white border border-slate-700 rounded-lg p-4 shadow-md">
+                    <div className="flex justify-between items-center mb-3">
+                      <h3 className="text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2">
+                        <Search className="w-4 h-4" />
+                        PENCARIAN SPESIFIKASI STANDARD KOMPONEN
+                      </h3>
+                      <span className="text-[9px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                        Database Standar Lab
+                      </span>
                     </div>
-                  );
-                })()}
-              </div>
+                    
+                    <p className="text-[11px] text-slate-300 leading-relaxed mb-3">
+                      Masukkan Part Number (P/N) Bosch, Denso, atau Delphi untuk melihat standar tekanan pembukaan, debit semprotan, dan toleransi backleak.
+                    </p>
+
+                    <div className="relative mb-3">
+                      <input
+                        type="text"
+                        placeholder="Cari berdasarkan P/N (contoh: 0445110305) atau model mesin..."
+                        className="w-full bg-slate-900 border border-slate-700 rounded p-2.5 pl-9 text-xs text-white focus:outline-none focus:border-emerald-500"
+                        value={specsSearch}
+                        onChange={(e) => setSpecsSearch(e.target.value)}
+                      />
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                    </div>
+
+                    {specsSearch.trim() !== '' && (
+                      <div className="space-y-3 mt-2">
+                        {specsSearch.trim() !== '' && CALIBRATION_SPECS_DB.filter(s => 
+                          s.p_n.toLowerCase().includes(specsSearch.toLowerCase()) || 
+                          s.name.toLowerCase().includes(specsSearch.toLowerCase()) || 
+                          s.brand.toLowerCase().includes(specsSearch.toLowerCase())
+                        ).length === 0 ? (
+                          <p className="text-[11px] text-slate-400 italic">Tidak ditemukan spesifikasi yang cocok dengan kata kunci "{specsSearch}".</p>
+                        ) : (
+                          CALIBRATION_SPECS_DB.filter(s => 
+                            s.p_n.toLowerCase().includes(specsSearch.toLowerCase()) || 
+                            s.name.toLowerCase().includes(specsSearch.toLowerCase()) || 
+                            s.brand.toLowerCase().includes(specsSearch.toLowerCase())
+                          ).map((spec) => (
+                            <div key={spec.p_n} className="bg-slate-900 border border-slate-700 rounded p-3 text-xs">
+                              <div className="flex flex-col sm:flex-row justify-between items-start gap-2 border-b border-slate-700 pb-2 mb-2">
+                                <div>
+                                  <span className="font-mono font-black text-emerald-400 tracking-wider text-xs">{spec.p_n}</span>
+                                  <span className="ml-2 font-black text-white">{spec.brand}</span>
+                                </div>
+                                <span className="text-[10px] bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded font-bold border border-emerald-800">
+                                  {spec.name}
+                                </span>
+                              </div>
+                              
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center text-[11px]">
+                                <div className="bg-slate-850 p-2 rounded border border-slate-800">
+                                  <div className="text-slate-400 font-bold mb-0.5">Tekanan Pembukaan</div>
+                                  <div className="font-mono text-white font-black">{spec.pressure}</div>
+                                </div>
+                                <div className="bg-slate-850 p-2 rounded border border-slate-800">
+                                  <div className="text-slate-400 font-bold mb-0.5">Debit Semprotan</div>
+                                  <div className="font-mono text-white font-black">{spec.volume}</div>
+                                </div>
+                                <div className="bg-slate-850 p-2 rounded border border-slate-800">
+                                  <div className="text-slate-400 font-bold mb-0.5">Toleransi Backleak</div>
+                                  <div className="font-mono text-white font-black">{spec.backleak}</div>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+
+                    {specsSearch.trim() === '' && (
+                      <div className="border-t border-slate-800 pt-3 mt-2">
+                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">Paling Sering Dicari:</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {CALIBRATION_SPECS_DB.slice(0, 4).map((spec) => (
+                            <button
+                              key={spec.p_n}
+                              type="button"
+                              onClick={() => setSpecsSearch(spec.p_n)}
+                              className="text-[10px] bg-slate-900 hover:bg-slate-850 border border-slate-700 text-slate-300 font-mono px-2 py-1 rounded transition-colors"
+                            >
+                              {spec.p_n} ({spec.brand})
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Form Pengisian Hasil Tes Awal */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-5 shadow-sm space-y-4">
+                    <div className="border-b border-slate-200 pb-3">
+                      <h4 className="text-xs font-black text-slate-800 uppercase flex items-center gap-1.5">
+                        📊 PENGUKURAN SEBELUM PERBAIKAN (BEFORE CALIBRATION)
+                      </h4>
+                      <p className="text-[11px] text-slate-500 mt-1">Masukkan data pengukuran awal dari mesin diesel test bench sebelum komponen dibongkar.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Spray Volume Before */}
+                      <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-xs">
+                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Volume Semprotan Sebelum (cc)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. 40.5 cc"
+                          className="w-full text-xs font-bold p-2.5 border border-slate-300 rounded focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-white"
+                          value={activeWO.calibrationData?.volumeSemprotan?.sebelum || ''}
+                          onChange={(e) => handleUpdateCalibration('volumeSemprotan', 'sebelum', e.target.value)}
+                        />
+                        <p className="text-[9px] text-slate-400 mt-1">Volume cairan yang disemprotkan injector.</p>
+                      </div>
+
+                      {/* Backleak Flow Before */}
+                      <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-xs">
+                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Debit Backleak Sebelum (cc)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. 24.2 cc"
+                          className="w-full text-xs font-bold p-2.5 border border-slate-300 rounded focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-white"
+                          value={activeWO.calibrationData?.debitBackleak?.sebelum || ''}
+                          onChange={(e) => handleUpdateCalibration('debitBackleak', 'sebelum', e.target.value)}
+                        />
+                        <p className="text-[9px] text-slate-400 mt-1">Volume cairan yang kembali ke saluran buang.</p>
+                      </div>
+
+                      {/* Opening Pressure Before */}
+                      <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-xs">
+                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Tekanan Pembukaan Sebelum (Bar)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. 1350 Bar"
+                          className="w-full text-xs font-bold p-2.5 border border-slate-300 rounded focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-white"
+                          value={activeWO.calibrationData?.tekanan?.sebelum || ''}
+                          onChange={(e) => handleUpdateCalibration('tekanan', 'sebelum', e.target.value)}
+                        />
+                        <p className="text-[9px] text-slate-400 mt-1">Tekanan pembukaan katup nozzle.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Navigation Button Footer Step 2 */}
+                  <div className="mt-6 flex justify-between gap-3 border-t border-slate-200 pt-4">
+                    <button
+                      onClick={() => setActiveStep(1)}
+                      type="button"
+                      className="px-5 py-2.5 border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-black uppercase rounded transition-all cursor-pointer"
+                    >
+                      ⬅ Kembali
+                    </button>
+                    <button
+                      onClick={() => setActiveStep(3)}
+                      type="button"
+                      className="px-6 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-black uppercase rounded shadow-md flex items-center gap-2 transition-all cursor-pointer"
+                    >
+                      Lanjutkan ke Perbaikan ➔
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 3: REHAUL, BONGKAR & LOG TINDAKAN PERBAIKAN */}
+              {activeStep === 3 && (
+                <div className="space-y-6">
+                  {/* Module 3: DAFTAR TINDAKAN & CHECKLIST */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 shadow-sm">
+                    <h3 className="text-xs font-black text-slate-800 uppercase mb-3 flex items-center gap-2">
+                      <span className="bg-slate-800 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black">2</span>
+                      DAFTAR TINDAKAN & PANDUAN KERJA MEKANIK
+                    </h3>
+                    {!activeWO.todoActions || activeWO.todoActions.length === 0 ? (
+                      <p className="text-xs text-slate-500 italic text-center py-2">Tidak ada tindakan panduan kerja dari Service Advisor.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {activeWO.todoActions.map((action) => (
+                          <label 
+                            key={action.id} 
+                            className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                              action.completed 
+                                ? 'bg-emerald-50 border-emerald-200' 
+                                : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
+                            }`}
+                          >
+                            <input 
+                              type="checkbox" 
+                              className="w-4.5 h-4.5 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500 mt-0.5 cursor-pointer"
+                              checked={!!action.completed}
+                              onChange={(e) => handleToggleTodo(action.id, e.target.checked)}
+                            />
+                            <div className="flex-1 text-xs">
+                              <div className="flex justify-between items-start gap-2">
+                                <span className={`font-bold ${action.completed ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
+                                  {action.jenisPengerjaan}
+                                </span>
+                                <span className="font-mono text-slate-500 text-[10px] font-bold bg-slate-100 px-1.5 py-0.5 rounded">Qty: {action.qty}</span>
+                              </div>
+                              {action.catatanMekanik && (
+                                <p className="text-[11px] text-slate-500 mt-1 italic">Instruksi SA: {action.catatanMekanik}</p>
+                              )}
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Module 4: REHAUL LOG TEMUAN & MANUALLY INPUTS */}
+                  <div id="parts-log-panel" className="bg-slate-50 border border-slate-200 rounded-lg p-4 shadow-sm">
+                    <h3 className="text-xs font-black text-slate-800 uppercase mb-3 flex items-center gap-2">
+                      <span className="bg-slate-800 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black">3</span>
+                      LOG TEMUAN KERUSAKAN & PENGGANTIAN SUKU CADANG DALAM
+                    </h3>
+                    
+                    <form onSubmit={handleSubmitPartLog} className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm mb-4">
+                      <div className="grid grid-cols-1 gap-3.5 mb-3.5">
+                        <div>
+                          <label className="block text-[11px] font-black text-slate-700 uppercase mb-1">
+                            Temuan / Suku Cadang <span className="text-red-500">*</span>
+                          </label>
+                          <textarea 
+                            placeholder="Ketikkan secara manual temuan kerusakan atau suku cadang dalam yang diganti (Contoh: Ganti Valve Plate No. 3, Nozzle Tip Silinder 1 Macet)"
+                            className="w-full rounded border border-slate-300 p-2.5 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none leading-relaxed bg-white text-slate-800"
+                            rows={3}
+                            value={findings}
+                            onChange={e => setFindings(e.target.value)}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-black text-slate-700 uppercase mb-1">
+                            Catatan Tambahan (Notes)
+                          </label>
+                          <input 
+                            type="text"
+                            placeholder="Tambahkan catatan teknik atau keterangan lab penunjang..."
+                            className="w-full rounded border border-slate-300 p-2.5 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white text-slate-800"
+                            value={notes}
+                            onChange={e => setNotes(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-end">
+                        <button 
+                          type="submit" 
+                          className="bg-slate-800 hover:bg-slate-900 text-white px-5 py-2 rounded text-xs font-black uppercase transition-colors shadow flex items-center gap-1 cursor-pointer"
+                        >
+                          <Send className="w-3 h-3" /> TAMBAH LOG
+                        </button>
+                      </div>
+                    </form>
+
+                    {/* Module 4 Grid Table History */}
+                    {activeWO.partLogs && activeWO.partLogs.length > 0 && (
+                      <div className="border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+                        <table className="min-w-full divide-y divide-slate-200 text-xs">
+                          <thead className="bg-slate-100 text-slate-700">
+                            <tr>
+                              <th className="px-4 py-2.5 text-left font-black uppercase tracking-wider w-1/4">JAM / TANGGAL</th>
+                              <th className="px-4 py-2.5 text-left font-black uppercase tracking-wider w-1/2">TEMUAN / SUKU CADANG</th>
+                              <th className="px-4 py-2.5 text-left font-black uppercase tracking-wider w-1/4">CATATAN (NOTES)</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-slate-200">
+                            {activeWO.partLogs.map((log, index) => (
+                              <tr key={log.id || index} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                                <td className="px-4 py-2.5 whitespace-nowrap text-slate-500 font-mono font-bold">
+                                  {new Date(log.date).toLocaleString('id-ID', { hour12: false })}
+                                </td>
+                                <td className="px-4 py-2.5 text-slate-800 font-bold leading-normal">{log.findings || 'Tidak ada temuan'}</td>
+                                <td className="px-4 py-2.5 text-slate-600 leading-normal">{log.notes || '-'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Navigation Button Footer Step 3 */}
+                  <div className="mt-6 flex justify-between gap-3 border-t border-slate-200 pt-4">
+                    <button
+                      onClick={() => setActiveStep(2)}
+                      type="button"
+                      className="px-5 py-2.5 border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-black uppercase rounded transition-all cursor-pointer"
+                    >
+                      ⬅ Kembali
+                    </button>
+                    <button
+                      onClick={() => setActiveStep(4)}
+                      type="button"
+                      className="px-6 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-black uppercase rounded shadow-md flex items-center gap-2 transition-all cursor-pointer"
+                    >
+                      Lanjutkan ke Tes Akhir ➔
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 4: TES AKHIR & KALIBRASI SESUDAH PERBAIKAN */}
+              {activeStep === 4 && (
+                <div className="space-y-6">
+                  {/* MODULE 1: Pencarian Spesifikasi Standard Komponen */}
+                  <div id="specs-db-panel" className="bg-[#0f172a] text-white border border-slate-700 rounded-lg p-4 shadow-md">
+                    <div className="flex justify-between items-center mb-3">
+                      <h3 className="text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2">
+                        <Search className="w-4 h-4" />
+                        PENCARIAN SPESIFIKASI STANDARD KOMPONEN
+                      </h3>
+                      <span className="text-[9px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                        Database Standar Lab
+                      </span>
+                    </div>
+                    
+                    <p className="text-[11px] text-slate-300 leading-relaxed mb-3">
+                      Masukkan Part Number (P/N) Bosch, Denso, atau Delphi untuk melihat standar tekanan pembukaan, debit semprotan, dan toleransi backleak.
+                    </p>
+
+                    <div className="relative mb-3">
+                      <input
+                        type="text"
+                        placeholder="Cari berdasarkan P/N (contoh: 0445110305) atau model mesin..."
+                        className="w-full bg-slate-900 border border-slate-700 rounded p-2.5 pl-9 text-xs text-white focus:outline-none focus:border-emerald-500"
+                        value={specsSearch}
+                        onChange={(e) => setSpecsSearch(e.target.value)}
+                      />
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                    </div>
+
+                    {specsSearch.trim() !== '' && (
+                      <div className="space-y-3 mt-2">
+                        {specsSearch.trim() !== '' && CALIBRATION_SPECS_DB.filter(s => 
+                          s.p_n.toLowerCase().includes(specsSearch.toLowerCase()) || 
+                          s.name.toLowerCase().includes(specsSearch.toLowerCase()) || 
+                          s.brand.toLowerCase().includes(specsSearch.toLowerCase())
+                        ).length === 0 ? (
+                          <p className="text-[11px] text-slate-400 italic">Tidak ditemukan spesifikasi yang cocok dengan kata kunci "{specsSearch}".</p>
+                        ) : (
+                          CALIBRATION_SPECS_DB.filter(s => 
+                            s.p_n.toLowerCase().includes(specsSearch.toLowerCase()) || 
+                            s.name.toLowerCase().includes(specsSearch.toLowerCase()) || 
+                            s.brand.toLowerCase().includes(specsSearch.toLowerCase())
+                          ).map((spec) => (
+                            <div key={spec.p_n} className="bg-slate-900 border border-slate-700 rounded p-3 text-xs">
+                              <div className="flex flex-col sm:flex-row justify-between items-start gap-2 border-b border-slate-700 pb-2 mb-2">
+                                <div>
+                                  <span className="font-mono font-black text-emerald-400 tracking-wider text-xs">{spec.p_n}</span>
+                                  <span className="ml-2 font-black text-white">{spec.brand}</span>
+                                </div>
+                                <span className="text-[10px] bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded font-bold border border-emerald-800">
+                                  {spec.name}
+                                </span>
+                              </div>
+                              
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center text-[11px]">
+                                <div className="bg-slate-850 p-2 rounded border border-slate-800">
+                                  <div className="text-slate-400 font-bold mb-0.5">Tekanan Pembukaan</div>
+                                  <div className="font-mono text-white font-black">{spec.pressure}</div>
+                                </div>
+                                <div className="bg-slate-850 p-2 rounded border border-slate-800">
+                                  <div className="text-slate-400 font-bold mb-0.5">Debit Semprotan</div>
+                                  <div className="font-mono text-white font-black">{spec.volume}</div>
+                                </div>
+                                <div className="bg-slate-850 p-2 rounded border border-slate-800">
+                                  <div className="text-slate-400 font-bold mb-0.5">Toleransi Backleak</div>
+                                  <div className="font-mono text-white font-black">{spec.backleak}</div>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+
+                    {specsSearch.trim() === '' && (
+                      <div className="border-t border-slate-800 pt-3 mt-2">
+                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">Paling Sering Dicari:</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {CALIBRATION_SPECS_DB.slice(0, 4).map((spec) => (
+                            <button
+                              key={spec.p_n}
+                              type="button"
+                              onClick={() => setSpecsSearch(spec.p_n)}
+                              className="text-[10px] bg-slate-900 hover:bg-slate-850 border border-slate-700 text-slate-300 font-mono px-2 py-1 rounded transition-colors"
+                            >
+                              {spec.p_n} ({spec.brand})
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Form Pengisian Hasil Tes Akhir */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-5 shadow-sm space-y-4">
+                    <div className="border-b border-slate-200 pb-3">
+                      <h4 className="text-xs font-black text-slate-800 uppercase flex items-center gap-1.5">
+                        🚀 PENGUKURAN SESUDAH PERBAIKAN (AFTER CALIBRATION)
+                      </h4>
+                      <p className="text-[11px] text-slate-500 mt-1">Masukkan hasil kalibrasi akhir sesudah perbaikan dilakukan. Pastikan nilai berada dalam range spesifikasi.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4">
+                      {/* Spray Volume After vs Before */}
+                      <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-xs grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                        <div>
+                          <span className="text-[10px] font-black text-slate-400 block uppercase tracking-wider">Kondisi Sebelum</span>
+                          <span className="text-xs font-mono font-black text-rose-600 block bg-rose-50 p-2 rounded mt-1 border border-rose-100">
+                            {activeWO.calibrationData?.volumeSemprotan?.sebelum || 'Belum Diinput'}
+                          </span>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-black text-slate-700 uppercase mb-1.5">Volume Semprotan Sesudah (cc) <span className="text-red-500">*</span></label>
+                          <input
+                            type="text"
+                            placeholder="e.g. 52.5 cc"
+                            className="w-full text-xs font-bold p-2.5 border border-slate-300 rounded focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-white text-slate-800"
+                            value={activeWO.calibrationData?.volumeSemprotan?.sesudah || ''}
+                            onChange={(e) => handleUpdateCalibration('volumeSemprotan', 'sesudah', e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Backleak Flow After vs Before */}
+                      <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-xs grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                        <div>
+                          <span className="text-[10px] font-black text-slate-400 block uppercase tracking-wider">Kondisi Sebelum</span>
+                          <span className="text-xs font-mono font-black text-rose-600 block bg-rose-50 p-2 rounded mt-1 border border-rose-100">
+                            {activeWO.calibrationData?.debitBackleak?.sebelum || 'Belum Diinput'}
+                          </span>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-black text-slate-700 uppercase mb-1.5">Debit Backleak Sesudah (cc) <span className="text-red-500">*</span></label>
+                          <input
+                            type="text"
+                            placeholder="e.g. 10.2 cc"
+                            className="w-full text-xs font-bold p-2.5 border border-slate-300 rounded focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-white text-slate-800"
+                            value={activeWO.calibrationData?.debitBackleak?.sesudah || ''}
+                            onChange={(e) => handleUpdateCalibration('debitBackleak', 'sesudah', e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Opening Pressure After vs Before */}
+                      <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-xs grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                        <div>
+                          <span className="text-[10px] font-black text-slate-400 block uppercase tracking-wider">Kondisi Sebelum</span>
+                          <span className="text-xs font-mono font-black text-rose-600 block bg-rose-50 p-2 rounded mt-1 border border-rose-100">
+                            {activeWO.calibrationData?.tekanan?.sebelum || 'Belum Diinput'}
+                          </span>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-black text-slate-700 uppercase mb-1.5">Tekanan Pembukaan Sesudah (Bar) <span className="text-red-500">*</span></label>
+                          <input
+                            type="text"
+                            placeholder="e.g. 1600 Bar"
+                            className="w-full text-xs font-bold p-2.5 border border-slate-300 rounded focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-white text-slate-800"
+                            value={activeWO.calibrationData?.tekanan?.sesudah || ''}
+                            onChange={(e) => handleUpdateCalibration('tekanan', 'sesudah', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Navigation Button Footer Step 4 */}
+                  <div className="mt-6 flex justify-between gap-3 border-t border-slate-200 pt-4">
+                    <button
+                      onClick={() => setActiveStep(3)}
+                      type="button"
+                      className="px-5 py-2.5 border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-black uppercase rounded transition-all cursor-pointer"
+                    >
+                      ⬅ Kembali
+                    </button>
+                    <button
+                      onClick={() => setActiveStep(5)}
+                      type="button"
+                      className="px-6 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-black uppercase rounded shadow-md flex items-center gap-2 transition-all cursor-pointer"
+                    >
+                      Lanjutkan ke Rangkuman ➔
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 5: REKONSILIASI HASIL PERBAIKAN & FINISH */}
+              {activeStep === 5 && (
+                <div className="space-y-6">
+                  {/* MODULE 3: RANGKUMAN HASIL PERBAIKAN (BEFORE VS AFTER BUILDER) */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 shadow-sm">
+                    <h3 className="text-xs font-black text-slate-800 uppercase mb-3 flex items-center gap-2">
+                      <span className="bg-slate-800 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black">4</span>
+                      RANGKUMAN HASIL PERBAIKAN (BEFORE VS AFTER BUILDER)
+                    </h3>
+                    
+                    <p className="text-[11px] text-slate-500 leading-relaxed mb-4">
+                      Berikut adalah keluhan pelanggan yang telah disetujui pada SPK awal (Kondisi Sebelum / Before). Silakan isi status pemulihan, tindakan teknis, atau kondisi akhir (Kondisi Sesudah / After) untuk setiap poin keluhan di bawah ini untuk mencetak rekap perbaikan resmi.
+                    </p>
+
+                    {(() => {
+                      const complaintLines = activeWO.customerVoice
+                        ? activeWO.customerVoice
+                            .split('\n')
+                            .map(l => l.trim())
+                            .filter(l => l.length > 0 && !l.includes('[TEMUAN HIDDEN DEFECT]'))
+                        : [];
+
+                      if (complaintLines.length === 0) {
+                        return (
+                          <div className="text-center py-4 bg-white border border-slate-150 rounded text-xs text-slate-400 italic">
+                            Tidak ada poin keluhan pelanggan yang terdaftar pada SPK ini.
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-3">
+                          {complaintLines.map((line, idx) => (
+                            <div key={idx} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm space-y-2">
+                              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5 border-b border-slate-100 pb-2">
+                                <span className="text-[10px] bg-slate-100 text-slate-800 px-2 py-0.5 rounded font-black uppercase tracking-wider">
+                                  Keluhan #{idx + 1}
+                                </span>
+                                <span className="text-[9px] text-slate-400 font-mono">Status Rekonsiliasi Perbaikan</span>
+                              </div>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                                {/* Before column (read-only symptom) */}
+                                <div className="bg-red-50/35 border border-red-150 rounded p-2.5">
+                                  <span className="text-[9px] text-red-500 font-bold block uppercase tracking-wider mb-1">Sebelum / Gejala Keluhan (Before)</span>
+                                  <p className="text-xs font-bold text-slate-800 leading-relaxed">
+                                    {line}
+                                  </p>
+                                </div>
+
+                                {/* After column (editable repair output) */}
+                                <div className="bg-emerald-50/25 border border-emerald-150 rounded p-2.5 flex flex-col justify-between">
+                                  <span className="text-[9px] text-emerald-600 font-bold block uppercase tracking-wider mb-1">Sesudah / Status Perbaikan (After)</span>
+                                  <input
+                                    type="text"
+                                    placeholder="Contoh: Kalibrasi ulang berhasil, komponen kembali normal / diganti komponen baru"
+                                    className="w-full text-xs p-2 border border-slate-200 rounded outline-none focus:border-emerald-500 font-semibold bg-white text-slate-800"
+                                    value={activeWO.repairResults?.[idx] || ''}
+                                    onChange={(e) => handleUpdateRepairResult(idx, e.target.value)}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* LIVE WORK TRACKING MILESTONE CARD */}
+                  <div className="bg-slate-900 text-white border border-slate-700 rounded-lg p-4 shadow-md">
+                    <div className="flex justify-between items-center mb-3">
+                      <h3 className="text-xs font-black uppercase tracking-widest text-blue-400 flex items-center gap-2">
+                        <Compass className="w-4 h-4 text-blue-400" />
+                        Pembaruan Tahapan Kerja Pelanggan (Live Tracking Milestone)
+                      </h3>
+                      <span className="text-[9px] bg-blue-950 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                        Customer Visibility: Live
+                      </span>
+                    </div>
+
+                    <p className="text-[11px] text-slate-300 leading-relaxed mb-3">
+                      Pilih tahapan pekerjaan akhir. Pelanggan dapat memantau perkembangan ini secara real-time via QR code di SPK/Inspection Sheet mereka tanpa login.
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                          Tahapan Kerja Aktif:
+                        </label>
+                        <select
+                          className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white font-semibold focus:outline-none focus:border-blue-500"
+                          value={activeWO.currentMilestone || 'Intake & Verifikasi'}
+                          onChange={(e) => {
+                            const newMilestone = e.target.value;
+                            const updatedHistory = activeWO.milestoneHistory ? [...activeWO.milestoneHistory] : [];
+                            if (activeWO.currentMilestone !== newMilestone) {
+                              const newLog = {
+                                milestone: newMilestone,
+                                timestamp: new Date().toISOString(),
+                                updatedBy: currentUser?.name || 'Mekanik'
+                              };
+                              const newHistory = [...updatedHistory, newLog];
+
+                              updateWorkOrder(activeWO.id, {
+                                currentMilestone: newMilestone,
+                                milestoneHistory: newHistory
+                              });
+
+                              setActiveWO({
+                                ...activeWO,
+                                currentMilestone: newMilestone,
+                                milestoneHistory: newHistory
+                              });
+
+                              showToast(`Milestone pengerjaan diperbarui ke: ${newMilestone}`);
+                            }
+                          }}
+                        >
+                          {GENERAL_TRACKING_MILESTONES.map((m) => (
+                            <option key={m.id} value={m.label}>
+                              {m.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="bg-slate-950/40 p-2.5 rounded border border-slate-800 self-stretch flex flex-col justify-center">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status Live:</span>
+                        </div>
+                        <p className="text-[10.5px] font-mono text-emerald-400 font-bold mt-1.5 truncate">
+                          {activeWO.currentMilestone || 'Intake & Verifikasi'}
+                        </p>
+                        <p className="text-[8px] text-slate-500 mt-0.5">
+                          Setiap perubahan akan langsung mengupdate live tracking konsumen.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Huge Finish Button */}
+                  <div className="mt-8 bg-slate-900 text-white rounded-xl p-5 border-l-4 border-emerald-500 shadow-lg text-center space-y-4">
+                    <h4 className="text-sm font-black text-white uppercase tracking-wider">🎉 PEKERJAAN TELAH SELESAI?</h4>
+                    <p className="text-[11px] text-slate-300 max-w-md mx-auto leading-relaxed">
+                      Seluruh tahapan, kalibrasi before-after, log suku cadang, dan rekonsiliasi keluhan telah diisi. Klik tombol di bawah untuk menyerahkan laporan SPK lab ini kembali ke Front Office (Service Advisor).
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleComplete(activeWO.id)}
+                      className="w-full sm:w-auto px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-black uppercase tracking-widest shadow-lg shadow-emerald-950/40 transition-all flex items-center justify-center gap-2 mx-auto animate-pulse cursor-pointer"
+                    >
+                      <CheckCircle className="w-4.5 h-4.5" /> SELESAI & SERAHKAN KE FRONT OFFICE
+                    </button>
+                  </div>
+
+                  {/* Navigation Button Footer Step 5 */}
+                  <div className="mt-6 flex justify-start gap-3 border-t border-slate-200 pt-4">
+                    <button
+                      onClick={() => setActiveStep(4)}
+                      type="button"
+                      className="px-5 py-2.5 border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-black uppercase rounded transition-all cursor-pointer"
+                    >
+                      ⬅ Kembali
+                    </button>
+                  </div>
+                </div>
+              )}
 
             </div>
 
@@ -1011,6 +1859,54 @@ const MechanicDashboard: React.FC = () => {
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-black text-xs rounded uppercase shadow-md flex items-center gap-1 transition-all"
               >
                 <Send className="w-4 h-4" /> AKTIFKAN STOP-CLOCK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TRANSFER WO MODAL */}
+      {transferModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/85 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in duration-200">
+            <div className="bg-indigo-600 text-white p-4 flex items-center gap-2">
+              <Send className="w-5 h-5" />
+              <h3 className="text-sm font-black uppercase tracking-wider">
+                KIRIM WORK ORDER ANTAR DIVISI
+              </h3>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-black text-slate-700 uppercase mb-1">
+                  Catatan untuk Divisi Tujuan
+                </label>
+                <textarea 
+                  className="w-full rounded border border-slate-300 p-2.5 text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none leading-relaxed" 
+                  rows={3} 
+                  placeholder="Deskripsikan alasan atau instruksi khusus ke divisi tujuan..." 
+                  value={transferNote} 
+                  onChange={(e) => setTransferNote(e.target.value)}
+                ></textarea>
+              </div>
+              <div className="bg-indigo-50 border border-indigo-200 rounded p-3 text-[11px] text-indigo-800 leading-normal">
+                <strong>Info:</strong> Work Order ini akan dihapus dari antrean Anda dan dikirim ke divisi {currentUser?.role === 'COMMON_RAIL' ? 'Fuel Pump' : 'Common Rail'}.
+              </div>
+            </div>
+            <div className="bg-slate-50 p-4 flex justify-end gap-3 border-t border-slate-200">
+              <button 
+                onClick={() => {
+                  setTransferModalOpen(false);
+                  setTransferNote('');
+                }} 
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded transition-colors uppercase"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={handleTransferWO} 
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded uppercase shadow-md flex items-center gap-1 transition-all"
+              >
+                <Send className="w-4 h-4" /> KIRIM SEKARANG
               </button>
             </div>
           </div>

@@ -1,4 +1,4 @@
-export type Role = 'SA' | 'MECHANIC' | 'FOREMAN' | 'ADMIN';
+export type Role = 'SA' | 'MECHANIC' | 'COMMON_RAIL' | 'FOREMAN' | 'ADMIN' | 'CUSTOMER';
 
 export interface User {
   id: string;
@@ -7,6 +7,14 @@ export interface User {
   password?: string;
   role: Role;
   status: 'ACTIVE' | 'SUSPENDED';
+  hasSeenTutorial?: boolean;
+  geoLock?: {
+    enabled: boolean;
+    latitude: number;
+    longitude: number;
+    radius: number;
+    addressName: string;
+  };
 }
 
 export type Priority = 1 | 2 | 3;
@@ -57,6 +65,8 @@ export interface TodoAction {
   qty: number;
   catatanMekanik: string;
   estimasiHarga: string;
+  estimasiHargaMin?: string;
+  estimasiHargaMax?: string;
 }
 
 export interface CalibrationMetric {
@@ -70,17 +80,51 @@ export interface CalibrationData {
   tekanan: CalibrationMetric;
 }
 
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  address: string;
+  email?: string;
+  companyName?: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string;
+  notes?: string;
+}
+
+export interface Vehicle {
+  id: string;
+  customerId: string;
+  plateNumber: string;
+  vin: string;
+  brand: string;
+  createdAt: string;
+  updatedAt: string;
+  notes?: string;
+}
+
 export interface WorkOrder {
   id: string;
   createdAt: string;
   status: WOStatus;
   priority: Priority;
   
-  // Customer Info
+  // Link to Database
+  customerId?: string;
+  vehicleId?: string;
+  createdBy?: string;
+  
+  // Customer Info (Snapshot)
   customerName: string;
   customerEmail: string;
   customerPhone: string;
   customerAddress?: string;
+  
+  // Bringer Info
+  bringerName?: string;
+  bringerPhone?: string;
+  bringerAddress?: string;
   
   // Vehicle Info
   vehicleBrand: string;
@@ -120,5 +164,60 @@ export interface WorkOrder {
   blockedReason?: 'HIDDEN_DEFECT' | 'WAITING_PARTS';
   calibrationData?: CalibrationData;
   repairResults?: Record<number, string>;
+  currentDivision?: 'SUPPLY_PUMP' | 'COMMON_RAIL' | 'SA';
+  divisionFlow?: ('SUPPLY_PUMP' | 'COMMON_RAIL')[];
+  divisionNotes?: { from: string, to: string, note: string, date: string }[];
   isArchived?: boolean;
+  currentMilestone?: string;
+  milestoneHistory?: { milestone: string; timestamp: string; updatedBy: string }[];
 }
+
+export interface AppNotification {
+  id: string;
+  timestamp: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  title: string;
+  message: string;
+  read: boolean;
+  woId?: string;
+}
+
+export interface Claim {
+  id: string;
+  customerId: string;
+  customerName: string;
+  claimDate: string;
+  relatedWOId?: string;
+  divisionRelated: 'SUPPLY_PUMP' | 'COMMON_RAIL' | 'SA';
+  assignedPersonId?: string;
+  assignedPersonName?: string;
+  claimType: 'DAMAGE' | 'COMPLAINT' | 'COMEBACK_JOB' | 'WARRANTY' | 'OTHER';
+  cause: string;
+  status: 'OPEN' | 'INVESTIGATING' | 'COMPLETED' | 'REJECTED';
+  investigationNotes: string;
+  finalDecision: string;
+  rectificationAction: string;
+  isWarrantyIncluded: boolean;
+  isNegligence: boolean;
+  completedDate?: string;
+  createdAt: string;
+}
+
+export interface InternalMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderRole: Role;
+  recipientId?: string; // Specific User ID or 'ALL'
+  recipientName?: string; // Specific User Name or 'Semua Tim'
+  recipientRole?: Role | 'ALL';
+  text: string;
+  timestamp: string;
+  createdAtMs: number;
+  relatedWOId?: string;
+  relatedPlateNumber?: string;
+  dateKey: string;
+  readBy?: string[];
+}
+
+

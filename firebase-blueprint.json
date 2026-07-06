@@ -1,0 +1,240 @@
+{
+  "collections": [
+    {
+      "name": "users",
+      "fields": [
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "username",
+          "type": "string"
+        },
+        {
+          "name": "role",
+          "type": "string"
+        },
+        {
+          "name": "status",
+          "type": "string"
+        }
+      ],
+      "rules": "allow read: if request.auth != null; allow write: if request.auth != null;"
+    },
+    {
+      "name": "workOrders",
+      "fields": [
+        {
+          "name": "createdAt",
+          "type": "string"
+        },
+        {
+          "name": "status",
+          "type": "string"
+        },
+        {
+          "name": "priority",
+          "type": "number"
+        },
+        {
+          "name": "customerName",
+          "type": "string"
+        },
+        {
+          "name": "customerEmail",
+          "type": "string"
+        },
+        {
+          "name": "customerPhone",
+          "type": "string"
+        },
+        {
+          "name": "customerAddress",
+          "type": "string"
+        },
+        {
+          "name": "vehiclePlateNumber",
+          "type": "string"
+        },
+        {
+          "name": "vehicleType",
+          "type": "string"
+        },
+        {
+          "name": "vehicleBrand",
+          "type": "string"
+        },
+        {
+          "name": "vehicleYear",
+          "type": "string"
+        },
+        {
+          "name": "vehicleMileage",
+          "type": "string"
+        },
+        {
+          "name": "complaints",
+          "type": "string"
+        },
+        {
+          "name": "isArchived",
+          "type": "boolean"
+        },
+        {
+          "name": "currentDivision",
+          "type": "string"
+        },
+        {
+          "name": "divisionFlow",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "parts",
+          "type": "array",
+          "items": {
+            "type": "map"
+          }
+        },
+        {
+          "name": "inventory",
+          "type": "array",
+          "items": {
+            "type": "map"
+          }
+        },
+        {
+          "name": "damageReports",
+          "type": "array",
+          "items": {
+            "type": "map"
+          }
+        },
+        {
+          "name": "looseParts",
+          "type": "array",
+          "items": {
+            "type": "map"
+          }
+        },
+        {
+          "name": "todos",
+          "type": "array",
+          "items": {
+            "type": "map"
+          }
+        },
+        {
+          "name": "mechanicId",
+          "type": "string"
+        },
+        {
+          "name": "partLogs",
+          "type": "array",
+          "items": {
+            "type": "map"
+          }
+        },
+        {
+          "name": "calibrationData",
+          "type": "map"
+        }
+      ],
+      "rules": "allow read: if request.auth != null; allow write: if request.auth != null;"
+    },
+    {
+      "name": "dailySummaries",
+      "fields": [
+        {
+          "name": "date",
+          "type": "string"
+        },
+        {
+          "name": "createdAt",
+          "type": "string"
+        },
+        {
+          "name": "systemActivity",
+          "type": "map"
+        },
+        {
+          "name": "criticalInventoryStatus",
+          "type": "map"
+        }
+      ],
+      "rules": "allow read: if request.auth != null; allow write: if request.auth != null;"
+    },
+    {
+      "name": "claims",
+      "fields": [
+        { "name": "customerId", "type": "string" },
+        { "name": "customerName", "type": "string" },
+        { "name": "claimDate", "type": "string" },
+        { "name": "relatedWOId", "type": "string" },
+        { "name": "divisionRelated", "type": "string" },
+        { "name": "assignedPersonId", "type": "string" },
+        { "name": "assignedPersonName", "type": "string" },
+        { "name": "claimType", "type": "string" },
+        { "name": "cause", "type": "string" },
+        { "name": "status", "type": "string" },
+        { "name": "investigationNotes", "type": "string" },
+        { "name": "finalDecision", "type": "string" },
+        { "name": "rectificationAction", "type": "string" },
+        { "name": "isWarrantyIncluded", "type": "boolean" },
+        { "name": "isNegligence", "type": "boolean" },
+        { "name": "completedDate", "type": "string" },
+        { "name": "createdAt", "type": "string" }
+      ],
+      "rules": "allow read: if request.auth != null; allow write: if request.auth != null;"
+    },
+    {
+      "name": "customers",
+      "fields": [
+        { "name": "name", "type": "string" },
+        { "name": "phone", "type": "string" },
+        { "name": "address", "type": "string" },
+        { "name": "email", "type": "string" },
+        { "name": "companyName", "type": "string" },
+        { "name": "createdAt", "type": "string" },
+        { "name": "updatedAt", "type": "string" },
+        { "name": "createdBy", "type": "string" },
+        { "name": "notes", "type": "string" }
+      ],
+      "rules": "allow read: if request.auth != null; allow write: if request.auth != null;"
+    },
+    {
+      "name": "vehicles",
+      "fields": [
+        { "name": "customerId", "type": "string" },
+        { "name": "plateNumber", "type": "string" },
+        { "name": "vin", "type": "string" },
+        { "name": "brand", "type": "string" },
+        { "name": "createdAt", "type": "string" },
+        { "name": "updatedAt", "type": "string" },
+        { "name": "notes", "type": "string" }
+      ],
+      "rules": "allow read: if request.auth != null; allow write: if request.auth != null;"
+    },
+    {
+      "name": "internalMessages",
+      "fields": [
+        { "name": "senderId", "type": "string" },
+        { "name": "senderName", "type": "string" },
+        { "name": "senderRole", "type": "string" },
+        { "name": "recipientId", "type": "string" },
+        { "name": "recipientName", "type": "string" },
+        { "name": "recipientRole", "type": "string" },
+        { "name": "text", "type": "string" },
+        { "name": "timestamp", "type": "string" },
+        { "name": "createdAtMs", "type": "number" },
+        { "name": "relatedWOId", "type": "string" },
+        { "name": "relatedPlateNumber", "type": "string" },
+        { "name": "dateKey", "type": "string" }
+      ],
+      "rules": "allow read, write: if request.auth != null;"
+    }
+  ]
+}

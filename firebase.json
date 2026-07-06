@@ -1,0 +1,8 @@
+{
+  "firestore": [
+    {
+      "database": "ai-studio-itindoteknikerp-61e7abcb-3d94-45ac-9f89-1b5eac101f5f",
+      "rules": "firestore.rules"
+    }
+  ]
+}

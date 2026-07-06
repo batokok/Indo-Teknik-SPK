@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { Priority, PartDetails, InventoryItem, DamageReport, TodoAction, LoosePartDetails } from '../types';
-import { Printer, Car, ShieldAlert, Plus, Trash2, Camera, User, ClipboardList, Check, ChevronRight, ChevronLeft, Wrench, Archive, Search } from 'lucide-react';
+import { Printer, Car, ShieldAlert, Plus, Trash2, Camera, User, ClipboardList, Check, ChevronRight, ChevronLeft, Wrench, Archive, Search, GripVertical, Calendar, TrendingUp, Clock, Download, History, BarChart2, ArrowRight, BookOpen, FileSpreadsheet, ChevronDown, ChevronUp, RefreshCw, MapPin } from 'lucide-react';
+import { Reorder, motion } from 'motion/react';
 
 const formatRupiah = (value: string | number | undefined | null): string => {
   if (value === undefined || value === null) return '';
@@ -42,7 +43,7 @@ const CAR_PARTS = [
 ];
 
 const INITIAL_TODO_ACTIONS: TodoAction[] = [
-  { id: 't1', jenisPengerjaan: '', qty: 1, catatanMekanik: '', estimasiHarga: '' },
+  { id: 't1', jenisPengerjaan: '', qty: 1, catatanMekanik: '', estimasiHarga: '', estimasiHargaMin: '', estimasiHargaMax: '' },
 ];
 
 const INITIAL_LOOSE_PARTS: LoosePartDetails[] = [
@@ -60,12 +61,11 @@ const INITIAL_PARTS_TRACKING = [
 ];
 
 const SADashboard: React.FC = () => {
-  const { addWorkOrder, setPrintWO, workOrders, users, updateWorkOrder } = useApp();
+  const { addWorkOrder, setPrintWO, workOrders, users, updateWorkOrder, isLoading, customers, vehicles } = useApp();
 
   // Component Lifecycle Tracking
   const [selectedHistoryPn, setSelectedHistoryPn] = useState<string | null>(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [showArchived, setShowArchived] = useState(false);
 
   // Search and Filter states for the Live Work Order Status Monitor
   const [queueSearch, setQueueSearch] = useState('');
@@ -85,6 +85,11 @@ const SADashboard: React.FC = () => {
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
+  
+  const [bringerName, setBringerName] = useState('');
+  const [bringerPhone, setBringerPhone] = useState('');
+  const [bringerAddress, setBringerAddress] = useState('');
+  
   const [vehicleBrand, setVehicleBrand] = useState('');
   const [vin, setVin] = useState('');
   const [plateNumber, setPlateNumber] = useState('');
@@ -103,6 +108,7 @@ const SADashboard: React.FC = () => {
   const [inventory, setInventory] = useState<InventoryItem[]>(INITIAL_INVENTORY);
   const [damages, setDamages] = useState<DamageReport[]>([]);
   const [priority, setPriority] = useState<Priority>(3);
+  const [divisionFlow, setDivisionFlow] = useState<('SUPPLY_PUMP' | 'COMMON_RAIL')[]>(['SUPPLY_PUMP']);
   
   const [todoActions, setTodoActions] = useState<TodoAction[]>(INITIAL_TODO_ACTIONS);
 
@@ -112,13 +118,45 @@ const SADashboard: React.FC = () => {
 
   const validateStep = (stepNum: number) => {
     if (stepNum === 1) {
-      if (!customerName.trim()) return { valid: false, message: "Nama Lengkap Pelanggan wajib diisi!" };
-      if (!customerPhone.trim()) return { valid: false, message: "Nomor Telepon / WhatsApp wajib diisi!" };
+      if (divisionFlow.length === 0) return { valid: false, message: "Minimal 1 divisi harus dipilih dalam Alur Divisi Pengerjaan!" };
+      
+      const cleanCustName = customerName.trim();
+      if (!cleanCustName) return { valid: false, message: "Nama Lengkap Pelanggan wajib diisi!" };
+      if (cleanCustName.length < 2 || cleanCustName.length > 50) return { valid: false, message: "Nama Lengkap Pelanggan harus berukuran 2 s.d. 50 karakter!" };
+      if (!/^[A-Za-z\s'.]+$/.test(cleanCustName)) return { valid: false, message: "Nama Lengkap Pelanggan hanya boleh berisi huruf, spasi, titik, dan tanda petik tunggal!" };
+
+      const cleanCustPhone = customerPhone.trim();
+      if (!cleanCustPhone) return { valid: false, message: "Nomor Telepon / WhatsApp wajib diisi!" };
+      if (!/^\+?[0-9]{6,15}$/.test(cleanCustPhone)) return { valid: false, message: "Nomor Telepon / WhatsApp Pelanggan tidak valid! Harus berupa angka 6 s.d. 15 digit (boleh pakai '+')." };
+
       if (!customerAddress.trim()) return { valid: false, message: "Alamat Lengkap wajib diisi!" };
+
+      // Validate bringer details if they are entered
+      if (bringerName && bringerName.trim()) {
+        const cleanBName = bringerName.trim();
+        if (cleanBName.length < 2 || cleanBName.length > 50) return { valid: false, message: "Nama Lengkap Pembawa harus berukuran 2 s.d. 50 karakter!" };
+        if (!/^[A-Za-z\s'.]+$/.test(cleanBName)) return { valid: false, message: "Nama Lengkap Pembawa hanya boleh berisi huruf, spasi, titik, dan tanda petik tunggal!" };
+      }
+      if (bringerPhone && bringerPhone.trim()) {
+        const cleanBPhone = bringerPhone.trim();
+        if (!/^\+?[0-9]{6,15}$/.test(cleanBPhone)) return { valid: false, message: "Nomor Telepon / WhatsApp Pembawa tidak valid! Harus berupa angka 6 s.d. 15 digit (boleh pakai '+')." };
+      }
     } else if (stepNum === 2) {
-      if (!vehicleBrand.trim()) return { valid: false, message: "Merek / Tipe / Tahun Mobil wajib diisi!" };
-      if (!plateNumber.trim()) return { valid: false, message: "Nomor Plat Kendaraan wajib diisi!" };
-      if (!odometer.trim()) return { valid: false, message: "Kilometer (KM) / Hour Meter (HM) wajib diisi!" };
+      if (dropMethod === 'WHOLE' && !vehicleBrand.trim()) return { valid: false, message: "Merek / Tipe / Tahun Mobil wajib diisi!" };
+      
+      if (dropMethod === 'WHOLE') {
+        const cleanPlate = plateNumber.trim().replace(/\s+/g, '');
+        if (!plateNumber.trim()) return { valid: false, message: "Nomor Plat Kendaraan wajib diisi!" };
+        if (!/^[A-Z]{1,2}[0-9]{1,4}[A-Z]{0,3}$/i.test(cleanPlate)) return { valid: false, message: "Nomor Plat Kendaraan tidak valid! Format standard: B 1234 CD (1-2 huruf, 1-4 angka, 0-3 huruf)" };
+
+        if (vin && vin.trim()) {
+          const cleanVin = vin.trim();
+          if (!/^[A-Z0-9]{5,17}$/i.test(cleanVin)) return { valid: false, message: "Nomor Rangka (VIN) tidak valid! Harus berupa alphanumeric antara 5 s.d. 17 karakter." };
+        }
+
+        if (!odometer.trim()) return { valid: false, message: "Kilometer (KM) / Hour Meter (HM) wajib diisi!" };
+      }
+
       if (!intakeDate.trim()) return { valid: false, message: "Waktu Masuk Unit wajib diisi!" };
       if (!estimasiPengerjaan.trim()) return { valid: false, message: "Estimasi Waktu Pengerjaan wajib diisi!" };
       if (!garansi.trim()) return { valid: false, message: "Masa Garansi wajib diisi!" };
@@ -227,14 +265,14 @@ const SADashboard: React.FC = () => {
   const addTodoAction = () => {
     setTodoActions([
       ...todoActions,
-      { id: Math.random().toString(), jenisPengerjaan: '', qty: 1, catatanMekanik: '', estimasiHarga: '' }
+      { id: Math.random().toString(), jenisPengerjaan: '', qty: 1, catatanMekanik: '', estimasiHarga: '', estimasiHargaMin: '', estimasiHargaMax: '' }
     ]);
   };
 
   const updateTodoAction = (index: number, field: keyof TodoAction, value: any) => {
     const newActions = [...todoActions];
     let finalValue = value;
-    if (field === 'estimasiHarga') {
+    if (field === 'estimasiHarga' || field === 'estimasiHargaMin' || field === 'estimasiHargaMax') {
       finalValue = String(value).replace(/\D/g, '');
     }
     newActions[index] = { ...newActions[index], [field]: finalValue };
@@ -265,27 +303,40 @@ const SADashboard: React.FC = () => {
 
     const wo = addWorkOrder({
       priority,
+      currentDivision: divisionFlow[0],
+      divisionFlow,
       customerName,
       customerEmail,
       customerPhone,
       customerAddress,
-      vehicleBrand,
-      vin,
-      plateNumber,
-      odometer,
-      fuelLevel,
+      bringerName,
+      bringerPhone,
+      bringerAddress,
+      vehicleBrand: dropMethod === 'PARTS' ? 'Copotan (Loose Parts)' : vehicleBrand,
+      vin: dropMethod === 'PARTS' ? '' : vin,
+      plateNumber: dropMethod === 'PARTS' ? '-' : plateNumber,
+      odometer: dropMethod === 'PARTS' ? '-' : odometer,
+      fuelLevel: dropMethod === 'PARTS' ? '' : fuelLevel,
       estimasiPengerjaan,
       garansi,
       intakeDate,
-      fuelContaminated,
+      fuelContaminated: dropMethod === 'PARTS' ? false : fuelContaminated,
       assyNo,
       dropMethod,
       partsTracking: [],
-      looseParts: JSON.parse(JSON.stringify(looseParts)),
+      looseParts: dropMethod === 'PARTS' ? JSON.parse(JSON.stringify(looseParts)) : [],
       customerVoice: customerVoiceCombined,
       damages: JSON.parse(JSON.stringify(damages)),
       inventory: JSON.parse(JSON.stringify(inventory)),
       todoActions: JSON.parse(JSON.stringify(todoActions)),
+      currentMilestone: 'Intake & Verifikasi',
+      milestoneHistory: [
+        { 
+          milestone: 'Intake & Verifikasi', 
+          timestamp: new Date().toISOString(), 
+          updatedBy: 'Service Advisor'
+        }
+      ]
     });
     setPrintWO(JSON.parse(JSON.stringify(wo)));
     setTimeout(() => window.print(), 500);
@@ -310,13 +361,83 @@ const SADashboard: React.FC = () => {
     setDamages([]);
     setInventory(INITIAL_INVENTORY.map(item => ({ ...item, checked: false })));
     setTodoActions([
-      { id: 't1', jenisPengerjaan: '', qty: 1, catatanMekanik: '', estimasiHarga: '' },
+      { id: 't1', jenisPengerjaan: '', qty: 1, catatanMekanik: '', estimasiHarga: '', estimasiHargaMin: '', estimasiHargaMax: '' },
     ]);
     setWizardStep(1);
     setWizardError(null);
   };
 
   const blockedWOs = workOrders.filter(w => w.status === 'PENDING_APPROVAL' && w.blockedReason === 'HIDDEN_DEFECT');
+
+  if (isLoading) {
+    return (
+      <div className="p-4 print:hidden space-y-6">
+        {/* Skeleton Top Alert Cards or Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-slate-800/60 h-24 rounded-lg border border-slate-700/50 p-4 flex flex-col justify-between animate-pulse">
+            <div className="h-4 bg-slate-700/60 rounded w-1/3"></div>
+            <div className="h-8 bg-slate-700/60 rounded w-1/2"></div>
+          </div>
+          <div className="bg-slate-800/60 h-24 rounded-lg border border-slate-700/50 p-4 flex flex-col justify-between animate-pulse">
+            <div className="h-4 bg-slate-700/60 rounded w-1/4"></div>
+            <div className="h-8 bg-slate-700/60 rounded w-1/3"></div>
+          </div>
+          <div className="bg-slate-800/60 h-24 rounded-lg border border-slate-700/50 p-4 flex flex-col justify-between animate-pulse">
+            <div className="h-4 bg-slate-700/60 rounded w-1/2"></div>
+            <div className="h-8 bg-slate-700/60 rounded w-2/3"></div>
+          </div>
+        </div>
+
+        {/* Skeleton Live Work Order Status Monitor card */}
+        <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 space-y-4 animate-pulse">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-2">
+              <div className="h-5 bg-slate-800 rounded w-64"></div>
+              <div className="h-3 bg-slate-800 rounded w-96"></div>
+            </div>
+            <div className="h-6 bg-slate-850 rounded w-28"></div>
+          </div>
+
+          <div className="flex border-b border-slate-800 gap-2 pb-1">
+            <div className="h-8 bg-slate-800 rounded-t-lg w-36"></div>
+            <div className="h-8 bg-slate-800 rounded-t-lg w-36"></div>
+          </div>
+
+          <div className="bg-slate-850 p-3 rounded-lg border border-slate-800 h-14 flex items-center justify-between">
+            <div className="h-8 bg-slate-900 rounded w-72"></div>
+            <div className="flex gap-2">
+              <div className="h-8 bg-slate-900 rounded w-24"></div>
+              <div className="h-8 bg-slate-900 rounded w-24"></div>
+            </div>
+          </div>
+
+          {/* Table Skeleton */}
+          <div className="overflow-x-auto space-y-3">
+            <div className="h-9 bg-slate-800 rounded w-full"></div>
+            <div className="h-12 bg-slate-850 rounded w-full"></div>
+            <div className="h-12 bg-slate-850 rounded w-full"></div>
+            <div className="h-12 bg-slate-850 rounded w-full"></div>
+            <div className="h-12 bg-slate-850 rounded w-full"></div>
+          </div>
+        </div>
+
+        {/* Form Skeleton */}
+        <div className="bg-slate-900 border border-slate-700 rounded-lg p-6 space-y-6 animate-pulse">
+          <div className="h-6 bg-slate-800 rounded w-48"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <div className="h-4 bg-slate-800 rounded w-24"></div>
+              <div className="h-10 bg-slate-850 rounded w-full"></div>
+            </div>
+            <div className="space-y-2">
+              <div className="h-4 bg-slate-800 rounded w-24"></div>
+              <div className="h-10 bg-slate-850 rounded w-full"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 print:hidden space-y-4">
@@ -361,320 +482,382 @@ const SADashboard: React.FC = () => {
           </div>
           <div className="flex items-center gap-2 self-start sm:self-center">
             <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono border border-slate-700">
-              Antrean Aktif: {workOrders.filter(w => !w.isArchived && w.status !== 'COMPLETED').length} Unit
+              Antrean Aktif: {workOrders.filter(w => w.status !== 'COMPLETED').length} Unit
             </span>
           </div>
         </div>
 
-        {/* Dynamic Navigation Tabs for Active vs Archived */}
-        <div className="flex border-b border-slate-800 mb-3 gap-1">
-          <button
-            type="button"
-            onClick={() => setShowArchived(false)}
-            className={`px-3 py-2 text-xs font-black rounded-t-lg transition-all flex items-center gap-2 ${
-              !showArchived 
-                ? 'bg-slate-800 text-blue-400 border-t-2 border-blue-500' 
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-            }`}
-          >
-            <span>📋 Pekerjaan Aktif</span>
-            <span className="text-[10px] bg-slate-750 text-slate-300 px-1.5 py-0.5 rounded-full font-mono font-bold">
-              {workOrders.filter(w => !w.isArchived).length}
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowArchived(true)}
-            className={`px-3 py-2 text-xs font-black rounded-t-lg transition-all flex items-center gap-2 ${
-              showArchived 
-                ? 'bg-slate-800 text-emerald-400 border-t-2 border-emerald-500' 
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-            }`}
-          >
-            <Archive className="w-3.5 h-3.5" />
-            <span>Arsip Selesai</span>
-            <span className="text-[10px] bg-slate-750 text-slate-300 px-1.5 py-0.5 rounded-full font-mono font-bold">
-              {workOrders.filter(w => w.isArchived === true).length}
-            </span>
-          </button>
-        </div>
-
-        {/* Search & Filter Panel */}
-        <div className="bg-slate-850 p-3 rounded-lg border border-slate-800 mb-4 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between shadow-inner">
-          {/* Search Input */}
-          <div className="relative flex-1 max-w-md">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
-              <Search className="w-4 h-4" />
-            </span>
-            <input
-              type="text"
-              placeholder="Cari nama, plat nomor, atau ID SPK..."
-              value={queueSearch}
-              onChange={(e) => setQueueSearch(e.target.value)}
-              className="w-full pl-9 pr-8 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all font-medium"
-            />
-            {queueSearch && (
-              <button
-                type="button"
-                onClick={() => setQueueSearch('')}
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-450 hover:text-white text-xs font-bold"
-              >
-                ✕
-              </button>
-            )}
-                    {/* Quick Filters */}
-          <div className="flex flex-wrap items-center gap-4">
-            {/* Priority Filter */}
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Prioritas:</span>
-              <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 shadow-inner gap-1">
-                {(['ALL', '1', '2', '3'] as const).map((p) => {
-                  let label = 'Semua';
-                  let activeClass = 'bg-slate-800 text-white border-slate-700';
-                  let hoverClass = 'hover:bg-blue-600/20 hover:text-blue-400';
-                  
-                  if (p === '1') {
-                    label = '🔴 Urgent';
-                    activeClass = 'bg-red-500 text-white shadow-md shadow-red-900/40 border-transparent';
-                    hoverClass = 'hover:bg-red-500/10 hover:text-red-400';
-                  } else if (p === '2') {
-                    label = '🟡 Booking';
-                    activeClass = 'bg-amber-500 text-slate-950 shadow-md shadow-amber-900/40 border-transparent';
-                    hoverClass = 'hover:bg-amber-500/10 hover:text-amber-400';
-                  } else if (p === '3') {
-                    label = '🔵 Regular';
-                    activeClass = 'bg-blue-500 text-white shadow-md shadow-blue-900/40 border-transparent';
-                    hoverClass = 'hover:bg-blue-500/10 hover:text-blue-400';
-                  } else {
-                    activeClass = 'bg-blue-600 text-white shadow-md shadow-blue-900/40 border-transparent';
-                  }
-
-                  const isActive = priorityFilter === p;
-                  return (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => setPriorityFilter(p)}
-                      className={`px-3 py-1 text-[11px] font-black rounded-lg transition-all border border-transparent ${
-                        isActive 
-                          ? `${activeClass}` 
-                          : `text-slate-400 ${hoverClass} hover:border-slate-800`
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Status Filter */}
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Status:</span>
-              <div className="relative">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as any)}
-                  className="bg-slate-950 border border-slate-800 hover:border-blue-500 focus:border-blue-500 text-xs font-black text-slate-200 py-1.5 pl-3 pr-8 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none transition-all cursor-pointer shadow-sm appearance-none"
-                >
-                  <option value="ALL">📋 Semua Status</option>
-                  <option value="QUEUE">⏳ Antrean</option>
-                  <option value="IN_PROGRESS">⚡ Sedang Kerja</option>
-                  <option value="PENDING_APPROVAL">⚠️ Butuh Persetujuan</option>
-                  <option value="PENDING_PARTS">🔧 Tertunda Parts</option>
-                  <option value="COMPLETED">✅ Selesai / Siap QC</option>
-                </select>
-                <span className="absolute inset-y-0 right-0 flex items-center pr-2.5 pointer-events-none text-slate-400 text-[10px]">
-                  ▼
+        <>
+            {/* Search & Filter Panel */}
+            <div className="bg-slate-850 p-3 rounded-lg border border-slate-800 mb-4 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between shadow-inner">
+              {/* Search Input */}
+              <div className="relative flex-1 max-w-md">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                  <Search className="w-4 h-4" />
                 </span>
-              </div>
-            </div>  </div>
-
-            {/* Clear Filters Button if any is active */}
-            {(queueSearch || priorityFilter !== 'ALL' || statusFilter !== 'ALL') && (
-              <button
-                type="button"
-                onClick={() => {
-                  setQueueSearch('');
-                  setPriorityFilter('ALL');
-                  setStatusFilter('ALL');
-                }}
-                className="text-[10px] text-blue-400 hover:text-blue-300 underline font-bold"
-              >
-                Reset
-              </button>
-            )}
-          </div>
-        </div>
-
-        {(() => {
-          const filteredWOs = workOrders.filter(wo => {
-            // Filter by archive state
-            const matchesArchive = showArchived ? wo.isArchived === true : !wo.isArchived;
-            if (!matchesArchive) return false;
-
-            // Filter by search query
-            if (queueSearch.trim()) {
-              const query = queueSearch.toLowerCase();
-              const matchesId = wo.id.toLowerCase().includes(query);
-              const matchesCustomer = wo.customerName.toLowerCase().includes(query);
-              const matchesPlate = wo.plateNumber.toLowerCase().includes(query);
-              if (!matchesId && !matchesCustomer && !matchesPlate) return false;
-            }
-
-            // Filter by priority
-            if (priorityFilter !== 'ALL') {
-              if (wo.priority !== parseInt(priorityFilter, 10)) return false;
-            }
-
-            // Filter by status
-            if (statusFilter !== 'ALL') {
-              if (wo.status !== statusFilter) return false;
-            }
-
-            return true;
-          });
-          
-          if (filteredWOs.length === 0) {
-            const hasFilters = queueSearch || priorityFilter !== 'ALL' || statusFilter !== 'ALL';
-            return (
-              <div className="text-center p-8 text-slate-500 text-xs bg-slate-850 rounded-lg border border-slate-850 flex flex-col items-center justify-center gap-2">
-                <p>
-                  {hasFilters 
-                    ? "Tidak ada SPK yang cocok dengan kata kunci pencarian atau filter yang aktif."
-                    : (showArchived 
-                        ? "Belum ada SPK yang diarsipkan. Anda dapat mengarsipkan SPK yang sudah selesai dikerjakan untuk merapikan antrean." 
-                        : "Belum ada SPK aktif terdaftar dalam antrean laboratorium. Silakan buat SPK baru menggunakan formulir di bawah.")
-                  }
-                </p>
-                {hasFilters && (
+                <input
+                  id="wo-search-input"
+                  type="text"
+                  placeholder="Cari nama, plat nomor, atau ID SPK..."
+                  value={queueSearch}
+                  onChange={(e) => setQueueSearch(e.target.value)}
+                  className="w-full pl-9 pr-8 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all font-medium"
+                />
+                {queueSearch && (
                   <button
                     type="button"
-                    onClick={() => {
-                      setQueueSearch('');
-                      setPriorityFilter('ALL');
-                      setStatusFilter('ALL');
-                    }}
-                    className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded text-[10px] mt-1 transition-all"
+                    onClick={() => setQueueSearch('')}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-450 hover:text-white text-xs font-bold"
                   >
-                    Reset Filter & Pencarian
+                    ✕
                   </button>
                 )}
               </div>
-            );
-          }
 
-          return (
-            <div className="overflow-x-auto custom-scrollbar">
-              <table className="w-full border-collapse text-left text-xs text-slate-300">
-                <thead>
-                  <tr className="bg-slate-800 text-slate-400 border-b border-slate-700">
-                    <th className="p-2 font-bold w-24">WO ID</th>
-                    <th className="p-2 font-bold w-24">Priority</th>
-                    <th className="p-2 font-bold">Pelanggan</th>
-                    <th className="p-2 font-bold">Kendaraan & Plat</th>
-                    <th className="p-2 font-bold">Mekanik Terpilih</th>
-                    <th className="p-2 font-bold text-center w-36">Status Kerja</th>
-                    <th className="p-2 font-bold text-center w-36">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800">
-                  {filteredWOs.map((wo) => {
-                    const assignedMech = users.find(u => u.id === wo.mechanicId)?.name || 'Queue Antrean';
-                    return (
-                      <tr key={wo.id} className="hover:bg-slate-800/50 transition-colors">
-                        <td className="p-2 font-mono text-[11px] text-blue-400 font-bold">{wo.id}</td>
-                        <td className="p-2">
-                          {wo.priority === 1 && <span className="px-1.5 py-0.5 bg-red-900/40 text-red-300 text-[9px] font-black rounded border border-red-800">🔴 P1 Urgent</span>}
-                          {wo.priority === 2 && <span className="px-1.5 py-0.5 bg-yellow-900/40 text-yellow-300 text-[9px] font-black rounded border border-yellow-800">🟡 P2 Booking</span>}
-                          {wo.priority === 3 && <span className="px-1.5 py-0.5 bg-blue-900/40 text-blue-300 text-[9px] font-black rounded border border-blue-800">🔵 P3 Regular</span>}
-                        </td>
-                        <td className="p-2 truncate max-w-[120px]" title={wo.customerName}>
-                          <div className="font-bold text-slate-200">{wo.customerName}</div>
-                          <div className="text-[9px] text-slate-500 font-mono">{wo.customerPhone}</div>
-                        </td>
-                        <td className="p-2 truncate max-w-[150px]">
-                          <div className="font-medium text-slate-200">{wo.vehicleBrand}</div>
-                          <div className="text-[10px] text-slate-400 font-mono font-bold">{wo.plateNumber}</div>
-                        </td>
-                        <td className="p-2">
-                          <div className="flex items-center gap-1.5">
-                            <span className={`w-1.5 h-1.5 rounded-full ${wo.mechanicId ? 'bg-blue-400' : 'bg-slate-500'}`}></span>
-                            <span className="font-medium">{assignedMech}</span>
+              {/* Quick Filters */}
+              <div className="flex flex-wrap items-center gap-4">
+                {/* Priority Filter */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Prioritas:</span>
+                  <div className="flex flex-wrap bg-slate-950 p-1 rounded-xl border border-slate-800 shadow-inner gap-1 max-w-full">
+                    {(['ALL', '1', '2', '3'] as const).map((p) => {
+                      let label = 'Semua';
+                      let activeClass = 'bg-slate-800 text-white border-slate-700';
+                      let hoverClass = 'hover:bg-blue-600/20 hover:text-blue-400';
+                      
+                      if (p === '1') {
+                        label = '🔴 Urgent';
+                        activeClass = 'bg-red-500 text-white shadow-md shadow-red-900/40 border-transparent';
+                        hoverClass = 'hover:bg-red-500/10 hover:text-red-400';
+                      } else if (p === '2') {
+                        label = '🟡 Booking';
+                        activeClass = 'bg-amber-500 text-slate-950 shadow-md shadow-amber-900/40 border-transparent';
+                        hoverClass = 'hover:bg-amber-500/10 hover:text-amber-400';
+                      } else if (p === '3') {
+                        label = '🔵 Regular';
+                        activeClass = 'bg-blue-500 text-white shadow-md shadow-blue-900/40 border-transparent';
+                        hoverClass = 'hover:bg-blue-500/10 hover:text-blue-400';
+                      } else {
+                        activeClass = 'bg-blue-600 text-white shadow-md shadow-blue-900/40 border-transparent';
+                      }
+
+                      const isActive = priorityFilter === p;
+                      return (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setPriorityFilter(p)}
+                          className={`px-2 sm:px-3 py-1.5 sm:py-1 text-[10px] sm:text-[11px] font-black rounded-lg transition-all border border-transparent whitespace-nowrap ${
+                            isActive 
+                              ? `${activeClass}` 
+                              : `text-slate-400 ${hoverClass} hover:border-slate-800`
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Status Filter */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Status:</span>
+                  <div className="relative">
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value as any)}
+                      className="bg-slate-950 border border-slate-800 hover:border-blue-500 focus:border-blue-500 text-xs font-black text-slate-200 py-1.5 pl-3 pr-8 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none transition-all cursor-pointer shadow-sm appearance-none"
+                    >
+                      <option value="ALL">📋 Semua Status</option>
+                      <option value="QUEUE">⏳ Antrean</option>
+                      <option value="IN_PROGRESS">⚡ Sedang Kerja</option>
+                      <option value="PENDING_APPROVAL">⚠️ Butuh Persetujuan</option>
+                      <option value="PENDING_PARTS">🔧 Tertunda Parts</option>
+                      <option value="COMPLETED">✅ Selesai / Siap QC</option>
+                    </select>
+                    <span className="absolute inset-y-0 right-0 flex items-center pr-2.5 pointer-events-none text-slate-400 text-[10px]">
+                      ▼
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Clear Filters Button if any is active */}
+              {(queueSearch || priorityFilter !== 'ALL' || statusFilter !== 'ALL') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQueueSearch('');
+                    setPriorityFilter('ALL');
+                    setStatusFilter('ALL');
+                  }}
+                  className="text-[10px] text-blue-400 hover:text-blue-300 underline font-bold"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+
+            {(() => {
+              const filteredWOs = workOrders.filter(wo => {
+                // Live work order only contains active/unfinished work + completed work of today
+                if (wo.status === 'COMPLETED') {
+                  if (wo.isArchived) return false;
+
+                  try {
+                    const dStr = wo.intakeDate || wo.createdAt;
+                    if (dStr) {
+                      const d = new Date(dStr);
+                      const today = new Date();
+                      const isToday = d.getDate() === today.getDate() &&
+                                      d.getMonth() === today.getMonth() &&
+                                      d.getFullYear() === today.getFullYear();
+                      if (!isToday) return false;
+                    } else {
+                      return false;
+                    }
+                  } catch {
+                    return false;
+                  }
+                }
+
+                // Filter by search query
+                if (queueSearch.trim()) {
+                  const query = queueSearch.toLowerCase();
+                  const matchesId = wo.id.toLowerCase().includes(query);
+                  const matchesCustomer = wo.customerName.toLowerCase().includes(query);
+                  const matchesPlate = wo.plateNumber.toLowerCase().includes(query);
+                  if (!matchesId && !matchesCustomer && !matchesPlate) return false;
+                }
+
+                // Filter by priority
+                if (priorityFilter !== 'ALL') {
+                  if (wo.priority !== parseInt(priorityFilter, 10)) return false;
+                }
+
+                // Filter by status
+                if (statusFilter !== 'ALL') {
+                  if (wo.status !== statusFilter) return false;
+                }
+
+                return true;
+              });
+              
+              if (filteredWOs.length === 0) {
+                const hasFilters = queueSearch || priorityFilter !== 'ALL' || statusFilter !== 'ALL';
+                return (
+                  <div className="text-center p-8 text-slate-500 text-xs bg-slate-850 rounded-lg border border-slate-850 flex flex-col items-center justify-center gap-2">
+                    <p>
+                      {hasFilters 
+                        ? "Tidak ada SPK yang cocok dengan kata kunci pencarian atau filter yang aktif."
+                        : "Belum ada SPK aktif terdaftar dalam antrean laboratorium. Silakan buat SPK baru menggunakan formulir di bawah."
+                      }
+                    </p>
+                    {hasFilters && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setQueueSearch('');
+                          setPriorityFilter('ALL');
+                          setStatusFilter('ALL');
+                        }}
+                        className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded text-[10px] mt-1 transition-all"
+                      >
+                        Reset Filter & Pencarian
+                      </button>
+                    )}
+                  </div>
+                );
+              }
+
+              return (
+                <div id="wo-list-container">
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block overflow-x-auto custom-scrollbar">
+                    <table className="w-full border-collapse text-left text-xs text-slate-300">
+                      <thead>
+                        <tr className="bg-slate-800 text-slate-400 border-b border-slate-700">
+                          <th className="p-2 font-bold w-24">WO ID</th>
+                          <th className="p-2 font-bold w-24">Priority</th>
+                          <th className="p-2 font-bold">Pelanggan</th>
+                          <th className="p-2 font-bold">Kendaraan & Plat</th>
+                          <th className="p-2 font-bold">Mekanik Terpilih</th>
+                          <th className="p-2 font-bold text-center w-36">Status Kerja</th>
+                          <th className="p-2 font-bold text-center w-36">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800">
+                        {filteredWOs.map((wo) => {
+                          const assignedMech = users.find(u => u.id === wo.mechanicId)?.name || 'Queue Antrean';
+                          return (
+                            <tr key={wo.id} className="hover:bg-slate-800/50 transition-colors">
+                              <td className="p-2 font-mono text-[11px] text-blue-400 font-bold">{wo.id}</td>
+                              <td className="p-2">
+                                {wo.priority === 1 && <span className="px-1.5 py-0.5 bg-red-900/40 text-red-300 text-[9px] font-black rounded border border-red-800">🔴 P1 Urgent</span>}
+                                {wo.priority === 2 && <span className="px-1.5 py-0.5 bg-yellow-900/40 text-yellow-300 text-[9px] font-black rounded border border-yellow-800">🟡 P2 Booking</span>}
+                                {wo.priority === 3 && <span className="px-1.5 py-0.5 bg-blue-900/40 text-blue-300 text-[9px] font-black rounded border border-blue-800">🔵 P3 Regular</span>}
+                              </td>
+                              <td className="p-2 truncate max-w-[120px]" title={wo.customerName}>
+                                <div className="font-bold text-slate-200">{wo.customerName}</div>
+                                <div className="text-[9px] text-slate-500 font-mono">{wo.customerPhone}</div>
+                              </td>
+                              <td className="p-2 truncate max-w-[150px]">
+                                <div className="font-medium text-slate-200">{wo.vehicleBrand}</div>
+                                <div className="text-[10px] text-slate-400 font-mono font-bold">{wo.plateNumber}</div>
+                              </td>
+                              <td className="p-2">
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`w-1.5 h-1.5 rounded-full ${wo.mechanicId ? 'bg-blue-400' : 'bg-slate-500'}`}></span>
+                                  <span className="font-medium">{assignedMech}</span>
+                                </div>
+                              </td>
+                              <td className="p-2 text-center">
+                                <select
+                                  value={wo.status}
+                                  onChange={(e) => updateWorkOrder(wo.id, { status: e.target.value as any })}
+                                  className={`px-2 py-1 text-[10px] font-black rounded-lg border uppercase tracking-wider outline-none cursor-pointer transition-all shadow-xs ${
+                                    wo.status === 'QUEUE' ? 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700' :
+                                    wo.status === 'IN_PROGRESS' ? 'bg-blue-950 text-blue-300 border-blue-800/80 hover:bg-blue-900/50' :
+                                    wo.status === 'PENDING_APPROVAL' ? 'bg-red-950 text-red-300 border-red-800/80 hover:bg-red-900/50' :
+                                    wo.status === 'PENDING_PARTS' ? 'bg-amber-950 text-amber-300 border-amber-850 hover:bg-amber-900/50' :
+                                    'bg-emerald-950 text-emerald-300 border-emerald-800/80 hover:bg-emerald-900/50'
+                                  }`}
+                                >
+                                  <option value="QUEUE" className="bg-slate-900 text-slate-200 font-semibold">⏳ Antrean</option>
+                                  <option value="IN_PROGRESS" className="bg-slate-900 text-slate-200 font-semibold">⚡ Sedang Kerja</option>
+                                  <option value="PENDING_APPROVAL" className="bg-slate-900 text-slate-200 font-semibold">⚠️ Butuh Approval</option>
+                                  <option value="PENDING_PARTS" className="bg-slate-900 text-slate-200 font-semibold">🔧 Tertunda Parts</option>
+                                  <option value="COMPLETED" className="bg-slate-900 text-slate-200 font-semibold">✅ Selesai / Siap QC</option>
+                                </select>
+                              </td>
+                              <td className="p-2">
+                                <div className="flex items-center justify-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setPrintWO(wo)}
+                                    className="px-3 py-1.5 bg-slate-800 border border-slate-700 text-slate-200 hover:bg-blue-600 hover:text-white hover:border-blue-500 active:bg-blue-700 text-[10px] font-black rounded-lg font-mono uppercase tracking-wider transition-all shadow-sm flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <Printer className="w-3.5 h-3.5" />
+                                    <span>Print</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    title="Sembunyikan/pindahkan pekerjaan ke tab Arsip Selesai"
+                                    onClick={() => updateWorkOrder(wo.id, { isArchived: true })}
+                                    className={`px-3 py-1.5 text-[10px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer border ${
+                                      wo.status === 'COMPLETED'
+                                        ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/30 hover:bg-blue-600 hover:text-white hover:border-blue-500 active:bg-blue-700'
+                                        : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-blue-600 hover:text-white hover:border-blue-500 active:bg-blue-700'
+                                    }`}
+                                  >
+                                    <Archive className="w-3.5 h-3.5" />
+                                    <span>Arsip</span>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile Responsive Cards View */}
+                  <div className="block md:hidden space-y-3">
+                    {filteredWOs.map((wo, index) => {
+                      const assignedMech = users.find(u => u.id === wo.mechanicId)?.name || 'Queue Antrean';
+                      return (
+                        <motion.div
+                          key={wo.id}
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          whileHover={{ scale: 1.01, y: -2 }}
+                          transition={{ duration: 0.25, delay: Math.min(index * 0.04, 0.2) }}
+                          className="bg-slate-850 p-4 rounded-xl border border-slate-800 space-y-3 shadow-md hover:border-slate-700 transition-all"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-mono text-xs text-blue-400 font-bold">{wo.id}</span>
+                            <div>
+                              {wo.priority === 1 && <span className="px-1.5 py-0.5 bg-red-900/40 text-red-300 text-[9px] font-black rounded border border-red-800">🔴 Urgent</span>}
+                              {wo.priority === 2 && <span className="px-1.5 py-0.5 bg-yellow-900/40 text-yellow-300 text-[9px] font-black rounded border border-yellow-800">🟡 Booking</span>}
+                              {wo.priority === 3 && <span className="px-1.5 py-0.5 bg-blue-900/40 text-blue-300 text-[9px] font-black rounded border border-blue-800">🔵 Regular</span>}
+                            </div>
                           </div>
-                        </td>
-                        <td className="p-2 text-center">
-                          {wo.status === 'QUEUE' && (
-                            <span className="inline-block px-2 py-1 bg-slate-800 text-slate-300 text-[10px] font-bold rounded border border-slate-700 uppercase tracking-wider">
-                              Antrean
-                            </span>
-                          )}
-                          {wo.status === 'IN_PROGRESS' && (
-                            <span className="inline-block px-2 py-1 bg-blue-900 text-blue-200 text-[10px] font-bold rounded border border-blue-800 uppercase tracking-wider animate-pulse">
-                              Sedang Kerja
-                            </span>
-                          )}
-                          {wo.status === 'PENDING_APPROVAL' && (
-                            <span className="inline-block px-2 py-1 bg-red-900 text-red-100 text-[10px] font-bold rounded border border-red-800 uppercase tracking-wider animate-pulse">
-                              Butuh Persetujuan Konsumen
-                            </span>
-                          )}
-                          {wo.status === 'PENDING_PARTS' && (
-                            <span className="inline-block px-2 py-1 bg-amber-900 text-amber-200 text-[10px] font-bold rounded border border-amber-800 uppercase tracking-wider">
-                              Tertunda Parts
-                            </span>
-                          )}
-                          {wo.status === 'COMPLETED' && (
-                            <span className="inline-block px-2 py-1 bg-emerald-900 text-emerald-200 text-[10px] font-bold rounded border border-[#065f46] uppercase tracking-wider">
-                              Selesai / Siap QC
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-2">
-                          <div className="flex items-center justify-center gap-2">
+
+                          <div className="grid grid-cols-2 gap-2 text-xs border-t border-slate-800/80 pt-2.5">
+                            <div>
+                              <span className="text-[9px] text-slate-500 uppercase font-bold block">Pelanggan</span>
+                              <span className="font-bold text-slate-200 block truncate">{wo.customerName}</span>
+                              <span className="text-[9px] text-slate-400 font-mono block">{wo.customerPhone}</span>
+                            </div>
+                            <div>
+                              <span className="text-[9px] text-slate-500 uppercase font-bold block">Kendaraan</span>
+                              <span className="font-bold text-slate-200 block truncate">{wo.vehicleBrand}</span>
+                              <span className="text-[10px] text-blue-300 font-mono font-bold block">{wo.plateNumber}</span>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 text-xs border-t border-slate-800/80 pt-2.5">
+                            <div>
+                              <span className="text-[9px] text-slate-500 uppercase font-bold block">Mekanik</span>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className={`w-1.5 h-1.5 rounded-full ${wo.mechanicId ? 'bg-blue-400' : 'bg-slate-500'}`}></span>
+                                <span className="font-medium text-slate-300 truncate max-w-[100px]">{assignedMech}</span>
+                              </div>
+                            </div>
+                            <div>
+                              <span className="text-[9px] text-slate-500 uppercase font-bold block mb-0.5">Status Kerja</span>
+                              <select
+                                value={wo.status}
+                                onChange={(e) => updateWorkOrder(wo.id, { status: e.target.value as any })}
+                                className={`w-full px-1.5 py-0.5 text-[10px] font-black rounded-lg border uppercase tracking-wider outline-none cursor-pointer transition-all shadow-xs ${
+                                  wo.status === 'QUEUE' ? 'bg-slate-800 text-slate-300 border-slate-700' :
+                                  wo.status === 'IN_PROGRESS' ? 'bg-blue-950 text-blue-300 border-blue-800/80' :
+                                  wo.status === 'PENDING_APPROVAL' ? 'bg-red-950 text-red-300 border-red-800/80' :
+                                  wo.status === 'PENDING_PARTS' ? 'bg-amber-950 text-amber-300 border-amber-850' :
+                                  'bg-emerald-950 text-emerald-300 border-emerald-800/80'
+                                }`}
+                              >
+                                <option value="QUEUE" className="bg-slate-900 text-slate-200">Antrean</option>
+                                <option value="IN_PROGRESS" className="bg-slate-900 text-slate-200">Sedang Kerja</option>
+                                <option value="PENDING_APPROVAL" className="bg-slate-900 text-slate-200">Approval</option>
+                                <option value="PENDING_PARTS" className="bg-slate-900 text-slate-200">Tertunda Parts</option>
+                                <option value="COMPLETED" className="bg-slate-900 text-slate-200">Selesai / Siap QC</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2 pt-2 border-t border-slate-800/80">
                             <button
                               type="button"
                               onClick={() => setPrintWO(wo)}
-                              className="px-3 py-1.5 bg-slate-800 border border-slate-700 text-slate-200 hover:bg-blue-600 hover:text-white hover:border-blue-500 active:bg-blue-700 text-[10px] font-black rounded-lg font-mono uppercase tracking-wider transition-all shadow-sm flex items-center gap-1 cursor-pointer"
+                              className="flex-1 py-2 bg-slate-800 border border-slate-700 text-slate-200 hover:bg-blue-600 hover:text-white hover:border-blue-500 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                             >
                               <Printer className="w-3.5 h-3.5" />
-                              <span>Print</span>
+                              <span>Cetak</span>
                             </button>
-                            {!wo.isArchived ? (
-                              <button
-                                type="button"
-                                title="Sembunyikan/pindahkan pekerjaan ke tab Arsip Selesai"
-                                onClick={() => updateWorkOrder(wo.id, { isArchived: true })}
-                                className={`px-3 py-1.5 text-[10px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer border ${
-                                  wo.status === 'COMPLETED'
-                                    ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/30 hover:bg-blue-600 hover:text-white hover:border-blue-500 active:bg-blue-700'
-                                    : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-blue-600 hover:text-white hover:border-blue-500 active:bg-blue-700'
-                                }`}
-                              >
-                                <Archive className="w-3.5 h-3.5" />
-                                <span>Arsip</span>
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                title="Kembalikan ke Pekerjaan Aktif"
-                                onClick={() => updateWorkOrder(wo.id, { isArchived: false })}
-                                className="px-3 py-1.5 bg-slate-800 border border-slate-700 text-slate-300 hover:bg-blue-600 hover:text-white hover:border-blue-500 active:bg-blue-700 text-[10px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer"
-                              >
-                                <Archive className="w-3.5 h-3.5 rotate-180" />
-                                <span>Restore</span>
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => updateWorkOrder(wo.id, { isArchived: true })}
+                              className={`flex-1 py-2 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer border ${
+                                wo.status === 'COMPLETED'
+                                  ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/30 hover:bg-blue-600 hover:text-white'
+                                  : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-blue-600 hover:text-white'
+                              }`}
+                            >
+                              <Archive className="w-3.5 h-3.5" />
+                              <span>Arsipkan</span>
+                            </button>
                           </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          );
-        })()}
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+          </>
       </div>
 
       {/* WIZARD PROGRESS BAR */}
@@ -813,95 +996,289 @@ const SADashboard: React.FC = () => {
               <span className="text-[10px] bg-blue-50 text-blue-800 font-bold px-2 py-1 rounded">Langkah 1 dari 3</span>
             </div>
             
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex flex-col bg-slate-50/50 p-3 rounded-lg border border-slate-100">
-                  <label className="text-[10px] font-black uppercase text-slate-700">Nama Lengkap Pelanggan <span className="text-red-500">*</span></label>
-                  <span className="text-[9px] text-slate-400 italic mb-1">Sesuai KTP / STNK</span>
-                  <input required={wizardStep === 1} type="text" placeholder="Masukkan nama lengkap pelanggan" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
+            <div className="space-y-6">
+              
+              {/* Division Flow Drag & Drop */}
+              <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100 mb-2">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h4 className="font-bold text-[11px] uppercase text-blue-900">Alur Divisi Pengerjaan (Work Flow) <span className="text-red-500">*</span></h4>
+                    <p className="text-[9px] text-slate-500 italic mt-0.5">Atur urutan divisi dengan drag & drop (tahan dan geser ikon ⠿).</p>
+                  </div>
+                  {divisionFlow.length < 2 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const available = (['SUPPLY_PUMP', 'COMMON_RAIL'] as const).find(d => !divisionFlow.includes(d));
+                        if (available) setDivisionFlow([...divisionFlow, available]);
+                      }}
+                      className="text-[9px] flex items-center gap-1 bg-white border border-blue-200 text-blue-600 px-2 py-1 rounded hover:bg-blue-50 font-bold"
+                    >
+                      <Plus className="w-3 h-3" /> Tambah Divisi
+                    </button>
+                  )}
                 </div>
 
-                <div className="flex flex-col bg-slate-50/50 p-3 rounded-lg border border-slate-100">
-                  <label className="text-[10px] font-black uppercase text-slate-700">Alamat Email Aktif</label>
-                  <span className="text-[9px] text-slate-400 italic mb-1">Opsional (Bisa dikosongkan)</span>
-                  <input type="email" placeholder="contoh: pelanggan@gmail.com" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-medium text-slate-800 shadow-sm" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} />
+                {divisionFlow.length === 0 && (
+                   <div className="text-[10px] text-red-500 font-bold mb-2 p-2 bg-red-50 rounded">⚠️ Anda harus memilih minimal 1 divisi.</div>
+                )}
+
+                <Reorder.Group axis="y" values={divisionFlow} onReorder={setDivisionFlow} className="space-y-2">
+                  {divisionFlow.map((div, index) => (
+                    <Reorder.Item key={div} value={div} className="flex items-center gap-3 p-2.5 bg-white border border-slate-200 rounded-lg shadow-sm select-none">
+                      <div className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 p-1">
+                        <GripVertical className="w-4 h-4" />
+                      </div>
+                      <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-black text-xs">
+                        {index + 1}
+                      </div>
+                      <div className="flex-1 font-bold text-xs text-slate-700">
+                        {div === 'SUPPLY_PUMP' ? '⚙️ Fuel Pump' : '🔬 Common Rail'}
+                      </div>
+                      {divisionFlow.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setDivisionFlow(divisionFlow.filter(d => d !== div))}
+                          className="text-slate-400 hover:text-red-500 p-1"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </Reorder.Item>
+                  ))}
+                </Reorder.Group>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Data Pemilik */}
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4">
+                  <h4 className="font-bold text-[11px] uppercase text-blue-900 border-b border-slate-200 pb-2">A. Data Pemilik (Owner Details)</h4>
+                  
+                  <div className="flex flex-col relative">
+                    <label className="text-[10px] font-black uppercase text-slate-700">Nama Lengkap Pemilik <span className="text-red-500">*</span></label>
+                    <span className="text-[9px] text-slate-400 italic mb-1">Sesuai KTP / STNK</span>
+                    <input required={wizardStep === 1} type="text" placeholder="Masukkan nama pemilik" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
+                    {customerName.trim().length >= 2 && customers.filter(c => c.name.toLowerCase().includes(customerName.toLowerCase())).length > 0 && (
+                      <div className="bg-white border border-slate-200 mt-1 rounded-lg shadow-lg max-h-40 overflow-y-auto z-50 absolute w-full top-full left-0">
+                        {customers.filter(c => c.name.toLowerCase().includes(customerName.toLowerCase())).slice(0, 5).map(c => (
+                          <div 
+                            key={c.id} 
+                            onClick={() => {
+                              setCustomerName(c.name);
+                              setCustomerPhone(c.phone);
+                              setCustomerAddress(c.address);
+                              if (c.email) setCustomerEmail(c.email);
+                            }}
+                            className="p-2 hover:bg-blue-50 text-xs font-semibold text-slate-800 cursor-pointer border-b border-slate-100 last:border-none flex justify-between"
+                          >
+                            <span>👤 {c.name}</span>
+                            <span className="text-[10px] text-slate-500 font-mono">{c.phone}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col relative">
+                    <label className="text-[10px] font-black uppercase text-slate-700">Nomor Telepon / WhatsApp <span className="text-red-500">*</span></label>
+                    <span className="text-[9px] text-slate-400 italic mb-1">Untuk mengirimkan update foto perbaikan</span>
+                    <input required={wizardStep === 1} type="tel" placeholder="Contoh: 081234567890" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
+                    {customerPhone.trim().length >= 3 && customers.filter(c => c.phone.includes(customerPhone.trim())).length > 0 && (
+                      <div className="bg-white border border-slate-200 mt-1 rounded-lg shadow-lg max-h-40 overflow-y-auto z-50 absolute w-full top-full left-0">
+                        {customers.filter(c => c.phone.includes(customerPhone.trim())).slice(0, 5).map(c => (
+                          <div 
+                            key={c.id} 
+                            onClick={() => {
+                              setCustomerName(c.name);
+                              setCustomerPhone(c.phone);
+                              setCustomerAddress(c.address);
+                              if (c.email) setCustomerEmail(c.email);
+                            }}
+                            className="p-2 hover:bg-blue-50 text-xs font-semibold text-slate-800 cursor-pointer border-b border-slate-100 last:border-none flex justify-between"
+                          >
+                            <span>👤 {c.name}</span>
+                            <span className="text-[10px] text-slate-500 font-mono">{c.phone}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col">
+                    <label className="text-[10px] font-black uppercase text-slate-700">Alamat Lengkap <span className="text-red-500">*</span></label>
+                    <span className="text-[9px] text-slate-400 italic mb-1">Alamat rumah atau kantor pemilik</span>
+                    <input required={wizardStep === 1} type="text" placeholder="e.g. Jl. HR Soebrantas No. 12" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} />
+                  </div>
+                  
+                  <div className="flex flex-col">
+                    <label className="text-[10px] font-black uppercase text-slate-700">Alamat Email Aktif</label>
+                    <span className="text-[9px] text-slate-400 italic mb-1">Opsional (Bisa dikosongkan)</span>
+                    <input type="email" placeholder="contoh: pelanggan@gmail.com" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-medium text-slate-800 shadow-sm" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} />
+                  </div>
                 </div>
 
-                <div className="flex flex-col bg-slate-50/50 p-3 rounded-lg border border-slate-100">
-                  <label className="text-[10px] font-black uppercase text-slate-700">Nomor Telepon / WhatsApp <span className="text-red-500">*</span></label>
-                  <span className="text-[9px] text-slate-400 italic mb-1">Untuk mengirimkan update foto perbaikan</span>
-                  <input required={wizardStep === 1} type="tel" placeholder="Contoh: 081234567890" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
-                </div>
+                {/* Data Pembawa */}
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4">
+                  <h4 className="font-bold text-[11px] uppercase text-blue-900 border-b border-slate-200 pb-2 flex items-center justify-between">
+                    B. Data Pembawa (Bringer Details)
+                    <button 
+                      type="button"
+                      className="text-[9px] font-medium bg-blue-100 text-blue-800 px-2 py-0.5 rounded cursor-pointer hover:bg-blue-200"
+                      onClick={() => {
+                        setBringerName(customerName);
+                        setBringerPhone(customerPhone);
+                        setBringerAddress(customerAddress);
+                      }}
+                    >
+                      Sama dengan Pemilik
+                    </button>
+                  </h4>
 
-                <div className="flex flex-col bg-slate-50/50 p-3 rounded-lg border border-slate-100">
-                  <label className="text-[10px] font-black uppercase text-slate-700">Alamat Lengkap <span className="text-red-500">*</span></label>
-                  <span className="text-[9px] text-slate-400 italic mb-1">Alamat rumah atau kantor pelanggan</span>
-                  <input required={wizardStep === 1} type="text" placeholder="e.g. Jl. HR Soebrantas No. 12, Pekanbaru" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} />
+                  <div className="flex flex-col">
+                    <label className="text-[10px] font-black uppercase text-slate-700">Nama Lengkap Pembawa</label>
+                    <span className="text-[9px] text-slate-400 italic mb-1">Nama orang yang mengantar</span>
+                    <input type="text" placeholder="Masukkan nama pembawa" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-medium text-slate-800 shadow-sm" value={bringerName} onChange={(e) => setBringerName(e.target.value)} />
+                  </div>
+
+                  <div className="flex flex-col">
+                    <label className="text-[10px] font-black uppercase text-slate-700">Nomor Telepon / WhatsApp</label>
+                    <span className="text-[9px] text-slate-400 italic mb-1">Opsional (Bisa dikosongkan)</span>
+                    <input type="tel" placeholder="Contoh: 081234567890" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-medium text-slate-800 shadow-sm" value={bringerPhone} onChange={(e) => setBringerPhone(e.target.value)} />
+                  </div>
+
+                  <div className="flex flex-col">
+                    <label className="text-[10px] font-black uppercase text-slate-700">Alamat Lengkap</label>
+                    <span className="text-[9px] text-slate-400 italic mb-1">Opsional (Bisa dikosongkan)</span>
+                    <input type="text" placeholder="e.g. Jl. HR Soebrantas No. 12" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-medium text-slate-800 shadow-sm" value={bringerAddress} onChange={(e) => setBringerAddress(e.target.value)} />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* STEP 2: VEHICLE DETAILS */}
         {wizardStep === 2 && (
           <div className="space-y-6 animate-in fade-in duration-300">
+            {/* Drop Method (Metode Penyerahan Unit) - Moved to Top */}
             <div className="bg-white p-5 rounded-xl shadow-md border border-slate-200">
               <div className="border-b border-slate-100 pb-3 mb-4 flex items-center justify-between">
                 <h3 className="text-sm font-black text-[#1e3a8a] uppercase tracking-wider flex items-center">
                   <Car className="w-5 h-5 mr-2 text-blue-600" />
-                  2. Informasi & Parameter Kendaraan (Vehicle Details)
+                  Metode Penyerahan Unit (Drop Method)
                 </h3>
                 <span className="text-[10px] bg-blue-50 text-blue-800 font-bold px-2 py-1 rounded">Langkah 2 dari 3</span>
+              </div>
+              <p className="text-[10px] text-slate-500 italic mb-3">
+                Pilih apakah konsumen membawa mobil utuh atau hanya membawa komponen copotan (loose parts) untuk diperbaiki di lab.
+              </p>
+              <div className="flex gap-3">
+                <label className={`flex-1 flex flex-col items-center justify-center p-3 text-xs border rounded-xl cursor-pointer transition-all ${dropMethod === 'WHOLE' ? 'bg-blue-50 border-blue-600 text-blue-900 font-bold shadow-sm' : 'bg-slate-50 hover:bg-slate-100 border-slate-200 font-medium text-slate-600'}`}>
+                  <input type="radio" className="hidden" checked={dropMethod === 'WHOLE'} onChange={() => setDropMethod('WHOLE')} />
+                  <span className="text-sm">🚗 Bawa Mobil Utuh</span>
+                  <span className="text-[8px] font-normal opacity-80 mt-1">(Whole Vehicle Unit)</span>
+                </label>
+                <label className={`flex-1 flex flex-col items-center justify-center p-3 text-xs border rounded-xl cursor-pointer transition-all ${dropMethod === 'PARTS' ? 'bg-blue-50 border-blue-600 text-blue-900 font-bold shadow-sm' : 'bg-slate-50 hover:bg-slate-100 border-slate-200 font-medium text-slate-600'}`}>
+                  <input type="radio" className="hidden" checked={dropMethod === 'PARTS'} onChange={() => setDropMethod('PARTS')} />
+                  <span className="text-sm">⚙️ Hanya Bawa Komponen</span>
+                  <span className="text-[8px] font-normal opacity-80 mt-1">(Loose Parts / Copotan)</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-xl shadow-md border border-slate-200">
+              <div className="border-b border-slate-100 pb-3 mb-4 flex items-center justify-between">
+                <h3 className="text-sm font-black text-[#1e3a8a] uppercase tracking-wider flex items-center">
+                  <Car className="w-5 h-5 mr-2 text-blue-600" />
+                  Informasi & Parameter {dropMethod === 'WHOLE' ? 'Kendaraan (Vehicle Details)' : 'Komponen (Component Details)'}
+                </h3>
               </div>
               
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex flex-col bg-slate-50/50 p-3 rounded-lg border border-slate-100">
-                    <label className="text-[10px] font-black uppercase text-slate-700">Merek / Tipe / Tahun Mobil <span className="text-red-500">*</span></label>
-                    <span className="text-[9px] text-slate-400 italic mb-1">Merek mobil (e.g. Toyota Fortuner 2020)</span>
-                    <input required={wizardStep === 2} type="text" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm" placeholder="e.g. Toyota Fortuner 2020" value={vehicleBrand} onChange={(e) => setVehicleBrand(e.target.value)} />
-                  </div>
+                  {dropMethod === 'WHOLE' && (
+                    <>
+                      <div className="flex flex-col bg-slate-50/50 p-3 rounded-lg border border-slate-100">
+                        <label className="text-[10px] font-black uppercase text-slate-700">Merek / Tipe / Tahun Mobil <span className="text-red-500">*</span></label>
+                        <span className="text-[9px] text-slate-400 italic mb-1">Merek & model kendaraan (e.g. Toyota Fortuner 2020)</span>
+                        <input required={wizardStep === 2 && dropMethod === 'WHOLE'} type="text" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm" placeholder="e.g. Toyota Fortuner 2020" value={vehicleBrand} onChange={(e) => setVehicleBrand(e.target.value)} />
+                      </div>
+
+                      <div className="flex flex-col bg-slate-50/50 p-3 rounded-lg border border-slate-100">
+                        <label className="text-[10px] font-black uppercase text-slate-700">Nomor Rangka / VIN</label>
+                        <span className="text-[9px] text-slate-400 italic mb-1">Opsional (Bisa dikosongkan jika tidak ada)</span>
+                        <input type="text" placeholder="Masukkan nomor rangka kendaraan" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-medium text-slate-800 shadow-sm" value={vin} onChange={(e) => setVin(e.target.value)} />
+                      </div>
+
+                      <div className="flex flex-col bg-slate-50/50 p-3 rounded-lg border border-slate-100 relative">
+                        <label className="text-[10px] font-black uppercase text-slate-700">Nomor Plat Kendaraan <span className="text-red-500">*</span></label>
+                        <span className="text-[9px] text-slate-400 italic mb-1">Plat nomor polisi (e.g. BM 1234 AB)</span>
+                        <input required={wizardStep === 2 && dropMethod === 'WHOLE'} type="text" placeholder="Masukkan nomor plat" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 font-bold text-blue-800 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none shadow-sm uppercase" value={plateNumber} onChange={(e) => setPlateNumber(e.target.value)} />
+                        {plateNumber.trim().length >= 2 && vehicles.filter(v => v.plateNumber.toUpperCase().includes(plateNumber.toUpperCase())).length > 0 && (
+                          <div className="bg-white border border-slate-200 mt-1 rounded-lg shadow-lg max-h-40 overflow-y-auto z-50 absolute w-full top-full left-0">
+                            {vehicles.filter(v => v.plateNumber.toUpperCase().includes(plateNumber.toUpperCase())).slice(0, 5).map(v => {
+                              const owner = customers.find(c => c.id === v.customerId);
+                              return (
+                                <div 
+                                  key={v.id} 
+                                  onClick={() => {
+                                    setPlateNumber(v.plateNumber);
+                                    setVehicleBrand(v.brand);
+                                    if (v.vin) setVin(v.vin);
+                                    if (owner) {
+                                      setCustomerName(owner.name);
+                                      setCustomerPhone(owner.phone);
+                                      setCustomerAddress(owner.address);
+                                      if (owner.email) setCustomerEmail(owner.email);
+                                    }
+                                  }}
+                                  className="p-2 hover:bg-blue-50 text-xs font-semibold text-slate-800 cursor-pointer border-b border-slate-100 last:border-none flex flex-col"
+                                >
+                                  <div className="flex justify-between">
+                                    <span className="font-bold text-blue-700">🚗 {v.plateNumber}</span>
+                                    <span className="text-[10px] text-slate-500">{v.brand}</span>
+                                  </div>
+                                  {owner && (
+                                    <span className="text-[10px] text-slate-400 mt-0.5">Pemilik: {owner.name} ({owner.phone})</span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col bg-slate-50/50 p-3 rounded-lg border border-slate-100">
+                        <label className="text-[10px] font-black uppercase text-slate-700">Kilometer (KM) / Hour Meter (HM) <span className="text-red-500">*</span></label>
+                        <span className="text-[9px] text-slate-400 italic mb-1">Angka odometer saat ini (e.g. 150.000 KM)</span>
+                        <input required={wizardStep === 2 && dropMethod === 'WHOLE'} type="text" placeholder="e.g. 150.000 KM / 2.500 HM" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm" value={odometer} onChange={(e) => setOdometer(e.target.value)} />
+                      </div>
+                    </>
+                  )}
 
                   <div className="flex flex-col bg-slate-50/50 p-3 rounded-lg border border-slate-100">
-                    <label className="text-[10px] font-black uppercase text-slate-700">Nomor Rangka / VIN</label>
-                    <span className="text-[9px] text-slate-400 italic mb-1">Opsional (Bisa dikosongkan jika tidak ada)</span>
-                    <input type="text" placeholder="Masukkan nomor rangka kendaraan" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-medium text-slate-800 shadow-sm" value={vin} onChange={(e) => setVin(e.target.value)} />
-                  </div>
-
-                  <div className="flex flex-col bg-slate-50/50 p-3 rounded-lg border border-slate-100">
-                    <label className="text-[10px] font-black uppercase text-slate-700">Nomor Plat Kendaraan <span className="text-red-500">*</span></label>
-                    <span className="text-[9px] text-slate-400 italic mb-1">Plat nomor polisi (e.g. BM 1234 AB)</span>
-                    <input required={wizardStep === 2} type="text" placeholder="Masukkan nomor plat" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 font-bold text-blue-800 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none shadow-sm uppercase" value={plateNumber} onChange={(e) => setPlateNumber(e.target.value)} />
-                  </div>
-
-                  <div className="flex flex-col bg-slate-50/50 p-3 rounded-lg border border-slate-100">
-                    <label className="text-[10px] font-black uppercase text-slate-700">Kilometer (KM) / Hour Meter (HM) <span className="text-red-500">*</span></label>
-                    <span className="text-[9px] text-slate-400 italic mb-1">Angka odometer saat ini (e.g. 150.000 KM)</span>
-                    <input required={wizardStep === 2} type="text" placeholder="e.g. 150.000 KM / 2.500 HM" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm" value={odometer} onChange={(e) => setOdometer(e.target.value)} />
-                  </div>
-
-                  <div className="flex flex-col bg-slate-50/50 p-3 rounded-lg border border-slate-100">
-                    <label className="text-[10px] font-black uppercase text-slate-700">Waktu Masuk Unit <span className="text-red-500">*</span></label>
-                    <span className="text-[9px] text-slate-400 italic mb-1">Waktu serah terima kendaraan</span>
+                    <label className="text-[10px] font-black uppercase text-slate-700">Waktu Masuk Unit/Komponen <span className="text-red-500">*</span></label>
+                    <span className="text-[9px] text-slate-400 italic mb-1">Waktu serah terima komponen / kendaraan</span>
                     <input required={wizardStep === 2} type="datetime-local" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-slate-800 font-semibold shadow-sm" value={intakeDate} onChange={(e) => setIntakeDate(e.target.value)} />
                   </div>
 
-                  <div className="flex flex-col bg-slate-50/50 p-3 rounded-lg border border-slate-100">
-                    <label className="text-[10px] font-black uppercase text-slate-700">Volume Solar / BBM</label>
-                    <span className="text-[9px] text-slate-400 italic mb-1">Pilih indikator jarum bahan bakar</span>
-                    <div className="flex gap-1 mt-1.5">
-                      {['E', '1/4', '1/2', '3/4', 'F'].map((level) => (
-                        <span 
-                          key={level} 
-                          onClick={() => setFuelLevel(level as any)}
-                          className={`flex-1 text-[10px] font-bold border text-center py-2 cursor-pointer rounded-lg transition-all ${fuelLevel === level ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-700 shadow-sm'}`}
-                        >
-                          {level}
-                        </span>
-                      ))}
+                  {dropMethod === 'WHOLE' && (
+                    <div className="flex flex-col bg-slate-50/50 p-3 rounded-lg border border-slate-100">
+                      <label className="text-[10px] font-black uppercase text-slate-700">Volume Solar / BBM</label>
+                      <span className="text-[9px] text-slate-400 italic mb-1">Pilih indikator jarum bahan bakar</span>
+                      <div className="flex gap-1 mt-1.5">
+                        {['E', '1/4', '1/2', '3/4', 'F'].map((level) => (
+                          <span 
+                            key={level} 
+                            onClick={() => setFuelLevel(level as any)}
+                            className={`flex-1 text-[10px] font-bold border text-center py-2 cursor-pointer rounded-lg transition-all ${fuelLevel === level ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-700 shadow-sm'}`}
+                          >
+                            {level}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="flex flex-col bg-slate-50/50 p-3 rounded-lg border border-slate-100">
                     <label className="text-[10px] font-black uppercase text-slate-700">Estimasi Waktu Pengerjaan <span className="text-red-500">*</span></label>
@@ -943,31 +1320,6 @@ const SADashboard: React.FC = () => {
                     </select>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Drop Method (Metode Penyerahan Unit) */}
-            <div className="bg-white p-5 rounded-xl shadow-md border border-slate-200">
-              <div className="border-b border-slate-100 pb-3 mb-4 flex items-center justify-between">
-                <h3 className="text-sm font-black text-[#1e3a8a] uppercase tracking-wider flex items-center">
-                  <Car className="w-5 h-5 mr-2 text-blue-600" />
-                  Metode Penyerahan Unit (Drop Method)
-                </h3>
-              </div>
-              <p className="text-[10px] text-slate-500 italic mb-3">
-                Pilih apakah konsumen membawa mobil utuh atau hanya membawa komponen copotan (loose parts) untuk diperbaiki di lab.
-              </p>
-              <div className="flex gap-3">
-                <label className={`flex-1 flex flex-col items-center justify-center p-3 text-xs border rounded-xl cursor-pointer transition-all ${dropMethod === 'WHOLE' ? 'bg-blue-50 border-blue-600 text-blue-900 font-bold shadow-sm' : 'bg-slate-50 hover:bg-slate-100 border-slate-200 font-medium text-slate-600'}`}>
-                  <input type="radio" className="hidden" checked={dropMethod === 'WHOLE'} onChange={() => setDropMethod('WHOLE')} />
-                  <span className="text-sm">🚗 Bawa Mobil Utuh</span>
-                  <span className="text-[8px] font-normal opacity-80 mt-1">(Whole Vehicle Unit)</span>
-                </label>
-                <label className={`flex-1 flex flex-col items-center justify-center p-3 text-xs border rounded-xl cursor-pointer transition-all ${dropMethod === 'PARTS' ? 'bg-blue-50 border-blue-600 text-blue-900 font-bold shadow-sm' : 'bg-slate-50 hover:bg-slate-100 border-slate-200 font-medium text-slate-600'}`}>
-                  <input type="radio" className="hidden" checked={dropMethod === 'PARTS'} onChange={() => setDropMethod('PARTS')} />
-                  <span className="text-sm">⚙️ Hanya Bawa Komponen</span>
-                  <span className="text-[8px] font-normal opacity-80 mt-1">(Loose Parts / Copotan)</span>
-                </label>
               </div>
             </div>
 
@@ -1084,7 +1436,7 @@ const SADashboard: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="border border-slate-200 rounded overflow-hidden">
+                <div className="border border-slate-200 rounded overflow-x-auto">
                   <table className="w-full text-left border-collapse bg-slate-50 text-xs">
                     <thead>
                       <tr className="bg-slate-100 border-b border-slate-200 text-slate-600">
@@ -1260,7 +1612,8 @@ const SADashboard: React.FC = () => {
               </div>
 
               {/* Component Serialization */}
-              <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+              {dropMethod === 'PARTS' && (
+                <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
                   <div>
                     <h4 className="text-[11px] font-black uppercase text-[#1e3a8a] tracking-wider">A. Pencatatan Nomor Seri Komponen (Component Serialization)</h4>
@@ -1310,7 +1663,7 @@ const SADashboard: React.FC = () => {
                           <td className="p-2">
                             <input
                               type="text"
-                              placeholder="Contoh: Injector Nozzle 1 / Supply Pump"
+                              placeholder="Contoh: Injector Nozzle 1 / Fuel Pump"
                               className="w-full p-2 border border-slate-200 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none bg-slate-50/30 focus:bg-white text-xs font-semibold text-slate-800"
                               value={part.description}
                               onChange={(e) => updateLoosePart(index, 'description', e.target.value)}
@@ -1373,6 +1726,7 @@ const SADashboard: React.FC = () => {
                   </table>
                 </div>
               </div>
+              )}
 
               {/* Action Builder */}
               <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
@@ -1397,7 +1751,7 @@ const SADashboard: React.FC = () => {
                         <th className="p-2 text-left font-bold uppercase tracking-wider">Jenis Pengerjaan / Tindakan</th>
                         <th className="p-2 text-center font-bold uppercase tracking-wider w-16">Qty</th>
                         <th className="p-2 text-left font-bold uppercase tracking-wider">Catatan Tambahan</th>
-                        <th className="p-2 text-left font-bold uppercase tracking-wider w-48">Estimasi Harga (Rp)</th>
+                        <th className="p-2 text-left font-bold uppercase tracking-wider w-72">Estimasi Rentang Harga (Rp)</th>
                         <th className="p-2 text-center font-bold uppercase tracking-wider w-12">Hapus</th>
                       </tr>
                     </thead>
@@ -1433,13 +1787,23 @@ const SADashboard: React.FC = () => {
                             />
                           </td>
                           <td className="p-2">
-                            <input 
-                              type="text" 
-                              placeholder="Contoh: Rp 250.000" 
-                              className="w-full p-2 border border-slate-200 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-xs font-extrabold text-blue-700 bg-slate-50/20 focus:bg-white" 
-                              value={formatRupiah(action.estimasiHarga)} 
-                              onChange={(e) => updateTodoAction(index, 'estimasiHarga', e.target.value)} 
-                            />
+                            <div className="flex items-center gap-1.5">
+                              <input 
+                                type="text" 
+                                placeholder="Min (Rp)" 
+                                className="w-1/2 p-2 border border-slate-200 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-xs font-bold text-blue-700 bg-slate-50/20 focus:bg-white" 
+                                value={formatRupiah(action.estimasiHargaMin)} 
+                                onChange={(e) => updateTodoAction(index, 'estimasiHargaMin', e.target.value)} 
+                              />
+                              <span className="text-slate-400 font-bold text-[10px] shrink-0">s/d</span>
+                              <input 
+                                type="text" 
+                                placeholder="Max (Rp)" 
+                                className="w-1/2 p-2 border border-slate-200 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-xs font-bold text-blue-700 bg-slate-50/20 focus:bg-white" 
+                                value={formatRupiah(action.estimasiHargaMax)} 
+                                onChange={(e) => updateTodoAction(index, 'estimasiHargaMax', e.target.value)} 
+                              />
+                            </div>
                           </td>
                           <td className="p-2 text-center">
                             <button 
@@ -1494,7 +1858,7 @@ const SADashboard: React.FC = () => {
             ) : (
               <button 
                 type="submit" 
-                className="px-8 py-3.5 bg-emerald-600 text-white rounded-xl text-xs font-black uppercase shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all flex items-center gap-2 transform active:scale-95 border border-emerald-500 cursor-pointer"
+                className="px-6 py-2.5 bg-[#dc2626] hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase shadow-md shadow-red-100 transition-all flex items-center gap-1.5 transform active:scale-95 border border-transparent cursor-pointer"
               >
                 <Printer className="w-4 h-4" />
                 Simpan & Cetak SPK Awal
@@ -1503,6 +1867,8 @@ const SADashboard: React.FC = () => {
           </div>
         </div>
       </form>
+
+
 
       {/* MODULE 2: RiwayatKomponenModal */}
       {showHistoryModal && selectedHistoryPn && (

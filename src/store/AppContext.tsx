@@ -275,7 +275,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             dbUser.name !== currentUser.name ||
             dbUser.role !== currentUser.role ||
             dbUser.status !== currentUser.status ||
-            dbUser.password !== currentUser.password;
+            dbUser.password !== currentUser.password ||
+            dbUser.hasSeenTutorial !== currentUser.hasSeenTutorial ||
+            JSON.stringify(dbUser.geoLock) !== JSON.stringify(currentUser.geoLock);
             
           if (hasChanged) {
             setCurrentUser(dbUser);

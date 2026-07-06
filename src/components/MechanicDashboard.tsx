@@ -878,7 +878,7 @@ const MechanicDashboard: React.FC = () => {
                     { step: 1, title: 'VERIFIKASI', subtitle: 'Intake Komponen', icon: '🔍' },
                     { step: 2, title: 'TES AWAL', subtitle: 'Calibration Before', icon: '📊' },
                     { step: 3, title: 'PERBAIKAN', subtitle: 'Rehaul & Action', icon: '🔧' },
-                    { step: 4, title: 'TES AKHIR', subtitle: 'Calibration After', icon: '🚀' },
+                    { step: 4, title: 'TES AKHIR', subtitle: 'Standard Spec', icon: '🚀' },
                     { step: 5, title: 'REKONSILIASI', subtitle: 'Symptom & Finish', icon: '✅' },
                   ].map((s) => {
                     const isCompleted = activeStep > s.step;
@@ -1414,57 +1414,6 @@ const MechanicDashboard: React.FC = () => {
                         </div>
                       </div>
                     )}
-                  </div>
-
-                  {/* Form Pengisian Hasil Tes Akhir */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-5 shadow-sm space-y-4">
-                    <div className="border-b border-slate-200 pb-3">
-                      <h4 className="text-xs font-black text-slate-800 uppercase flex items-center gap-1.5">
-                        🚀 PENGUKURAN SESUDAH PERBAIKAN (AFTER CALIBRATION)
-                      </h4>
-                      <p className="text-[11px] text-slate-500 mt-1">Masukkan hasil kalibrasi akhir sesudah perbaikan dilakukan. Pastikan nilai berada dalam range spesifikasi.</p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {/* Spray Volume After */}
-                      <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-xs">
-                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Volume Semprotan Sesudah (cc) <span className="text-red-500">*</span></label>
-                        <input
-                          type="text"
-                          placeholder="e.g. 52.5 cc"
-                          className="w-full text-xs font-bold p-2.5 border border-slate-300 rounded focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-white text-slate-800"
-                          value={activeWO.calibrationData?.volumeSemprotan?.sesudah || ''}
-                          onChange={(e) => handleUpdateCalibration('volumeSemprotan', 'sesudah', e.target.value)}
-                        />
-                        <p className="text-[9px] text-slate-400 mt-1">Volume cairan sesudah perbaikan dilakukan.</p>
-                      </div>
-
-                      {/* Backleak Flow After */}
-                      <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-xs">
-                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Debit Backleak Sesudah (cc) <span className="text-red-500">*</span></label>
-                        <input
-                          type="text"
-                          placeholder="e.g. 10.2 cc"
-                          className="w-full text-xs font-bold p-2.5 border border-slate-300 rounded focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-white text-slate-800"
-                          value={activeWO.calibrationData?.debitBackleak?.sesudah || ''}
-                          onChange={(e) => handleUpdateCalibration('debitBackleak', 'sesudah', e.target.value)}
-                        />
-                        <p className="text-[9px] text-slate-400 mt-1">Debit backleak sesudah perbaikan dilakukan.</p>
-                      </div>
-
-                      {/* Opening Pressure After */}
-                      <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-xs">
-                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Tekanan Pembukaan Sesudah (Bar) <span className="text-red-500">*</span></label>
-                        <input
-                          type="text"
-                          placeholder="e.g. 1600 Bar"
-                          className="w-full text-xs font-bold p-2.5 border border-slate-300 rounded focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-white text-slate-800"
-                          value={activeWO.calibrationData?.tekanan?.sesudah || ''}
-                          onChange={(e) => handleUpdateCalibration('tekanan', 'sesudah', e.target.value)}
-                        />
-                        <p className="text-[9px] text-slate-400 mt-1">Tekanan pembukaan sesudah perbaikan dilakukan.</p>
-                      </div>
-                    </div>
                   </div>
 
                   {/* Navigation Button Footer Step 4 */}

@@ -153,6 +153,8 @@ interface AppContextType {
   addPartLog: (woId: string, log: Omit<PartLog, 'id' | 'date'>) => void;
   printWO: WorkOrder | null;
   setPrintWO: (wo: WorkOrder | null) => void;
+  printType: 'SPK' | 'HANDOVER';
+  setPrintType: (type: 'SPK' | 'HANDOVER') => void;
   notifications: AppNotification[];
   toasts: AppNotification[];
   clearNotifications: () => void;
@@ -193,6 +195,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [claims, setClaims] = useState<Claim[]>([]);
   const [printWO, setPrintWO] = useState<WorkOrder | null>(null);
+  const [printType, setPrintType] = useState<'SPK' | 'HANDOVER'>('SPK');
   const [isLoading, setIsLoading] = useState(true);
   const [isFirebaseAuthed, setIsFirebaseAuthed] = useState(false);
 
@@ -209,6 +212,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const isInitialLoadRef = useRef(true);
+  const previousWOsRef = useRef<WorkOrder[]>([]);
 
   // Sync notifications to localStorage
   useEffect(() => {
@@ -386,9 +390,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       
       // Sort by createdAt descending
-      dbWOs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setWorkOrders(dbWOs);
-
       // Only process real-time change events for toasts after the initial load batch is fully complete
       if (!isInitial) {
         snapshot.docChanges().forEach((change) => {
@@ -403,20 +404,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               id
             );
           } else if (change.type === 'modified') {
-            const divisionLabel = wo.currentDivision === 'SUPPLY_PUMP' ? 'Fuel Pump' 
-                                : wo.currentDivision === 'COMMON_RAIL' ? 'Common Rail' 
-                                : 'SA Intake';
-            addNotificationRef.current(
-              'Work Order Updated',
-              `Work Order ${id} (${wo.customerName}) status is now "${wo.status.replace(/_/g, ' ')}" [Division: ${divisionLabel}].`,
-              wo.status === 'COMPLETED' ? 'success' : 'warning',
-              id
-            );
+            const previousWO = previousWOsRef.current.find(w => w.id === id);
+            const statusChanged = !previousWO || previousWO.status !== wo.status;
+            const divisionChanged = !previousWO || previousWO.currentDivision !== wo.currentDivision;
+            const blockChanged = !previousWO || previousWO.isBlocked !== wo.isBlocked;
+            const handoverChanged = !previousWO || previousWO.isHandoverConfirmed !== wo.isHandoverConfirmed;
+
+            if (statusChanged || divisionChanged || blockChanged || handoverChanged) {
+              const divisionLabel = wo.currentDivision === 'SUPPLY_PUMP' ? 'Fuel Pump' 
+                                  : wo.currentDivision === 'COMMON_RAIL' ? 'Common Rail' 
+                                  : 'SA Intake';
+              
+              let title = 'Work Order Updated';
+              let message = `Work Order ${id} (${wo.customerName}) status is now "${wo.status.replace(/_/g, ' ')}" [Division: ${divisionLabel}].`;
+              
+              if (handoverChanged && wo.isHandoverConfirmed) {
+                title = 'Serah Terima Selesai';
+                message = `Unit/Komponen untuk Work Order ${id} (${wo.customerName}) telah diserahkan kembali kepada pelanggan.`;
+              }
+
+              addNotificationRef.current(
+                title,
+                message,
+                wo.status === 'COMPLETED' ? 'success' : 'warning',
+                id
+              );
+            }
           }
         });
       } else {
         isInitialLoadRef.current = false;
       }
+      
+      previousWOsRef.current = dbWOs;
+      setWorkOrders(dbWOs);
       workOrdersLoaded = true;
       checkLoadingComplete();
     }, (error) => {
@@ -883,7 +904,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         currentUser, login, logout, users, addUser, updateUser, deleteUser,
         customers, vehicles, addCustomer, updateCustomer, deleteCustomer, addVehicle,
         workOrders, addWorkOrder, updateWOStatus, updateWorkOrder, addPartLog,
-        printWO, setPrintWO,
+        printWO, setPrintWO, printType, setPrintType,
         notifications, toasts, clearNotifications, markAllAsRead, removeToast, addNotification,
         areToastsMuted, setAreToastsMuted,
         isLoading, createSuperAdmin, bypassLogin, clearAllUsers, resetUserPassword,

@@ -478,7 +478,7 @@ export const SADashboardArchiveAndHistory: React.FC<SADashboardArchiveAndHistory
                                 {isSelected && (
                                   <tr>
                                     <td colSpan={7} className="p-4 bg-slate-950 border-y border-slate-800">
-                                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 text-slate-300">
+                                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 text-slate-300">
                                         
                                         {/* Col 1: Audit Log / Event Timeline */}
                                         <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-850 space-y-3">
@@ -551,39 +551,7 @@ export const SADashboardArchiveAndHistory: React.FC<SADashboardArchiveAndHistory
                                           )}
                                         </div>
 
-                                        {/* Col 3: Calibration metrics BEFORE vs AFTER */}
-                                        <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-850 space-y-3">
-                                          <h4 className="text-[10px] font-black text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
-                                            <TrendingUp className="w-3.5 h-3.5" />
-                                            Data Kalibrasi Laboratorium
-                                          </h4>
-                                          {wo.calibrationData ? (
-                                            <div className="space-y-1 text-[9px] font-mono">
-                                              <div className="grid grid-cols-3 bg-slate-950 p-1.5 rounded font-black text-slate-400 text-center">
-                                                <span>Uji</span>
-                                                <span>Sebelum</span>
-                                                <span>Sesudah</span>
-                                              </div>
-                                              <div className="grid grid-cols-3 border-b border-slate-850/50 p-1 text-center">
-                                                <span className="text-left font-bold text-slate-300">Volume</span>
-                                                <span className="text-red-400">{wo.calibrationData.volumeSemprotan?.sebelum || '0 ml'}</span>
-                                                <span className="text-emerald-400">{wo.calibrationData.volumeSemprotan?.sesudah || '0 ml'}</span>
-                                              </div>
-                                              <div className="grid grid-cols-3 border-b border-slate-850/50 p-1 text-center">
-                                                <span className="text-left font-bold text-slate-300">Backleak</span>
-                                                <span className="text-red-400">{wo.calibrationData.debitBackleak?.sebelum || '0 ml'}</span>
-                                                <span className="text-emerald-400">{wo.calibrationData.debitBackleak?.sesudah || '0 ml'}</span>
-                                              </div>
-                                              <div className="grid grid-cols-3 p-1 text-center">
-                                                <span className="text-left font-bold text-slate-300">Pressure</span>
-                                                <span className="text-red-400">{wo.calibrationData.tekanan?.sebelum || '0 bar'}</span>
-                                                <span className="text-emerald-400">{wo.calibrationData.tekanan?.sesudah || '0 bar'}</span>
-                                              </div>
-                                            </div>
-                                          ) : (
-                                            <p className="text-[9px] text-slate-500 italic">Mekanik belum mengunggah hasil kalibrasi labor diesel.</p>
-                                          )}
-                                        </div>
+
 
                                       </div>
                                     </td>
@@ -736,39 +704,7 @@ export const SADashboardArchiveAndHistory: React.FC<SADashboardArchiveAndHistory
                                   )}
                                 </div>
 
-                                {/* Calibration */}
-                                <div className="space-y-2 pt-2 border-t border-slate-900">
-                                  <h4 className="text-[10px] font-black text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
-                                    <TrendingUp className="w-3.5 h-3.5" />
-                                    Data Kalibrasi Laboratorium
-                                  </h4>
-                                  {wo.calibrationData ? (
-                                    <div className="space-y-1 text-[9px] font-mono">
-                                      <div className="grid grid-cols-3 bg-slate-900 p-1.5 rounded font-black text-slate-400 text-center">
-                                        <span>Uji</span>
-                                        <span>Sblm</span>
-                                        <span>Ssdh</span>
-                                      </div>
-                                      <div className="grid grid-cols-3 border-b border-slate-800/50 p-1 text-center">
-                                        <span className="text-left font-bold text-slate-300">Volume</span>
-                                        <span className="text-red-400">{wo.calibrationData.volumeSemprotan?.sebelum || '0 ml'}</span>
-                                        <span className="text-emerald-400">{wo.calibrationData.volumeSemprotan?.sesudah || '0 ml'}</span>
-                                      </div>
-                                      <div className="grid grid-cols-3 border-b border-slate-800/50 p-1 text-center">
-                                        <span className="text-left font-bold text-slate-300">Backleak</span>
-                                        <span className="text-red-400">{wo.calibrationData.debitBackleak?.sebelum || '0 ml'}</span>
-                                        <span className="text-emerald-400">{wo.calibrationData.debitBackleak?.sesudah || '0 ml'}</span>
-                                      </div>
-                                      <div className="grid grid-cols-3 p-1 text-center">
-                                        <span className="text-left font-bold text-slate-300">Pressure</span>
-                                        <span className="text-red-400">{wo.calibrationData.tekanan?.sebelum || '0 bar'}</span>
-                                        <span className="text-emerald-400">{wo.calibrationData.tekanan?.sesudah || '0 bar'}</span>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <p className="text-[9px] text-slate-500 italic">Belum ada hasil kalibrasi labor diesel.</p>
-                                  )}
-                                </div>
+
                               </div>
                             )}
                           </div>
@@ -973,7 +909,7 @@ export const SADashboardArchiveAndHistory: React.FC<SADashboardArchiveAndHistory
                                   {/* Expandable visit detail information */}
                                   {isVisitOpen && (
                                     <div className="mt-2 pt-2 border-t border-slate-800 space-y-3 text-[10px] transition-all animate-fadeIn">
-                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                      <div>
                                         {/* Diagnostics & Labor */}
                                         <div className="space-y-1">
                                           <div className="font-bold text-slate-400 text-[9px] uppercase">Tindakan Kerja (SPK):</div>
@@ -990,36 +926,7 @@ export const SADashboardArchiveAndHistory: React.FC<SADashboardArchiveAndHistory
                                           )}
                                         </div>
 
-                                        {/* Calibration before after */}
-                                        <div className="space-y-1">
-                                          <div className="font-bold text-slate-400 text-[9px] uppercase font-mono">Kalibrasi Injector Lab:</div>
-                                          {visit.calibrationData ? (
-                                            <div className="bg-slate-950 p-1.5 rounded font-mono text-[8px] space-y-0.5 border border-slate-850">
-                                              <div className="flex justify-between border-b border-slate-850/30 pb-0.5 text-[7px] text-slate-500 font-bold">
-                                                <span>UJI KALIBER</span>
-                                                <span>SEBELUM</span>
-                                                <span>SESUDAH</span>
-                                              </div>
-                                              <div className="flex justify-between">
-                                                <span>Semprotan:</span>
-                                                <span className="text-red-400">{visit.calibrationData.volumeSemprotan?.sebelum}</span>
-                                                <span className="text-emerald-400">{visit.calibrationData.volumeSemprotan?.sesudah}</span>
-                                              </div>
-                                              <div className="flex justify-between">
-                                                <span>Backleak:</span>
-                                                <span className="text-red-400">{visit.calibrationData.debitBackleak?.sebelum}</span>
-                                                <span className="text-emerald-400">{visit.calibrationData.debitBackleak?.sesudah}</span>
-                                              </div>
-                                              <div className="flex justify-between">
-                                                <span>Tekanan:</span>
-                                                <span className="text-red-400">{visit.calibrationData.tekanan?.sebelum}</span>
-                                                <span className="text-emerald-400">{visit.calibrationData.tekanan?.sesudah}</span>
-                                              </div>
-                                            </div>
-                                          ) : (
-                                            <p className="text-slate-500 italic">Data kalibrasi tidak tersedia.</p>
-                                          )}
-                                        </div>
+
                                       </div>
 
                                       {/* Physical findings & nozzle status */}

@@ -170,6 +170,9 @@ export interface WorkOrder {
   isArchived?: boolean;
   currentMilestone?: string;
   milestoneHistory?: { milestone: string; timestamp: string; updatedBy: string }[];
+  isHandoverConfirmed?: boolean;
+  handoverDate?: string;
+  handoverConfirmedBy?: string;
 }
 
 export interface AppNotification {

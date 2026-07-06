@@ -455,14 +455,20 @@ const PublicTrackingView: React.FC<PublicTrackingViewProps> = ({ initialWoId = '
                   </div>
                 </div>
 
-                <a
-                  href={`https://wa.me/628123456789?text=Halo%20Service%20Advisor%20Indo%20Teknik,%20saya%20ingin%20menanyakan%20perkembangan%20Work%20Order%20${workOrder.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[10px] sm:text-xs uppercase tracking-wider py-3.5 rounded-xl transition-all duration-300 shadow-lg shadow-emerald-600/10 flex items-center justify-center gap-1.5 hover:scale-[1.01] cursor-pointer"
-                >
-                  <PhoneCall className="w-3.5 h-3.5" /> Hubungi SA via WhatsApp
-                </a>
+                {(() => {
+                  const waMessage = `Halo Service Advisor Indo Teknik, saya ingin menanyakan mengenai Work Order saya:\n\n- No. WO: ${workOrder.id}\n- Nama Pelanggan: ${workOrder.customerName}\n- No. HP Pelanggan: ${workOrder.customerPhone || '-'}\n- Kendaraan/Komponen: ${workOrder.dropMethod === 'PARTS' ? 'Hanya Komponen (Parts)' : `${workOrder.vehicleBrand || '-'} (${workOrder.plateNumber || '-'})`}\n\nMohon informasi/update pengerjaan untuk unit saya tersebut. Terima kasih!`;
+                  const waUrl = `https://wa.me/628117531881?text=${encodeURIComponent(waMessage)}`;
+                  return (
+                    <a
+                      href={waUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[10px] sm:text-xs uppercase tracking-wider py-3.5 rounded-xl transition-all duration-300 shadow-lg shadow-emerald-600/10 flex items-center justify-center gap-1.5 hover:scale-[1.01] cursor-pointer"
+                    >
+                      <PhoneCall className="w-3.5 h-3.5" /> Hubungi SA via WhatsApp
+                    </a>
+                  );
+                })()}
               </div>
             </div>
 
@@ -516,138 +522,6 @@ const PublicTrackingView: React.FC<PublicTrackingViewProps> = ({ initialWoId = '
               </div>
             )}
 
-            {/* Lab Test Bench Calibration Reports */}
-            <div className="bg-white/[0.02] border border-white/5 rounded-xl sm:rounded-2xl p-4 sm:p-5 shadow-xl space-y-3.5 sm:space-y-4 backdrop-blur-md">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-white/5 pb-2.5 sm:pb-3">
-                <h3 className="text-[10px] sm:text-xs font-display font-black text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-                  <Gauge className="w-4 h-4 text-blue-400" />
-                  Laporan Pengujian Diesel Test Bench
-                </h3>
-                <span className="text-[7px] sm:text-[8px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded font-mono font-bold uppercase tracking-widest w-fit">
-                  Akurasi Kalibrasi Lab
-                </span>
-              </div>
-
-              {workOrder.calibrationData ? (
-                <div className="space-y-3.5 sm:space-y-4">
-                  {/* Mobile Friendly Component Comparison List (Visible on small screens) */}
-                  <div className="block md:hidden space-y-2.5">
-                    {[
-                      {
-                        title: 'Volume Semprotan (Spray Volume)',
-                        desc: 'Kapasitas pengabutan & debit injeksi bahan bakar',
-                        sebelum: workOrder.calibrationData.volumeSemprotan?.sebelum || '-',
-                        sesudah: workOrder.calibrationData.volumeSemprotan?.sesudah || '-'
-                      },
-                      {
-                        title: 'Debit Backleak (Backleak Flow)',
-                        desc: 'Pencegahan slip tekanan balik saluran injector',
-                        sebelum: workOrder.calibrationData.debitBackleak?.sebelum || '-',
-                        sesudah: workOrder.calibrationData.debitBackleak?.sesudah || '-'
-                      },
-                      {
-                        title: 'Tekanan Pembukaan (Opening Pressure)',
-                        desc: 'Batas ambang bar semprot nozzle utama',
-                        sebelum: workOrder.calibrationData.tekanan?.sebelum || '-',
-                        sesudah: workOrder.calibrationData.tekanan?.sesudah || '-'
-                      }
-                    ].map((item, index) => (
-                      <div key={index} className="bg-black/20 border border-white/5 p-3 rounded-lg flex flex-col gap-2">
-                        <div>
-                          <span className="font-bold text-slate-200 text-xs block">{item.title}</span>
-                          <span className="text-[9px] text-slate-500 mt-0.5 block">{item.desc}</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 border-t border-white/5 pt-2 mt-1">
-                          <div className="bg-rose-500/[0.04] border border-rose-500/10 p-2 rounded text-center">
-                            <span className="text-[8px] text-rose-400 font-bold block uppercase tracking-wider">Sebelum (Before)</span>
-                            <span className="text-xs font-mono font-black text-rose-400 mt-0.5 block">{item.sebelum}</span>
-                          </div>
-                          <div className="bg-emerald-500/[0.04] border border-emerald-500/10 p-2 rounded text-center">
-                            <span className="text-[8px] text-emerald-400 font-bold block uppercase tracking-wider">Sesudah (After)</span>
-                            <span className="text-xs font-mono font-black text-emerald-400 mt-0.5 block">{item.sesudah}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Desktop Responsive Table View (Visible on tablet up) */}
-                  <div className="hidden md:block overflow-x-auto border border-white/5 rounded-xl bg-black/20">
-                    <table className="w-full border-collapse text-left text-xs">
-                      <thead className="bg-[#0b101c] text-slate-400 border-b border-white/5 font-mono font-bold uppercase tracking-wider">
-                        <tr>
-                          <th className="p-3">Parameter Pengujian Laboratorium</th>
-                          <th className="p-3 text-center w-36">Sebelum (Before)</th>
-                          <th className="p-3 text-center w-12"></th>
-                          <th className="p-3 text-center w-36">Sesudah (After)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/5 text-slate-300">
-                        <tr className="hover:bg-white/[0.01] transition-colors">
-                          <td className="p-3">
-                            <span className="font-semibold block text-slate-200">Volume Semprotan (Spray Volume)</span>
-                            <span className="text-[9px] text-slate-500">Kapasitas pengabutan & debit injeksi bahan bakar</span>
-                          </td>
-                          <td className="p-3 text-center font-mono font-bold text-rose-400 bg-rose-500/[0.03]">
-                            {workOrder.calibrationData.volumeSemprotan?.sebelum || '-'}
-                          </td>
-                          <td className="p-3 text-center text-slate-500">
-                            <ChevronRight className="w-4 h-4 mx-auto text-slate-600" />
-                          </td>
-                          <td className="p-3 text-center font-mono font-bold text-emerald-400 bg-emerald-500/[0.03]">
-                            {workOrder.calibrationData.volumeSemprotan?.sesudah || '-'}
-                          </td>
-                        </tr>
-                        <tr className="hover:bg-white/[0.01] transition-colors">
-                          <td className="p-3">
-                            <span className="font-semibold block text-slate-200">Debit Backleak (Backleak Flow)</span>
-                            <span className="text-[9px] text-slate-500">Pencegahan slip tekanan balik saluran injector</span>
-                          </td>
-                          <td className="p-3 text-center font-mono font-bold text-rose-400 bg-rose-500/[0.03]">
-                            {workOrder.calibrationData.debitBackleak?.sebelum || '-'}
-                          </td>
-                          <td className="p-3 text-center text-slate-500">
-                            <ChevronRight className="w-4 h-4 mx-auto text-slate-600" />
-                          </td>
-                          <td className="p-3 text-center font-mono font-bold text-emerald-400 bg-emerald-500/[0.03]">
-                            {workOrder.calibrationData.debitBackleak?.sesudah || '-'}
-                          </td>
-                        </tr>
-                        <tr className="hover:bg-white/[0.01] transition-colors">
-                          <td className="p-3">
-                            <span className="font-semibold block text-slate-200">Tekanan Pembukaan (Opening Pressure)</span>
-                            <span className="text-[9px] text-slate-500">Batas ambang bar semprot nozzle utama</span>
-                          </td>
-                          <td className="p-3 text-center font-mono font-bold text-rose-400 bg-rose-500/[0.03]">
-                            {workOrder.calibrationData.tekanan?.sebelum || '-'}
-                          </td>
-                          <td className="p-3 text-center text-slate-500">
-                            <ChevronRight className="w-4 h-4 mx-auto text-slate-600" />
-                          </td>
-                          <td className="p-3 text-center font-mono font-bold text-emerald-400 bg-emerald-500/[0.03]">
-                            {workOrder.calibrationData.tekanan?.sesudah || '-'}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className="p-2.5 sm:p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-xl flex items-center gap-2 text-[8px] sm:text-[10px] text-emerald-300">
-                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-                    Seluruh parameter kalibrasi diuji menggunakan standar pabrikan resmi untuk memastikan performa bahan bakar kembali optimal.
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-6 sm:py-8 bg-black/20 border border-white/5 rounded-xl">
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/[0.02] flex items-center justify-center mx-auto mb-2.5">
-                    <Clock className="w-4.5 h-4.5 text-slate-500" />
-                  </div>
-                  <h4 className="text-[10px] sm:text-xs font-bold text-slate-300">Hasil Uji Kalibrasi Belum Dirilis</h4>
-                  <p className="text-[8px] sm:text-[10px] text-slate-500 mt-1 max-w-[240px] sm:max-w-xs mx-auto leading-relaxed">
-                    Data kalibrasi awal (Before) dan kalibrasi final (After) akan otomatis tampil setelah unit diuji pada Test Bench laboratorium kami.
-                  </p>
-                </div>
-              )}
-            </div>
 
             {/* Action Plans / Todo List */}
             {workOrder.todoActions && workOrder.todoActions.length > 0 && (

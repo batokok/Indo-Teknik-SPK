@@ -78,6 +78,7 @@ const PublicTrackingView: React.FC<PublicTrackingViewProps> = ({ initialWoId = '
   };
 
   const getMilestoneIndex = (wo: WorkOrder) => {
+    if (wo.isHandoverConfirmed) return 7; // All milestones completed!
     if (!wo.currentMilestone) {
       // Automatic fallback based on workOrder.status
       if (wo.status === 'COMPLETED') return 6; // Ready
@@ -287,8 +288,15 @@ const PublicTrackingView: React.FC<PublicTrackingViewProps> = ({ initialWoId = '
                     stepBg = 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]';
                     textColor = 'text-slate-200 font-semibold';
                   } else if (isActive) {
-                    stepBg = 'bg-blue-500/20 border-blue-400 text-blue-300 ring-4 ring-blue-500/10 shadow-[0_0_20px_rgba(59,130,246,0.25)]';
-                    textColor = 'text-white font-black';
+                    if (idx === 6) {
+                      // It's the final stage (Selesai & Siap Diserahkan) and waiting for handover.
+                      // Show as glowing ready emerald theme!
+                      stepBg = 'bg-emerald-500/20 border-emerald-400 text-emerald-300 ring-4 ring-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.25)] animate-pulse';
+                      textColor = 'text-emerald-300 font-black';
+                    } else {
+                      stepBg = 'bg-blue-500/20 border-blue-400 text-blue-300 ring-4 ring-blue-500/10 shadow-[0_0_20px_rgba(59,130,246,0.25)]';
+                      textColor = 'text-white font-black';
+                    }
                   }
 
                   return (
@@ -303,7 +311,11 @@ const PublicTrackingView: React.FC<PublicTrackingViewProps> = ({ initialWoId = '
                         {isCompleted ? (
                           <Check className="w-3 h-3 sm:w-5 sm:h-5 text-emerald-400" />
                         ) : isActive ? (
-                          <Compass className="w-3 h-3 sm:w-5 sm:h-5 animate-spin text-blue-400" />
+                          idx === 6 ? (
+                            <CheckCircle2 className="w-3 h-3 sm:w-5 sm:h-5 text-emerald-400 animate-pulse" />
+                          ) : (
+                            <Compass className="w-3 h-3 sm:w-5 sm:h-5 animate-spin text-blue-400" />
+                          )
                         ) : (
                           <span className="text-[8px] sm:text-[10px] font-mono font-bold text-slate-500">{idx + 1}</span>
                         )}
@@ -315,18 +327,26 @@ const PublicTrackingView: React.FC<PublicTrackingViewProps> = ({ initialWoId = '
                             {step.label}
                           </h4>
                           {isActive && (
-                            <span className="text-[7px] sm:text-[8px] font-mono font-bold text-blue-400 uppercase tracking-widest bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20 w-fit">
-                              Dalam Proses
+                            <span className={`text-[7px] sm:text-[8px] font-mono font-bold uppercase tracking-widest px-1.5 py-0.5 rounded w-fit border ${
+                              idx === 6 
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
+                                : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                            }`}>
+                              {idx === 6 ? 'Siap Diambil' : 'Dalam Proses'}
                             </span>
                           )}
                           {isCompleted && (
                             <span className="text-[7px] sm:text-[8px] font-mono font-bold text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/10 w-fit">
-                              Selesai
+                              {idx === 6 ? 'Sudah Serah Terima' : 'Selesai'}
                             </span>
                           )}
                         </div>
                         <p className="text-[9px] sm:text-[11px] text-slate-400 mt-1 leading-relaxed font-sans font-light">
-                          {step.desc}
+                          {idx === 6 && isCompleted 
+                            ? 'Unit/komponen telah sukses diserahkan kembali ke pelanggan' 
+                            : idx === 6 && isActive 
+                              ? 'Pekerjaan selesai 100%! Unit/komponen Anda sudah siap untuk diambil atau dikirim.'
+                              : step.desc}
                         </p>
                       </div>
                     </motion.div>

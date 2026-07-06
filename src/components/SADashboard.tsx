@@ -605,8 +605,11 @@ const SADashboard: React.FC = () => {
                 if (wo.status === 'COMPLETED') {
                   if (wo.isArchived) return false;
 
+                  // If handover is not yet confirmed, we must show it in the active list so SA can confirm handover!
+                  if (!wo.isHandoverConfirmed) return true;
+
                   try {
-                    const dStr = wo.intakeDate || wo.createdAt;
+                    const dStr = wo.handoverDate || wo.intakeDate || wo.createdAt;
                     if (dStr) {
                       const d = new Date(dStr);
                       const today = new Date();
@@ -736,10 +739,24 @@ const SADashboard: React.FC = () => {
                                   {wo.status === 'COMPLETED' && !wo.isHandoverConfirmed ? (
                                     <button
                                       type="button"
-                                      onClick={() => updateWorkOrder(wo.id, { 
-                                        isHandoverConfirmed: true, 
-                                        handoverDate: new Date().toISOString() 
-                                      })}
+                                      onClick={() => {
+                                        const hasMilestone = (wo.milestoneHistory || []).some(h => h.milestone === 'Selesai & Siap Diserahkan');
+                                        const newHistory = hasMilestone ? (wo.milestoneHistory || []) : [
+                                          ...(wo.milestoneHistory || []),
+                                          {
+                                            milestone: 'Selesai & Siap Diserahkan',
+                                            timestamp: new Date().toISOString(),
+                                            updatedBy: 'Service Advisor'
+                                          }
+                                        ];
+                                        updateWorkOrder(wo.id, { 
+                                          isHandoverConfirmed: true, 
+                                          handoverDate: new Date().toISOString(),
+                                          status: 'COMPLETED',
+                                          currentMilestone: 'Selesai & Siap Diserahkan',
+                                          milestoneHistory: newHistory
+                                        });
+                                      }}
                                       className="w-full px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1 shadow-md cursor-pointer animate-pulse"
                                     >
                                       <Check className="w-3 h-3" />
@@ -870,10 +887,24 @@ const SADashboard: React.FC = () => {
                           {wo.status === 'COMPLETED' && !wo.isHandoverConfirmed && (
                             <button
                               type="button"
-                              onClick={() => updateWorkOrder(wo.id, { 
-                                isHandoverConfirmed: true, 
-                                handoverDate: new Date().toISOString() 
-                              })}
+                              onClick={() => {
+                                const hasMilestone = (wo.milestoneHistory || []).some(h => h.milestone === 'Selesai & Siap Diserahkan');
+                                const newHistory = hasMilestone ? (wo.milestoneHistory || []) : [
+                                  ...(wo.milestoneHistory || []),
+                                  {
+                                    milestone: 'Selesai & Siap Diserahkan',
+                                    timestamp: new Date().toISOString(),
+                                    updatedBy: 'Service Advisor'
+                                  }
+                                ];
+                                updateWorkOrder(wo.id, { 
+                                  isHandoverConfirmed: true, 
+                                  handoverDate: new Date().toISOString(),
+                                  status: 'COMPLETED',
+                                  currentMilestone: 'Selesai & Siap Diserahkan',
+                                  milestoneHistory: newHistory
+                                });
+                              }}
                               className="w-full py-2 mb-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer animate-pulse"
                             >
                               <Check className="w-3.5 h-3.5" />

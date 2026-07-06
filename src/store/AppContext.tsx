@@ -831,9 +831,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const docRef = doc(db, 'workOrders', id);
       const currentData = workOrders.find(w => w.id === id);
       const status = updates.status !== undefined ? updates.status : (currentData?.status || 'QUEUE');
+      
+      // Do NOT automatically archive completed WOs unless they are handed over AND explicitly archived
       const isArchived = updates.isArchived !== undefined 
         ? updates.isArchived 
-        : (status === 'COMPLETED' ? true : (currentData?.isArchived || false));
+        : (currentData?.isArchived || false);
 
       // Clean undefined values from updates to prevent Firestore validation failures
       const cleanUpdates: any = {};
@@ -843,6 +845,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           cleanUpdates[key] = val;
         }
       });
+
+      // If status is updated to COMPLETED, ensure milestone is synchronized
+      if (status === 'COMPLETED' && currentData) {
+        if (currentData.currentMilestone !== 'Selesai & Siap Diserahkan' && !cleanUpdates.currentMilestone) {
+          cleanUpdates.currentMilestone = 'Selesai & Siap Diserahkan';
+          
+          const hasMilestone = (currentData.milestoneHistory || []).some(h => h.milestone === 'Selesai & Siap Diserahkan');
+          if (!hasMilestone) {
+            cleanUpdates.milestoneHistory = [
+              ...(currentData.milestoneHistory || []),
+              {
+                milestone: 'Selesai & Siap Diserahkan',
+                timestamp: new Date().toISOString(),
+                updatedBy: 'Sistem'
+              }
+            ];
+          }
+        }
+      }
 
       await updateDoc(docRef, { ...cleanUpdates, isArchived });
     } catch (err) {

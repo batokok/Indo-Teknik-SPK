@@ -3,7 +3,7 @@
   "appId": "1:1011843468370:web:b6ca879290845ac20c238b",
   "apiKey": "AIzaSyCOw7iE5wHT_pS2F_BL4ED0wTiTGCiehVM",
   "authDomain": "it-erp-app.firebaseapp.com",
-  "firestoreDatabaseId": "",
+  "firestoreDatabaseId": "(default)",
   "storageBucket": "it-erp-app.firebasestorage.app",
   "messagingSenderId": "1011843468370",
   "measurementId": "G-H8DS8CQ489"

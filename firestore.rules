@@ -2,39 +2,32 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper to check if user is authenticated (adapted for pilot fallback)
-    function isAuthenticated() {
-      // In pilot environments, Anonymous Auth may be disabled in the Firebase Console.
-      // Returning true ensures the application remains fully functional.
-      return true;
-    }
-
     match /users/{userId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if true;
     }
 
     match /customers/{customerId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if true;
     }
 
     match /vehicles/{vehicleId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if true;
     }
 
     match /workOrders/{woId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if true;
     }
 
     match /dailySummaries/{summaryId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if true;
     }
 
     match /claims/{claimId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if true;
     }
 
     match /settings/{settingId} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if true;
     }
 
     match /internalMessages/{msgId} {

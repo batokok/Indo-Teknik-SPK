@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../store/AppContext';
 import { User, Claim, WorkOrder } from '../types';
 import { 
@@ -23,14 +23,31 @@ import {
   Clock,
   PieChart,
   MapPin,
-  Navigation
+  Navigation,
+  Globe,
+  Link
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
-  const { users, addUser, updateUser, deleteUser, isLoading, workOrders, claims } = useApp();
+  const { 
+    users, addUser, updateUser, deleteUser, isLoading, workOrders, claims,
+    trackingBaseUrl, updateTrackingBaseUrl, addNotification 
+  } = useApp();
   
   // Dashboard Sub-tabs
   const [adminTab, setAdminTab] = useState<'PERFORMANCE' | 'USERS'>('PERFORMANCE');
+
+  // Tracking URL state
+  const [tempTrackingUrl, setTempTrackingUrl] = useState('');
+  const [isSavingUrl, setIsSavingUrl] = useState(false);
+  const [urlSaveSuccess, setUrlSaveSuccess] = useState(false);
+  const [urlSaveError, setUrlSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (trackingBaseUrl) {
+      setTempTrackingUrl(trackingBaseUrl);
+    }
+  }, [trackingBaseUrl]);
 
   // User CRUD state
   const [showAddForm, setShowAddForm] = useState(false);
@@ -66,7 +83,7 @@ export const AdminDashboard: React.FC = () => {
   const getAdminLocation = () => {
     setGeoLocatingAdmin(true);
     if (!navigator.geolocation) {
-      alert("Browser Anda tidak mendukung Geolocation HTML5.");
+      addNotification("Dukungan GPS Hilang", "Browser Anda tidak mendukung Geolocation HTML5.", "warning");
       setGeoLocatingAdmin(false);
       return;
     }
@@ -79,7 +96,7 @@ export const AdminDashboard: React.FC = () => {
       },
       (error) => {
         console.error("Gagal mendeteksi lokasi admin:", error);
-        alert(`Gagal mengambil GPS: ${error.message || 'Izin ditolak atau sinyal hilang'}`);
+        addNotification("GPS Gagal", `Gagal mengambil koordinat GPS: ${error.message || 'Izin ditolak'}`, "error");
         setGeoLocatingAdmin(false);
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -339,9 +356,11 @@ export const AdminDashboard: React.FC = () => {
 
   const handleToggleStatus = async (user: User) => {
     try {
-      await updateUser(user.id, { status: user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE' });
+      const nextStatus = user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
+      await updateUser(user.id, { status: nextStatus });
+      addNotification("Status Diperbarui", `Staf "${user.name}" sekarang berstatus ${nextStatus}.`, "info");
     } catch (err: any) {
-      alert(err?.message || "Failed to update user status!");
+      addNotification("Gagal Ubah Status", err?.message || "Gagal mengubah status aktif staf.", "error");
     }
   };
 
@@ -349,8 +368,9 @@ export const AdminDashboard: React.FC = () => {
     if (confirm("Are you sure you want to delete this user?")) {
       try {
         await deleteUser(id);
+        addNotification("Staf Dihapus", "Data akun staf berhasil dihapus dari sistem.", "info");
       } catch (err: any) {
-        alert(err?.message || "Failed to delete user!");
+        addNotification("Gagal Hapus Staf", err?.message || "Gagal menghapus data staf.", "error");
       }
     }
   };
@@ -700,6 +720,70 @@ export const AdminDashboard: React.FC = () => {
               <UserPlus className="w-4 h-4" />
               Tambah Personil Baru
             </button>
+          </div>
+
+          {/* Custom Tracking Domain Setting Panel */}
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50/50 p-5 rounded-xl border border-blue-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-1.5 max-w-2xl">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-blue-600 rounded-lg text-white">
+                  <Globe className="w-4 h-4" />
+                </div>
+                <h3 className="text-xs font-black text-[#1e3a8a] uppercase tracking-wider">DOMAIN / URL PELACAKAN KUSTOM (E-TRACKING)</h3>
+              </div>
+              <p className="text-[11px] text-slate-600 font-medium leading-relaxed">
+                Tentukan domain atau URL dasar untuk link pelacakan konsumen. QR Code pada lembar SPK &amp; Work Order akan otomatis mengarah ke domain ini. Jika dikosongkan, sistem akan otomatis menggunakan alamat default produksi (<span className="font-semibold text-[#1e3a8a]">https://it-erp-app.web.app</span>).
+              </p>
+              {urlSaveSuccess && (
+                <p className="text-[10px] text-emerald-600 font-extrabold flex items-center gap-1 animate-in fade-in">
+                  ✓ Berhasil menyimpan domain kustom! Semua QR Code baru akan diarahkan ke link di bawah ini.
+                </p>
+              )}
+              {urlSaveError && (
+                <p className="text-[10px] text-red-600 font-extrabold flex items-center gap-1 animate-in fade-in">
+                  ⚠️ {urlSaveError}
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
+              <div className="relative flex-1 md:w-80">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                  <Link className="w-3.5 h-3.5" />
+                </span>
+                <input
+                  type="url"
+                  placeholder="Contoh: https://it-web-arp.com"
+                  className="w-full border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-xs font-bold outline-none bg-white focus:border-blue-500 shadow-xs"
+                  value={tempTrackingUrl}
+                  onChange={(e) => {
+                    setTempTrackingUrl(e.target.value);
+                    setUrlSaveSuccess(false);
+                    setUrlSaveError(null);
+                  }}
+                />
+              </div>
+              <button
+                type="button"
+                disabled={isSavingUrl}
+                onClick={async () => {
+                  setIsSavingUrl(true);
+                  setUrlSaveSuccess(false);
+                  setUrlSaveError(null);
+                  try {
+                    await updateTrackingBaseUrl(tempTrackingUrl);
+                    setUrlSaveSuccess(true);
+                  } catch (err: any) {
+                    setUrlSaveError(err.message || 'Gagal menyimpan URL');
+                  } finally {
+                    setIsSavingUrl(false);
+                  }
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-sm disabled:opacity-50"
+              >
+                {isSavingUrl ? 'Menyimpan...' : 'Simpan'}
+              </button>
+            </div>
           </div>
 
           {showAddForm && (

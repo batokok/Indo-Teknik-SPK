@@ -62,26 +62,26 @@ const ForemanDashboard: React.FC = () => {
   const getPriorityBadge = (priority: number) => {
     switch (priority) {
       case 1:
-        return <span className="px-2 py-0.5 bg-red-100 text-red-800 text-[9px] font-black rounded border border-red-200">P1: DARURAT</span>;
+        return <span className="px-2 py-0.5 bg-red-100 text-red-800 text-[9px] font-black rounded border border-red-200 whitespace-nowrap inline-block">P1: DARURAT</span>;
       case 2:
-        return <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-[9px] font-black rounded border border-yellow-200">P2: JANJI TEMU</span>;
+        return <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 text-[9px] font-black rounded border border-yellow-200 whitespace-nowrap inline-block">P2: JANJI TEMU</span>;
       default:
-        return <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-[9px] font-black rounded border border-blue-200">P3: REGULER</span>;
+        return <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-[9px] font-black rounded border border-blue-200 whitespace-nowrap inline-block">P3: REGULER</span>;
     }
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'QUEUE':
-        return <span className="px-2 py-0.5 bg-slate-100 text-slate-800 text-[9px] rounded font-bold border border-slate-200">Menunggu</span>;
+        return <span className="px-2 py-0.5 bg-slate-100 text-slate-800 text-[9px] rounded font-bold border border-slate-200 whitespace-nowrap inline-block">Menunggu</span>;
       case 'IN_PROGRESS':
-        return <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-[9px] rounded font-bold border border-blue-200 animate-pulse">Sedang Kerja</span>;
+        return <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-[9px] rounded font-bold border border-blue-200 animate-pulse whitespace-nowrap inline-block">Sedang Kerja</span>;
       case 'PENDING_APPROVAL':
-        return <span className="px-2 py-0.5 bg-red-100 text-red-800 text-[9px] rounded font-bold border border-red-200">Butuh Persetujuan</span>;
+        return <span className="px-2 py-0.5 bg-red-100 text-red-800 text-[9px] rounded font-bold border border-red-200 whitespace-nowrap inline-block">Butuh Persetujuan</span>;
       case 'PENDING_PARTS':
-        return <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-[9px] rounded font-bold border border-amber-200">Tertunda Parts</span>;
+        return <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-[9px] rounded font-bold border border-amber-200 whitespace-nowrap inline-block">Tertunda Parts</span>;
       default:
-        return <span className="px-2 py-0.5 bg-slate-100 text-slate-800 text-[9px] rounded font-bold border border-slate-200">{status}</span>;
+        return <span className="px-2 py-0.5 bg-slate-100 text-slate-800 text-[9px] rounded font-bold border border-slate-200 whitespace-nowrap inline-block">{status}</span>;
     }
   };
 

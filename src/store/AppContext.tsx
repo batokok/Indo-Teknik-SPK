@@ -173,6 +173,8 @@ interface AppContextType {
   addClaim: (claim: Omit<Claim, 'id' | 'createdAt'>) => Promise<Claim>;
   updateClaim: (id: string, updates: Partial<Claim>) => Promise<void>;
   deleteClaim: (id: string) => Promise<void>;
+  trackingBaseUrl: string;
+  updateTrackingBaseUrl: (url: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -198,6 +200,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [printType, setPrintType] = useState<'SPK' | 'HANDOVER'>('SPK');
   const [isLoading, setIsLoading] = useState(true);
   const [isFirebaseAuthed, setIsFirebaseAuthed] = useState(false);
+  const [trackingBaseUrl, setTrackingBaseUrl] = useState<string>(() => {
+    return localStorage.getItem('itech_erp_tracking_base_url') || '';
+  });
 
   const [notifications, setNotifications] = useState<AppNotification[]>(() => {
     const stored = localStorage.getItem('itech_erp_notifications');
@@ -302,6 +307,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let unsubVehicles: (() => void) | null = null;
     let unsubWO: (() => void) | null = null;
     let unsubClaims: (() => void) | null = null;
+    let unsubSettings: (() => void) | null = null;
 
     let usersLoaded = false;
     let workOrdersLoaded = false;
@@ -314,6 +320,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsLoading(false);
       }
     };
+
+    // Subscribe to global settings
+    unsubSettings = onSnapshot(doc(db, 'settings', 'global'), (docSnap) => {
+      if (docSnap.exists()) {
+        const url = docSnap.data().trackingBaseUrl || '';
+        setTrackingBaseUrl(url);
+        localStorage.setItem('itech_erp_tracking_base_url', url);
+      }
+    }, (error) => {
+      console.warn("Settings listen error, using local fallback:", error);
+    });
 
     // Setup Firestore listeners unconditionally
     unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
@@ -482,6 +499,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (unsubVehicles) (unsubVehicles as () => void)();
       if (unsubWO) (unsubWO as () => void)();
       if (unsubClaims) (unsubClaims as () => void)();
+      if (unsubSettings) (unsubSettings as () => void)();
     };
   }, []);
 
@@ -919,6 +937,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const updateTrackingBaseUrl = async (url: string) => {
+    try {
+      const cleanUrl = url.trim().replace(/\/+$/, ''); // Strip trailing slashes
+      setTrackingBaseUrl(cleanUrl);
+      localStorage.setItem('itech_erp_tracking_base_url', cleanUrl);
+      await setDoc(doc(db, 'settings', 'global'), { trackingBaseUrl: cleanUrl }, { merge: true });
+    } catch (err: any) {
+      console.error("Failed to save custom tracking URL:", err);
+      throw new Error(`Failed to save tracking URL: ${err.message || err}`);
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -931,6 +961,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isLoading, createSuperAdmin, bypassLogin, clearAllUsers, resetUserPassword,
         triggerDailySummaryManual,
         claims, addClaim, updateClaim, deleteClaim,
+        trackingBaseUrl, updateTrackingBaseUrl,
       }}
     >
       {children}

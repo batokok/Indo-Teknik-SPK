@@ -109,7 +109,7 @@ export const RoleOnboardingTutorial: React.FC = () => {
           },
           {
             title: "Database Spesifikasi Pompa",
-            description: "Gunakan panel spesifikasi di sini. Masukkan nomor seri (P/N) Bosch/Denso untuk menampilkan standar tekanan bar, toleransi volume, dan backleak.",
+            description: "Gunakan panel spesifikasi di sini. Masukkan nomor seri (P/N) ITech/Denso untuk menampilkan standar tekanan bar, toleransi volume, dan backleak.",
             icon: <Database className="w-8 h-8 text-amber-400" />,
             highlightText: "Standar Kalibrasi",
             selector: "#specs-db-panel"

@@ -84,7 +84,7 @@ const MainLayout: React.FC = () => {
       <div className="h-screen w-full bg-[#0f172a] flex items-center justify-center font-sans text-white">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white mx-auto"></div>
-          <p className="text-sm text-slate-400">Loading Indo Teknik ERP...</p>
+          <p className="text-sm text-slate-400">Loading Indo Teknik - ITech Authorized Dealer ERP...</p>
         </div>
       </div>
     );
@@ -570,7 +570,7 @@ const MainLayout: React.FC = () => {
               <Menu className="w-5 h-5" />
             </button>
             <div className="flex flex-col">
-              <span className="text-[10px] font-black text-blue-600 tracking-widest uppercase">Indo Teknik ERP Portal</span>
+              <span className="text-[10px] font-black text-blue-600 tracking-widest uppercase">Indo Teknik Pekanbaru • ITech Authorized Dealer</span>
               <h2 className="text-base md:text-xl font-extrabold text-slate-800 tracking-tight leading-none mt-1">
                 {getHeaderTitle()}
               </h2>
@@ -600,6 +600,23 @@ const MainLayout: React.FC = () => {
 
         {/* Main Content Area */}
         <div className="flex-1 overflow-y-auto relative bg-slate-50 pb-24 md:pb-6">
+          {/* Brand Announcement / Welcome Banner */}
+          <div className="mx-4 md:mx-6 mt-4 md:mt-6 p-4 bg-white border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs print:hidden">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                <Wrench className="w-5 h-5 text-[#1e3a8a]" />
+              </div>
+              <div>
+                <h4 className="text-sm font-black text-slate-800 uppercase tracking-wider">INDO TEKNIK PEKANBARU</h4>
+                <p className="text-[10px] text-slate-500 font-medium">Authorized Diesel Fuel Injection Specialist • ITech & Denso Partner</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 self-start sm:self-auto">
+              <SmartLogo baseName="logo-itech" alt="ITech" className="h-4 object-contain bg-white px-1.5 py-0.5 rounded shadow-3xs" />
+              <span className="text-[10px] font-black text-[#dc2626] tracking-widest uppercase">ITech Authorized Dealer</span>
+            </div>
+          </div>
+
           {currentView === 'ANALYTICS' && currentUser.role === 'ADMIN' ? (
             <div className="p-6">
               <ManagerAnalytics />

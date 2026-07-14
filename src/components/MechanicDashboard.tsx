@@ -2,15 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../store/AppContext';
 import { WorkOrder, Priority, PartLog, WOStatus, CalibrationData, CalibrationMetric } from '../types';
 import { Play, Pause, CheckCircle, AlertTriangle, Timer, Clock, Send, Lock, Wrench, ClipboardList, AlertCircle, Search, Compass, Check } from 'lucide-react';
+import { motion } from 'motion/react';
 import { GENERAL_TRACKING_MILESTONES } from './PublicTrackingView';
 
 const CALIBRATION_SPECS_DB = [
-  { p_n: '0445110305', brand: 'Bosch', name: 'Toyota Hilux / Fortuner 2KD-FTV', pressure: '1600 Bar / 160 MPa', volume: '52.5 ± 2.5 cc', backleak: 'Max 12.0 cc' },
-  { p_n: '0445110279', brand: 'Bosch', name: 'Hyundai H1 / Kia Sorento D4CB', pressure: '1600 Bar / 160 MPa', volume: '48.0 ± 2.0 cc', backleak: 'Max 10.5 cc' },
+  { p_n: '0445110305', brand: 'ITech', name: 'Toyota Hilux / Fortuner 2KD-FTV', pressure: '1600 Bar / 160 MPa', volume: '52.5 ± 2.5 cc', backleak: 'Max 12.0 cc' },
+  { p_n: '0445110279', brand: 'ITech', name: 'Hyundai H1 / Kia Sorento D4CB', pressure: '1600 Bar / 160 MPa', volume: '48.0 ± 2.0 cc', backleak: 'Max 10.5 cc' },
   { p_n: '295050-0180', brand: 'Denso', name: 'Mitsubishi Triton / Pajero Sport 4D56', pressure: '1800 Bar / 180 MPa', volume: '58.0 ± 3.0 cc', backleak: 'Max 15.0 cc' },
   { p_n: '295050-0520', brand: 'Denso', name: 'Toyota Innova / Fortuner 2GD-FTV', pressure: '2000 Bar / 200 MPa', volume: '45.0 ± 2.0 cc', backleak: 'Max 8.0 cc' },
   { p_n: 'EMBR00101D', brand: 'Delphi', name: 'Chevrolet Captiva 2.0 VCDi', pressure: '1600 Bar / 160 MPa', volume: '50.0 ± 2.5 cc', backleak: 'Max 11.0 cc' },
-  { p_n: '0445120059', brand: 'Bosch Truck', name: 'Cummins ISDe / Dongfeng', pressure: '1400 Bar / 140 MPa', volume: '72.0 ± 4.0 cc', backleak: 'Max 18.0 cc' },
+  { p_n: '0445120059', brand: 'ITech Truck', name: 'Cummins ISDe / Dongfeng', pressure: '1400 Bar / 140 MPa', volume: '72.0 ± 4.0 cc', backleak: 'Max 18.0 cc' },
 ];
 
 const parseEstimasiToSeconds = (estimasi: string): number => {
@@ -101,6 +102,33 @@ const MechanicDashboard: React.FC = () => {
   const [findings, setFindings] = useState('');
   const [notes, setNotes] = useState('');
 
+  // Precision Shim Calculator States
+  const [targetFlow, setTargetFlow] = useState<string>('52.5');
+  const [measuredFlow, setMeasuredFlow] = useState<string>('');
+  const [currentShim, setCurrentShim] = useState<string>('1.250');
+  const [calculatedShim, setCalculatedShim] = useState<number | null>(null);
+  const [shimAdjustment, setShimAdjustment] = useState<number | null>(null);
+
+  const calculateShimAdjustment = () => {
+    const target = parseFloat(targetFlow);
+    const measured = parseFloat(measuredFlow);
+    const current = parseFloat(currentShim);
+    if (isNaN(target) || isNaN(measured) || isNaN(current)) {
+      setShimAdjustment(null);
+      setCalculatedShim(null);
+      return;
+    }
+
+    // Shimming physics formula:
+    // positive diff means over-fueling, requires thicker shim
+    const diff = measured - target;
+    const adjustment = diff * (0.01 / 1.2); 
+    const newShim = current + adjustment;
+
+    setShimAdjustment(parseFloat(adjustment.toFixed(4)));
+    setCalculatedShim(parseFloat(newShim.toFixed(4)));
+  };
+
   // Transfer WO State
   const [transferModalOpen, setTransferModalOpen] = useState(false);
   const [transferNote, setTransferNote] = useState('');
@@ -178,26 +206,26 @@ const MechanicDashboard: React.FC = () => {
   const getPriorityBadge = (p: Priority) => {
     switch (p) {
       case 1:
-        return <span className="px-2 py-1 bg-red-100 text-red-800 text-[10px] font-black rounded border border-red-200">🔴 P1: DARURAT</span>;
+        return <span className="px-2 py-1 bg-red-100 text-red-800 text-[10px] font-black rounded border border-red-200 whitespace-nowrap inline-block">🔴 P1: DARURAT</span>;
       case 2:
-        return <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-[10px] font-black rounded border border-yellow-200">🟡 P2: JANJI TEMU</span>;
+        return <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-[10px] font-black rounded border border-yellow-200 whitespace-nowrap inline-block">🟡 P2: JANJI TEMU</span>;
       case 3:
-        return <span className="px-2 py-1 bg-blue-100 text-blue-800 text-[10px] font-black rounded border border-blue-200">🔵 P3: REGULER</span>;
+        return <span className="px-2 py-1 bg-blue-100 text-blue-800 text-[10px] font-black rounded border border-blue-200 whitespace-nowrap inline-block">🔵 P3: REGULER</span>;
     }
   };
 
   const getStatusBadge = (status: WOStatus) => {
     switch (status) {
       case 'QUEUE':
-        return <span className="px-2 py-0.5 bg-slate-100 text-slate-800 text-[9px] rounded font-bold border border-slate-200">Antrean</span>;
+        return <span className="px-2 py-0.5 bg-slate-100 text-slate-800 text-[9px] rounded font-bold border border-slate-200 whitespace-nowrap inline-block">Antrean</span>;
       case 'IN_PROGRESS':
-        return <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-[9px] rounded font-bold border border-blue-200 animate-pulse">Sedang Kerja</span>;
+        return <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-[9px] rounded font-bold border border-blue-200 animate-pulse whitespace-nowrap inline-block">Sedang Kerja</span>;
       case 'PENDING_APPROVAL':
-        return <span className="px-2 py-0.5 bg-red-100 text-red-800 text-[9px] rounded font-bold border border-red-200 animate-pulse">Butuh Persetujuan</span>;
+        return <span className="px-2 py-0.5 bg-red-100 text-red-800 text-[9px] rounded font-bold border border-red-200 animate-pulse whitespace-nowrap inline-block">Butuh Persetujuan</span>;
       case 'PENDING_PARTS':
-        return <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-[9px] rounded font-bold border border-amber-200">Tertunda Parts</span>;
+        return <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-[9px] rounded font-bold border border-amber-200 whitespace-nowrap inline-block">Tertunda Parts</span>;
       case 'COMPLETED':
-        return <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[9px] rounded font-bold border border-emerald-200">Siap QC</span>;
+        return <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[9px] rounded font-bold border border-emerald-200 whitespace-nowrap inline-block">Siap QC</span>;
       default:
         return null;
     }
@@ -286,7 +314,7 @@ const MechanicDashboard: React.FC = () => {
   const handleSaveHiddenDefect = () => {
     if (!activeWO) return;
     if (!defectText.trim()) {
-      alert('Mohon isi detail temuan kerusakan terlebih dahulu.');
+      showToast('Mohon isi detail temuan kerusakan terlebih dahulu.');
       return;
     }
 
@@ -354,7 +382,7 @@ const MechanicDashboard: React.FC = () => {
       const newLog = {
         milestone: newMilestone,
         timestamp: new Date().toISOString(),
-        updatedBy: currentUser?.name || 'Mekanik'
+        updatedBy: 'Tim Workshop'
       };
       const newHistory = [...updatedHistory, newLog];
 
@@ -376,7 +404,7 @@ const MechanicDashboard: React.FC = () => {
       const newLog = {
         milestone: newMilestone,
         timestamp: new Date().toISOString(),
-        updatedBy: currentUser?.name || 'Mekanik'
+        updatedBy: 'Tim Workshop'
       };
       const newHistory = [...updatedHistory, newLog];
 
@@ -492,7 +520,7 @@ const MechanicDashboard: React.FC = () => {
     e.preventDefault();
     if (!activeWO) return;
     if (!findings.trim()) {
-      alert('Mohon isi field Temuan / Suku Cadang terlebih dahulu.');
+      showToast('Mohon isi field Temuan / Suku Cadang terlebih dahulu.');
       return;
     }
 
@@ -858,28 +886,26 @@ const MechanicDashboard: React.FC = () => {
             {/* Active Workspace Form Container */}
             <div className="p-4 flex-1 overflow-y-auto">
 
-              {/* FIVE-STEP WIZARD STEPPER HEADER */}
+              {/* THREE-STEP WIZARD STEPPER HEADER */}
               <div className="mb-6 bg-slate-900 text-white rounded-xl p-4 shadow-lg border border-slate-700">
                 <div className="flex items-center justify-between flex-wrap gap-2 mb-4 border-b border-slate-800 pb-3">
                   <div>
                     <h3 className="text-xs font-black uppercase tracking-widest text-emerald-400">
-                      📋 PROSEDUR OPERASIONAL LABORATORIUM DIESEL
+                      📋 PROSEDUR OPERASIONAL BENGKEL & WORKSHOP
                     </h3>
-                    <p className="text-[10px] text-slate-400 mt-1">Selesaikan 5 langkah pengujian dan perbaikan komponen berikut.</p>
+                    <p className="text-[10px] text-slate-400 mt-1">Selesaikan 3 langkah verifikasi dan perbaikan komponen berikut.</p>
                   </div>
                   <div className="flex items-center gap-1.5 bg-emerald-950/40 text-emerald-400 border border-emerald-800 px-2.5 py-1 rounded-full text-[10px] font-bold">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    LANGKAH {activeStep} DARI 5
+                    LANGKAH {activeStep} DARI 3
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between gap-2 overflow-x-auto pb-2 custom-scrollbar">
                   {[
                     { step: 1, title: 'VERIFIKASI', subtitle: 'Intake Komponen', icon: '🔍' },
-                    { step: 2, title: 'TES AWAL', subtitle: 'Calibration Before', icon: '📊' },
-                    { step: 3, title: 'PERBAIKAN', subtitle: 'Rehaul & Action', icon: '🔧' },
-                    { step: 4, title: 'TES AKHIR', subtitle: 'Standard Spec', icon: '🚀' },
-                    { step: 5, title: 'REKONSILIASI', subtitle: 'Symptom & Finish', icon: '✅' },
+                    { step: 2, title: 'PERBAIKAN', subtitle: 'Rehaul & Action', icon: '🔧' },
+                    { step: 3, title: 'REKONSILIASI', subtitle: 'Symptom & Finish', icon: '✅' },
                   ].map((s) => {
                     const isCompleted = activeStep > s.step;
                     const isActive = activeStep === s.step;
@@ -944,7 +970,7 @@ const MechanicDashboard: React.FC = () => {
                               const newLog = {
                                 milestone: newMilestone,
                                 timestamp: new Date().toISOString(),
-                                updatedBy: currentUser?.name || 'Mekanik'
+                                updatedBy: 'Tim Workshop'
                               };
                               const newHistory = [...updatedHistory, newLog];
 
@@ -1065,128 +1091,14 @@ const MechanicDashboard: React.FC = () => {
                       type="button"
                       className="px-6 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-black uppercase rounded shadow-md flex items-center gap-2 transition-all cursor-pointer"
                     >
-                      Mulai Pengujian Tes Awal ➔
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 2: TES AWAL & KALIBRASI SEBELUM PERBAIKAN */}
-              {activeStep === 2 && (
-                <div className="space-y-6">
-                  {/* MODULE 1: Pencarian Spesifikasi Standard Komponen */}
-                  <div id="specs-db-panel" className="bg-[#0f172a] text-white border border-slate-700 rounded-lg p-4 shadow-md">
-                    <div className="flex justify-between items-center mb-3">
-                      <h3 className="text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2">
-                        <Search className="w-4 h-4" />
-                        PENCARIAN SPESIFIKASI STANDARD KOMPONEN
-                      </h3>
-                      <span className="text-[9px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
-                        Database Standar Lab
-                      </span>
-                    </div>
-                    
-                    <p className="text-[11px] text-slate-300 leading-relaxed mb-3">
-                      Masukkan Part Number (P/N) Bosch, Denso, atau Delphi untuk melihat standar tekanan pembukaan, debit semprotan, dan toleransi backleak.
-                    </p>
-
-                    <div className="relative mb-3">
-                      <input
-                        type="text"
-                        placeholder="Cari berdasarkan P/N (contoh: 0445110305) atau model mesin..."
-                        className="w-full bg-slate-900 border border-slate-700 rounded p-2.5 pl-9 text-xs text-white focus:outline-none focus:border-emerald-500"
-                        value={specsSearch}
-                        onChange={(e) => setSpecsSearch(e.target.value)}
-                      />
-                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                    </div>
-
-                    {specsSearch.trim() !== '' && (
-                      <div className="space-y-3 mt-2">
-                        {specsSearch.trim() !== '' && CALIBRATION_SPECS_DB.filter(s => 
-                          s.p_n.toLowerCase().includes(specsSearch.toLowerCase()) || 
-                          s.name.toLowerCase().includes(specsSearch.toLowerCase()) || 
-                          s.brand.toLowerCase().includes(specsSearch.toLowerCase())
-                        ).length === 0 ? (
-                          <p className="text-[11px] text-slate-400 italic">Tidak ditemukan spesifikasi yang cocok dengan kata kunci "{specsSearch}".</p>
-                        ) : (
-                          CALIBRATION_SPECS_DB.filter(s => 
-                            s.p_n.toLowerCase().includes(specsSearch.toLowerCase()) || 
-                            s.name.toLowerCase().includes(specsSearch.toLowerCase()) || 
-                            s.brand.toLowerCase().includes(specsSearch.toLowerCase())
-                          ).map((spec) => (
-                            <div key={spec.p_n} className="bg-slate-900 border border-slate-700 rounded p-3 text-xs">
-                              <div className="flex flex-col sm:flex-row justify-between items-start gap-2 border-b border-slate-700 pb-2 mb-2">
-                                <div>
-                                  <span className="font-mono font-black text-emerald-400 tracking-wider text-xs">{spec.p_n}</span>
-                                  <span className="ml-2 font-black text-white">{spec.brand}</span>
-                                </div>
-                                <span className="text-[10px] bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded font-bold border border-emerald-800">
-                                  {spec.name}
-                                </span>
-                              </div>
-                              
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center text-[11px]">
-                                <div className="bg-slate-850 p-2 rounded border border-slate-800">
-                                  <div className="text-slate-400 font-bold mb-0.5">Tekanan Pembukaan</div>
-                                  <div className="font-mono text-white font-black">{spec.pressure}</div>
-                                </div>
-                                <div className="bg-slate-850 p-2 rounded border border-slate-800">
-                                  <div className="text-slate-400 font-bold mb-0.5">Debit Semprotan</div>
-                                  <div className="font-mono text-white font-black">{spec.volume}</div>
-                                </div>
-                                <div className="bg-slate-850 p-2 rounded border border-slate-800">
-                                  <div className="text-slate-400 font-bold mb-0.5">Toleransi Backleak</div>
-                                  <div className="font-mono text-white font-black">{spec.backleak}</div>
-                                </div>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    )}
-
-                    {specsSearch.trim() === '' && (
-                      <div className="border-t border-slate-800 pt-3 mt-2">
-                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">Paling Sering Dicari:</div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {CALIBRATION_SPECS_DB.slice(0, 4).map((spec) => (
-                            <button
-                              key={spec.p_n}
-                              type="button"
-                              onClick={() => setSpecsSearch(spec.p_n)}
-                              className="text-[10px] bg-slate-900 hover:bg-slate-850 border border-slate-700 text-slate-300 font-mono px-2 py-1 rounded transition-colors"
-                            >
-                              {spec.p_n} ({spec.brand})
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Navigation Button Footer Step 2 */}
-                  <div className="mt-6 flex justify-between gap-3 border-t border-slate-200 pt-4">
-                    <button
-                      onClick={() => setActiveStep(1)}
-                      type="button"
-                      className="px-5 py-2.5 border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-black uppercase rounded transition-all cursor-pointer"
-                    >
-                      ⬅ Kembali
-                    </button>
-                    <button
-                      onClick={() => setActiveStep(3)}
-                      type="button"
-                      className="px-6 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-black uppercase rounded shadow-md flex items-center gap-2 transition-all cursor-pointer"
-                    >
                       Lanjutkan ke Perbaikan ➔
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* STEP 3: REHAUL, BONGKAR & LOG TINDAKAN PERBAIKAN */}
-              {activeStep === 3 && (
+              {/* STEP 2: REHAUL, BONGKAR & LOG TINDAKAN PERBAIKAN */}
+              {activeStep === 2 && (
                 <div className="space-y-6">
                   {/* Module 3: DAFTAR TINDAKAN & CHECKLIST */}
                   <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 shadow-sm">
@@ -1302,131 +1214,120 @@ const MechanicDashboard: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Navigation Button Footer Step 3 */}
-                  <div className="mt-6 flex justify-between gap-3 border-t border-slate-200 pt-4">
-                    <button
-                      onClick={() => setActiveStep(2)}
-                      type="button"
-                      className="px-5 py-2.5 border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-black uppercase rounded transition-all cursor-pointer"
-                    >
-                      ⬅ Kembali
-                    </button>
-                    <button
-                      onClick={() => setActiveStep(4)}
-                      type="button"
-                      className="px-6 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-black uppercase rounded shadow-md flex items-center gap-2 transition-all cursor-pointer"
-                    >
-                      Lanjutkan ke Tes Akhir ➔
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 4: TES AKHIR & KALIBRASI SESUDAH PERBAIKAN */}
-              {activeStep === 4 && (
-                <div className="space-y-6">
-                  {/* MODULE 1: Pencarian Spesifikasi Standard Komponen */}
-                  <div id="specs-db-panel" className="bg-[#0f172a] text-white border border-slate-700 rounded-lg p-4 shadow-md">
-                    <div className="flex justify-between items-center mb-3">
-                      <h3 className="text-xs font-black uppercase tracking-widest text-emerald-400 flex items-center gap-2">
-                        <Search className="w-4 h-4" />
-                        PENCARIAN SPESIFIKASI STANDARD KOMPONEN
-                      </h3>
-                      <span className="text-[9px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
-                        Database Standar Lab
-                      </span>
-                    </div>
-                    
-                    <p className="text-[11px] text-slate-300 leading-relaxed mb-3">
-                      Masukkan Part Number (P/N) Bosch, Denso, atau Delphi untuk melihat standar tekanan pembukaan, debit semprotan, dan toleransi backleak.
-                    </p>
-
-                    <div className="relative mb-3">
-                      <input
-                        type="text"
-                        placeholder="Cari berdasarkan P/N (contoh: 0445110305) atau model mesin..."
-                        className="w-full bg-slate-900 border border-slate-700 rounded p-2.5 pl-9 text-xs text-white focus:outline-none focus:border-emerald-500"
-                        value={specsSearch}
-                        onChange={(e) => setSpecsSearch(e.target.value)}
-                      />
-                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                    </div>
-
-                    {specsSearch.trim() !== '' && (
-                      <div className="space-y-3 mt-2">
-                        {specsSearch.trim() !== '' && CALIBRATION_SPECS_DB.filter(s => 
-                          s.p_n.toLowerCase().includes(specsSearch.toLowerCase()) || 
-                          s.name.toLowerCase().includes(specsSearch.toLowerCase()) || 
-                          s.brand.toLowerCase().includes(specsSearch.toLowerCase())
-                        ).length === 0 ? (
-                          <p className="text-[11px] text-slate-400 italic">Tidak ditemukan spesifikasi yang cocok dengan kata kunci "{specsSearch}".</p>
-                        ) : (
-                          CALIBRATION_SPECS_DB.filter(s => 
-                            s.p_n.toLowerCase().includes(specsSearch.toLowerCase()) || 
-                            s.name.toLowerCase().includes(specsSearch.toLowerCase()) || 
-                            s.brand.toLowerCase().includes(specsSearch.toLowerCase())
-                          ).map((spec) => (
-                            <div key={spec.p_n} className="bg-slate-900 border border-slate-700 rounded p-3 text-xs">
-                              <div className="flex flex-col sm:flex-row justify-between items-start gap-2 border-b border-slate-700 pb-2 mb-2">
-                                <div>
-                                  <span className="font-mono font-black text-emerald-400 tracking-wider text-xs">{spec.p_n}</span>
-                                  <span className="ml-2 font-black text-white">{spec.brand}</span>
-                                </div>
-                                <span className="text-[10px] bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded font-bold border border-emerald-800">
-                                  {spec.name}
-                                </span>
-                              </div>
-                              
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center text-[11px]">
-                                <div className="bg-slate-850 p-2 rounded border border-slate-800">
-                                  <div className="text-slate-400 font-bold mb-0.5">Tekanan Pembukaan</div>
-                                  <div className="font-mono text-white font-black">{spec.pressure}</div>
-                                </div>
-                                <div className="bg-slate-850 p-2 rounded border border-slate-800">
-                                  <div className="text-slate-400 font-bold mb-0.5">Debit Semprotan</div>
-                                  <div className="font-mono text-white font-black">{spec.volume}</div>
-                                </div>
-                                <div className="bg-slate-850 p-2 rounded border border-slate-800">
-                                  <div className="text-slate-400 font-bold mb-0.5">Toleransi Backleak</div>
-                                  <div className="font-mono text-white font-black">{spec.backleak}</div>
-                                </div>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    )}
-
-                    {specsSearch.trim() === '' && (
-                      <div className="border-t border-slate-800 pt-3 mt-2">
-                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">Paling Sering Dicari:</div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {CALIBRATION_SPECS_DB.slice(0, 4).map((spec) => (
-                            <button
-                              key={spec.p_n}
-                              type="button"
-                              onClick={() => setSpecsSearch(spec.p_n)}
-                              className="text-[10px] bg-slate-900 hover:bg-slate-850 border border-slate-700 text-slate-300 font-mono px-2 py-1 rounded transition-colors"
-                            >
-                              {spec.p_n} ({spec.brand})
-                            </button>
-                          ))}
+                  {/* ITech Precision Shim Adjustment Calculator */}
+                  <div className="bg-slate-900 text-white border border-slate-800 rounded-xl p-5 shadow-lg space-y-4">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                      <div className="flex items-center gap-2">
+                        <Wrench className="w-4 h-4 text-emerald-400" />
+                        <div>
+                          <h4 className="text-xs font-black uppercase tracking-wider text-slate-100">ITech Precision Shim Calculator</h4>
+                          <p className="text-[10px] text-slate-400 mt-0.5">Kalkulator ketebalan shim presisi untuk kalibrasi injektor common rail.</p>
                         </div>
                       </div>
+                      <span className="text-[9px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded-full uppercase">
+                        Lab Engine
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-[9px] font-mono uppercase font-bold text-slate-400 mb-1.5">Debit Target Spec (cc)</label>
+                        <input 
+                          type="number" 
+                          step="0.1"
+                          placeholder="e.g. 52.5"
+                          className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-xs font-mono font-bold text-white focus:outline-none focus:border-emerald-500"
+                          value={targetFlow}
+                          onChange={(e) => setTargetFlow(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-mono uppercase font-bold text-slate-400 mb-1.5">Debit Terukur Lab (cc)</label>
+                        <input 
+                          type="number" 
+                          step="0.1"
+                          placeholder="e.g. 55.2"
+                          className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-xs font-mono font-bold text-white focus:outline-none focus:border-emerald-500"
+                          value={measuredFlow}
+                          onChange={(e) => setMeasuredFlow(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-mono uppercase font-bold text-slate-400 mb-1.5">Shim Saat Ini (mm)</label>
+                        <input 
+                          type="number" 
+                          step="0.001"
+                          placeholder="e.g. 1.250"
+                          className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-xs font-mono font-bold text-white focus:outline-none focus:border-emerald-500"
+                          value={currentShim}
+                          onChange={(e) => setCurrentShim(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-2">
+                      <button
+                        type="button"
+                        onClick={calculateShimAdjustment}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black uppercase tracking-wider px-5 py-2.5 rounded transition-all shadow shadow-emerald-900/40 active:scale-95 cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Wrench className="w-3.5 h-3.5" /> Hitung Koreksi Shim
+                      </button>
+                    </div>
+
+                    {calculatedShim !== null && shimAdjustment !== null && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-slate-950 border border-slate-800 p-4 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-4 items-center"
+                      >
+                        <div>
+                          <span className="text-[8px] font-mono font-bold text-slate-400 uppercase tracking-widest block">Rekomendasi Tindakan</span>
+                          <span className={`text-xs font-black mt-1 inline-block ${shimAdjustment > 0 ? 'text-red-400' : shimAdjustment < 0 ? 'text-blue-400' : 'text-emerald-400'}`}>
+                            {shimAdjustment > 0 
+                              ? `TEBALKAN SHIM (+${Math.abs(shimAdjustment)} mm)` 
+                              : shimAdjustment < 0 
+                              ? `TIPISKAN SHIM (-${Math.abs(shimAdjustment)} mm)` 
+                              : 'SHIM SUDAH SESUAI SPEC'}
+                          </span>
+                          <p className="text-[10px] text-slate-400 mt-1 leading-normal">
+                            {shimAdjustment > 0 
+                              ? 'Debit solar terukur terlalu tinggi (kaya). Menambah ketebalan shim akan memperketat pegas solenoid dan mengurangi angkatan nozzle, sehingga debit berkurang ke nominal target.'
+                              : shimAdjustment < 0
+                              ? 'Debit solar terukur terlalu rendah (miskin). Mengurangi ketebalan shim akan melonggarkan pegas solenoid dan menambah angkatan nozzle, sehingga debit bertambah ke nominal target.'
+                              : 'Debit solar terukur sudah berada tepat pada nominal target spesifikasi.'}
+                          </p>
+                        </div>
+                        <div className="bg-slate-900 border border-slate-800 p-3 rounded-lg flex justify-between items-center text-center">
+                          <div className="flex-1">
+                            <span className="text-[8px] font-mono font-bold text-slate-400 uppercase tracking-widest block">Koreksi</span>
+                            <span className="font-mono text-base font-black text-slate-200 mt-1 block">
+                              {shimAdjustment >= 0 ? '+' : ''}{shimAdjustment} mm
+                            </span>
+                          </div>
+                          <div className="w-px h-8 bg-slate-800 shrink-0" />
+                          <div className="flex-1">
+                            <span className="text-[8px] font-mono font-bold text-emerald-400 uppercase tracking-widest block">Ukuran Shim Baru</span>
+                            <span className="font-mono text-base font-black text-emerald-400 mt-1 block">
+                              {calculatedShim} mm
+                            </span>
+                          </div>
+                        </div>
+                      </motion.div>
                     )}
                   </div>
 
-                  {/* Navigation Button Footer Step 4 */}
+                  {/* Navigation Button Footer Step 2 */}
                   <div className="mt-6 flex justify-between gap-3 border-t border-slate-200 pt-4">
                     <button
-                      onClick={() => setActiveStep(3)}
+                      onClick={() => setActiveStep(1)}
                       type="button"
                       className="px-5 py-2.5 border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-black uppercase rounded transition-all cursor-pointer"
                     >
                       ⬅ Kembali
                     </button>
                     <button
-                      onClick={() => setActiveStep(5)}
+                      onClick={() => setActiveStep(3)}
                       type="button"
                       className="px-6 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-black uppercase rounded shadow-md flex items-center gap-2 transition-all cursor-pointer"
                     >
@@ -1436,8 +1337,8 @@ const MechanicDashboard: React.FC = () => {
                 </div>
               )}
 
-              {/* STEP 5: REKONSILIASI HASIL PERBAIKAN & FINISH */}
-              {activeStep === 5 && (
+              {/* STEP 3: REKONSILIASI HASIL PERBAIKAN & FINISH */}
+              {activeStep === 3 && (
                 <div className="space-y-6">
                   {/* MODULE 3: RANGKUMAN HASIL PERBAIKAN (BEFORE VS AFTER BUILDER) */}
                   <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 shadow-sm">
@@ -1536,7 +1437,7 @@ const MechanicDashboard: React.FC = () => {
                               const newLog = {
                                 milestone: newMilestone,
                                 timestamp: new Date().toISOString(),
-                                updatedBy: currentUser?.name || 'Mekanik'
+                                updatedBy: 'Tim Workshop'
                               };
                               const newHistory = [...updatedHistory, newLog];
 
@@ -1596,7 +1497,7 @@ const MechanicDashboard: React.FC = () => {
                   {/* Navigation Button Footer Step 5 */}
                   <div className="mt-6 flex justify-start gap-3 border-t border-slate-200 pt-4">
                     <button
-                      onClick={() => setActiveStep(4)}
+                      onClick={() => setActiveStep(2)}
                       type="button"
                       className="px-5 py-2.5 border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-black uppercase rounded transition-all cursor-pointer"
                     >

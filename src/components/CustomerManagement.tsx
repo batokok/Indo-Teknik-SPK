@@ -4,7 +4,7 @@ import { Customer } from '../types';
 import { Users, UserPlus, Edit, Trash2, Search, Phone, MapPin, Mail, Building, FileText, Plus, X, Calendar, Car } from 'lucide-react';
 
 export const CustomerManagement: React.FC = () => {
-  const { customers, vehicles, addCustomer, updateCustomer, deleteCustomer, isLoading } = useApp();
+  const { customers, vehicles, addCustomer, updateCustomer, deleteCustomer, isLoading, addNotification } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   
   // Modals state
@@ -138,8 +138,9 @@ export const CustomerManagement: React.FC = () => {
     if (confirm(`Apakah Anda yakin ingin menghapus konsumen "${cust.name}"?${vehicleMsg}\nTindakan ini tidak dapat dibatalkan!`)) {
       try {
         await deleteCustomer(cust.id);
+        addNotification('Konsumen Dihapus', `Catatan konsumen "${cust.name}" berhasil dihapus.`, 'info');
       } catch (err: any) {
-        alert(err?.message || 'Gagal menghapus konsumen.');
+        addNotification('Gagal Menghapus', err?.message || 'Gagal menghapus konsumen.', 'error');
       }
     }
   };

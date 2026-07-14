@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { Priority, PartDetails, InventoryItem, DamageReport, TodoAction, LoosePartDetails } from '../types';
-import { Printer, Car, ShieldAlert, Plus, Trash2, Camera, User, ClipboardList, Check, ChevronRight, ChevronLeft, Wrench, Archive, Search, GripVertical, Calendar, TrendingUp, Clock, Download, History, BarChart2, ArrowRight, BookOpen, FileSpreadsheet, ChevronDown, ChevronUp, RefreshCw, MapPin } from 'lucide-react';
+import { Printer, Car, ShieldAlert, Plus, Trash2, Camera, User, ClipboardList, Check, ChevronRight, ChevronLeft, Wrench, Archive, Search, GripVertical, Calendar, TrendingUp, Clock, Download, History, BarChart2, ArrowRight, BookOpen, FileSpreadsheet, ChevronDown, ChevronUp, RefreshCw, MapPin, Copy, Share2 } from 'lucide-react';
 import { Reorder, motion } from 'motion/react';
 
 const formatRupiah = (value: string | number | undefined | null): string => {
@@ -61,7 +61,34 @@ const INITIAL_PARTS_TRACKING = [
 ];
 
 const SADashboard: React.FC = () => {
-  const { addWorkOrder, setPrintWO, setPrintType, workOrders, users, updateWorkOrder, isLoading, customers, vehicles } = useApp();
+  const { addWorkOrder, setPrintWO, setPrintType, workOrders, users, updateWorkOrder, isLoading, customers, vehicles, trackingBaseUrl, addNotification } = useApp();
+
+  const getTrackingUrl = (woId: string) => {
+    const base = trackingBaseUrl || window.location.origin;
+    return `${base}/?tracking=${woId}`;
+  };
+
+  const handleCopyTrackingLink = (wo: any) => {
+    const link = getTrackingUrl(wo.id);
+    navigator.clipboard.writeText(link).then(() => {
+      addNotification?.(
+        'Salin Link Pelacakan',
+        `Link pelacakan live untuk WO ${wo.id} (${wo.customerName}) berhasil disalin ke clipboard!`,
+        'success',
+        wo.id
+      );
+    }).catch(err => {
+      console.error("Gagal menyalin link:", err);
+    });
+  };
+
+  const handleShareWhatsApp = (wo: any) => {
+    const link = getTrackingUrl(wo.id);
+    const text = `Halo Bapak/Ibu ${wo.customerName}, berikut adalah tautan pelacakan langsung (Live Tracking Link) untuk pengerjaan ${wo.vehicleBrand} (${wo.plateNumber}) Anda di Indo Teknik: ${link}. Terima kasih!`;
+    const cleanPhone = wo.customerPhone.replace(/\D/g, '');
+    const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
+    window.open(waUrl, '_blank');
+  };
 
   // Component Lifecycle Tracking
   const [selectedHistoryPn, setSelectedHistoryPn] = useState<string | null>(null);
@@ -488,7 +515,136 @@ const SADashboard: React.FC = () => {
         </div>
 
         <>
-            {/* Search & Filter Panel */}
+          {/* INTERACTIVE WORKSHOP KPI CARDS BAR */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-4 select-none">
+            {/* All Active Card */}
+            <button
+              type="button"
+              onClick={() => setStatusFilter('ALL')}
+              className={`p-2.5 rounded-lg border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between h-16 ${
+                statusFilter === 'ALL'
+                  ? 'bg-blue-950/40 border-blue-500/80 shadow-md shadow-blue-900/10'
+                  : 'bg-slate-850 border-slate-800/60 hover:border-slate-700 hover:bg-slate-800/80'
+              }`}
+            >
+              <div className="flex items-center justify-between w-full gap-2">
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 truncate">Semua SPK</span>
+                <Car className={`w-3.5 h-3.5 shrink-0 ${statusFilter === 'ALL' ? 'text-blue-400 animate-pulse' : 'text-slate-500'}`} />
+              </div>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-base font-black text-white">{workOrders.filter(w => w.status !== 'COMPLETED' || !w.isHandoverConfirmed).length}</span>
+                <span className="text-[8px] text-slate-500 font-bold uppercase">Unit</span>
+              </div>
+              <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 transition-opacity ${statusFilter === 'ALL' ? 'opacity-100' : 'opacity-0'}`}></div>
+            </button>
+
+            {/* Queue Card */}
+            <button
+              type="button"
+              onClick={() => setStatusFilter('QUEUE')}
+              className={`p-2.5 rounded-lg border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between h-16 ${
+                statusFilter === 'QUEUE'
+                  ? 'bg-slate-800/80 border-slate-400/80 shadow-md'
+                  : 'bg-slate-850 border-slate-800/60 hover:border-slate-700 hover:bg-slate-800/80'
+              }`}
+            >
+              <div className="flex items-center justify-between w-full gap-2">
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 truncate">⏳ Antrean</span>
+                <Clock className={`w-3.5 h-3.5 shrink-0 ${statusFilter === 'QUEUE' ? 'text-slate-300 animate-pulse' : 'text-slate-500'}`} />
+              </div>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-base font-black text-white">{workOrders.filter(w => w.status === 'QUEUE').length}</span>
+                <span className="text-[8px] text-slate-500 font-bold uppercase">Unit</span>
+              </div>
+              <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-slate-450 transition-opacity ${statusFilter === 'QUEUE' ? 'opacity-100' : 'opacity-0'}`}></div>
+            </button>
+
+            {/* In Progress Card */}
+            <button
+              type="button"
+              onClick={() => setStatusFilter('IN_PROGRESS')}
+              className={`p-2.5 rounded-lg border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between h-16 ${
+                statusFilter === 'IN_PROGRESS'
+                  ? 'bg-blue-950/40 border-blue-400/80 shadow-md shadow-blue-900/10'
+                  : 'bg-slate-850 border-slate-800/60 hover:border-slate-700 hover:bg-slate-800/80'
+              }`}
+            >
+              <div className="flex items-center justify-between w-full gap-2">
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 truncate">⚡ Kerja</span>
+                <Wrench className={`w-3.5 h-3.5 shrink-0 ${statusFilter === 'IN_PROGRESS' ? 'text-blue-400 animate-pulse' : 'text-slate-500'}`} />
+              </div>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-base font-black text-white">{workOrders.filter(w => w.status === 'IN_PROGRESS').length}</span>
+                <span className="text-[8px] text-slate-500 font-bold uppercase">Unit</span>
+              </div>
+              <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-blue-400 transition-opacity ${statusFilter === 'IN_PROGRESS' ? 'opacity-100' : 'opacity-0'}`}></div>
+            </button>
+
+            {/* Pending Approval Card */}
+            <button
+              type="button"
+              onClick={() => setStatusFilter('PENDING_APPROVAL')}
+              className={`p-2.5 rounded-lg border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between h-16 ${
+                statusFilter === 'PENDING_APPROVAL'
+                  ? 'bg-red-950/40 border-red-500/80 shadow-md shadow-red-900/10'
+                  : 'bg-slate-850 border-slate-800/60 hover:border-slate-700 hover:bg-slate-800/80'
+              }`}
+            >
+              <div className="flex items-center justify-between w-full gap-2">
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 truncate">⚠️ Approval</span>
+                <ShieldAlert className={`w-3.5 h-3.5 shrink-0 ${statusFilter === 'PENDING_APPROVAL' ? 'text-red-400 animate-bounce' : 'text-slate-500'}`} />
+              </div>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-base font-black text-white">{workOrders.filter(w => w.status === 'PENDING_APPROVAL').length}</span>
+                <span className="text-[8px] text-slate-500 font-bold uppercase">Unit</span>
+              </div>
+              <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-red-500 transition-opacity ${statusFilter === 'PENDING_APPROVAL' ? 'opacity-100' : 'opacity-0'}`}></div>
+            </button>
+
+            {/* Pending Parts Card */}
+            <button
+              type="button"
+              onClick={() => setStatusFilter('PENDING_PARTS')}
+              className={`p-2.5 rounded-lg border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between h-16 ${
+                statusFilter === 'PENDING_PARTS'
+                  ? 'bg-amber-950/40 border-amber-500/80 shadow-md shadow-amber-900/10'
+                  : 'bg-slate-850 border-slate-800/60 hover:border-slate-700 hover:bg-slate-800/80'
+              }`}
+            >
+              <div className="flex items-center justify-between w-full gap-2">
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 truncate">🔧 Part Tunda</span>
+                <Archive className={`w-3.5 h-3.5 shrink-0 ${statusFilter === 'PENDING_PARTS' ? 'text-amber-400 animate-pulse' : 'text-slate-500'}`} />
+              </div>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-base font-black text-white">{workOrders.filter(w => w.status === 'PENDING_PARTS').length}</span>
+                <span className="text-[8px] text-slate-500 font-bold uppercase">Unit</span>
+              </div>
+              <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-amber-500 transition-opacity ${statusFilter === 'PENDING_PARTS' ? 'opacity-100' : 'opacity-0'}`}></div>
+            </button>
+
+            {/* Completed Card */}
+            <button
+              type="button"
+              onClick={() => setStatusFilter('COMPLETED')}
+              className={`p-2.5 rounded-lg border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between h-16 ${
+                statusFilter === 'COMPLETED'
+                  ? 'bg-emerald-950/40 border-emerald-500/80 shadow-md shadow-emerald-900/10'
+                  : 'bg-slate-850 border-slate-800/60 hover:border-slate-700 hover:bg-slate-800/80'
+              }`}
+            >
+              <div className="flex items-center justify-between w-full gap-2">
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 truncate">✅ Siap QC</span>
+                <Check className={`w-3.5 h-3.5 shrink-0 ${statusFilter === 'COMPLETED' ? 'text-emerald-400 font-black' : 'text-slate-500'}`} />
+              </div>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-base font-black text-white">{workOrders.filter(w => w.status === 'COMPLETED' && !w.isHandoverConfirmed).length}</span>
+                <span className="text-[8px] text-slate-500 font-bold uppercase">Unit</span>
+              </div>
+              <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500 transition-opacity ${statusFilter === 'COMPLETED' ? 'opacity-100' : 'opacity-0'}`}></div>
+            </button>
+          </div>
+
+          {/* Search & Filter Panel */}
             <div className="bg-slate-850 p-3 rounded-lg border border-slate-800 mb-4 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between shadow-inner">
               {/* Search Input */}
               <div className="relative flex-1 max-w-md">
@@ -696,23 +852,41 @@ const SADashboard: React.FC = () => {
                           return (
                             <tr key={wo.id} className="hover:bg-slate-800/50 transition-colors">
                               <td className="p-2 font-mono text-[11px] text-blue-400 font-bold">{wo.id}</td>
-                              <td className="p-2">
-                                {wo.priority === 1 && <span className="px-1.5 py-0.5 bg-red-900/40 text-red-300 text-[9px] font-black rounded border border-red-800">🔴 P1 Urgent</span>}
-                                {wo.priority === 2 && <span className="px-1.5 py-0.5 bg-yellow-900/40 text-yellow-300 text-[9px] font-black rounded border border-yellow-800">🟡 P2 Booking</span>}
-                                {wo.priority === 3 && <span className="px-1.5 py-0.5 bg-blue-900/40 text-blue-300 text-[9px] font-black rounded border border-blue-800">🔵 P3 Regular</span>}
+                              <td className="p-2 whitespace-nowrap">
+                                {wo.priority === 1 && <span className="px-1.5 py-0.5 bg-red-900/40 text-red-300 text-[9px] font-black rounded border border-red-800 whitespace-nowrap inline-block">🔴 P1 Urgent</span>}
+                                {wo.priority === 2 && <span className="px-1.5 py-0.5 bg-yellow-900/40 text-yellow-300 text-[9px] font-black rounded border border-yellow-800 whitespace-nowrap inline-block">🟡 P2 Booking</span>}
+                                {wo.priority === 3 && <span className="px-1.5 py-0.5 bg-blue-900/40 text-blue-300 text-[9px] font-black rounded border border-blue-800 whitespace-nowrap inline-block">🔵 P3 Regular</span>}
                               </td>
-                              <td className="p-2 truncate max-w-[120px]" title={wo.customerName}>
-                                <div className="font-bold text-slate-200">{wo.customerName}</div>
-                                <div className="text-[9px] text-slate-500 font-mono">{wo.customerPhone}</div>
+                              <td className="p-2 truncate max-w-[140px] whitespace-nowrap text-ellipsis overflow-hidden" title={wo.customerName}>
+                                <div className="font-bold text-slate-200 truncate whitespace-nowrap">{wo.customerName}</div>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-[9px] text-slate-500 font-mono truncate whitespace-nowrap">{wo.customerPhone}</span>
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <button
+                                      onClick={() => handleCopyTrackingLink(wo)}
+                                      className="p-0.5 hover:bg-slate-700 hover:text-blue-400 rounded transition-colors text-slate-400 cursor-pointer"
+                                      title="Salin Link Pelacakan Live"
+                                    >
+                                      <Copy className="w-2.5 h-2.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleShareWhatsApp(wo)}
+                                      className="p-0.5 hover:bg-slate-700 hover:text-emerald-400 rounded transition-colors text-slate-400 cursor-pointer"
+                                      title="Kirim Pelacakan via WhatsApp"
+                                    >
+                                      <Share2 className="w-2.5 h-2.5" />
+                                    </button>
+                                  </div>
+                                </div>
                               </td>
-                              <td className="p-2 truncate max-w-[150px]">
-                                <div className="font-medium text-slate-200">{wo.vehicleBrand}</div>
-                                <div className="text-[10px] text-slate-400 font-mono font-bold">{wo.plateNumber}</div>
+                              <td className="p-2 truncate max-w-[150px] whitespace-nowrap text-ellipsis overflow-hidden">
+                                <div className="font-medium text-slate-200 truncate whitespace-nowrap">{wo.vehicleBrand}</div>
+                                <div className="text-[10px] text-slate-400 font-mono font-bold truncate whitespace-nowrap">{wo.plateNumber}</div>
                               </td>
-                              <td className="p-2">
-                                <div className="flex items-center gap-1.5">
-                                  <span className={`w-1.5 h-1.5 rounded-full ${wo.mechanicId ? 'bg-blue-400' : 'bg-slate-500'}`}></span>
-                                  <span className="font-medium">{assignedMech}</span>
+                              <td className="p-2 whitespace-nowrap">
+                                <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                  <span className={`w-1.5 h-1.5 rounded-full ${wo.mechanicId ? 'bg-blue-400' : 'bg-slate-500'} shrink-0`}></span>
+                                  <span className="font-medium truncate max-w-[120px]">{assignedMech}</span>
                                 </div>
                               </td>
                               <td className="p-2 text-center">
@@ -834,10 +1008,10 @@ const SADashboard: React.FC = () => {
                         >
                           <div className="flex items-center justify-between gap-2">
                             <span className="font-mono text-xs text-blue-400 font-bold">{wo.id}</span>
-                            <div>
-                              {wo.priority === 1 && <span className="px-1.5 py-0.5 bg-red-900/40 text-red-300 text-[9px] font-black rounded border border-red-800">🔴 Urgent</span>}
-                              {wo.priority === 2 && <span className="px-1.5 py-0.5 bg-yellow-900/40 text-yellow-300 text-[9px] font-black rounded border border-yellow-800">🟡 Booking</span>}
-                              {wo.priority === 3 && <span className="px-1.5 py-0.5 bg-blue-900/40 text-blue-300 text-[9px] font-black rounded border border-blue-800">🔵 Regular</span>}
+                            <div className="shrink-0 whitespace-nowrap">
+                              {wo.priority === 1 && <span className="px-1.5 py-0.5 bg-red-900/40 text-red-300 text-[9px] font-black rounded border border-red-800 whitespace-nowrap inline-block">🔴 Urgent</span>}
+                              {wo.priority === 2 && <span className="px-1.5 py-0.5 bg-yellow-900/40 text-yellow-300 text-[9px] font-black rounded border border-yellow-800 whitespace-nowrap inline-block">🟡 Booking</span>}
+                              {wo.priority === 3 && <span className="px-1.5 py-0.5 bg-blue-900/40 text-blue-300 text-[9px] font-black rounded border border-blue-800 whitespace-nowrap inline-block">🔵 Regular</span>}
                             </div>
                           </div>
 
@@ -845,7 +1019,23 @@ const SADashboard: React.FC = () => {
                             <div>
                               <span className="text-[9px] text-slate-500 uppercase font-bold block">Pelanggan</span>
                               <span className="font-bold text-slate-200 block truncate">{wo.customerName}</span>
-                              <span className="text-[9px] text-slate-400 font-mono block">{wo.customerPhone}</span>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-[9px] text-slate-400 font-mono truncate max-w-[80px] block">{wo.customerPhone}</span>
+                                <button
+                                  onClick={() => handleCopyTrackingLink(wo)}
+                                  className="p-1 bg-slate-800 hover:bg-slate-700 text-blue-400 rounded transition-colors cursor-pointer"
+                                  title="Salin Link Pelacakan"
+                                >
+                                  <Copy className="w-2.5 h-2.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleShareWhatsApp(wo)}
+                                  className="p-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded transition-colors cursor-pointer"
+                                  title="Kirim via WhatsApp"
+                                >
+                                  <Share2 className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
                             </div>
                             <div>
                               <span className="text-[9px] text-slate-500 uppercase font-bold block">Kendaraan</span>

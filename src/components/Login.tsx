@@ -37,7 +37,7 @@ const Login: React.FC<LoginProps> = ({ onTrackClick }) => {
       <div className="bg-slate-900/90 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full max-w-sm border border-slate-800/80 relative z-10">
         <div className="flex flex-col items-center justify-center mb-8 text-center gap-4">
           <div className="bg-white px-4 py-2 rounded-xl shadow-md border border-slate-200">
-            <SmartLogo baseName="logo-indo-teknik" alt="IT INDO TEKNIK" className="h-9 object-contain" />
+            <SmartLogo baseName="logo-indo-teknik" alt="INDO TEKNIK" className="h-9 object-contain" />
           </div>
           <div className="flex flex-col items-center">
             <div className="flex items-center gap-1.5 bg-slate-850 border border-slate-700/65 py-1 px-3 rounded-lg shadow-inner">
@@ -104,7 +104,7 @@ const Login: React.FC<LoginProps> = ({ onTrackClick }) => {
         )}
 
         <div className="mt-6 text-center text-[10px] text-slate-500 font-semibold uppercase tracking-wider">
-          <p>Indo Teknik ERP System v3.0</p>
+          <p>Indo Teknik ERP • ITech Authorized Dealer v3.0</p>
         </div>
       </div>
     </div>

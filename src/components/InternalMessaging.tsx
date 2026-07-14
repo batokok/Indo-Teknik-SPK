@@ -20,7 +20,7 @@ const roleMeta: Record<Role, { label: string; bg: string; text: string; iconBg: 
 };
 
 export const InternalMessaging: React.FC = () => {
-  const { currentUser, workOrders, users } = useApp();
+  const { currentUser, workOrders, users, addNotification } = useApp();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<InternalMessage[]>([]);
   const [inputText, setInputText] = useState('');
@@ -334,7 +334,7 @@ export const InternalMessaging: React.FC = () => {
           deletedCount++;
         }
       }
-      alert(`Berhasil membersihkan ${deletedCount} pesan yang sudah melewati batas 24 jam.`);
+      addNotification('Pemeliharaan Pesan', `Berhasil membersihkan ${deletedCount} pesan yang sudah melewati batas 24 jam.`, 'success');
     } catch (err: any) {
       console.error(err);
     } finally {
@@ -427,12 +427,12 @@ export const InternalMessaging: React.FC = () => {
                 scale: window.innerWidth < 768 ? 1 : 0.96
               }}
               transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-              className="pointer-events-auto w-full md:w-[460px] h-[85vh] md:h-[660px] bg-[#0c1220] border-t md:border border-slate-800 rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col overflow-hidden fixed inset-x-0 bottom-0 md:bottom-24 md:right-6 md:left-auto"
+              className="pointer-events-auto w-full md:w-[410px] h-[80vh] md:h-[580px] bg-gradient-to-br from-white/95 via-white/85 to-slate-100/90 border-t md:border border-white/40 rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col overflow-hidden fixed inset-x-0 bottom-0 md:bottom-24 md:right-6 md:left-auto backdrop-blur-xl"
             >
               {/* BRAND HEADER SECTION (Polished Indo Teknik Navy & Red styling) */}
-              <div className="bg-gradient-to-r from-[#0F2D59] to-[#0a1b33] text-white shrink-0 p-4 border-b border-slate-800 relative overflow-hidden">
+              <div className="bg-gradient-to-r from-[#0F2D59] via-[#153a70] to-[#0c1f3a] text-white shrink-0 p-4 border-b border-white/10 relative overflow-hidden shadow-md">
                 <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-3 md:hidden" />
-                <div className="absolute right-0 top-0 w-32 h-32 bg-[#E21F26]/5 rounded-full blur-2xl pointer-events-none"></div>
+                <div className="absolute right-0 top-0 w-32 h-32 bg-[#E21F26]/10 rounded-full blur-2xl pointer-events-none"></div>
                 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
@@ -440,33 +440,34 @@ export const InternalMessaging: React.FC = () => {
                     {activeRoomId !== 'ALL' && (
                       <button
                         onClick={() => setActiveRoomId('ALL')}
-                        className="p-1.5 hover:bg-slate-800/80 rounded-xl transition-all mr-1 cursor-pointer text-slate-300 hover:text-white"
+                        className="p-1.5 hover:bg-white/10 rounded-xl transition-all mr-1 cursor-pointer text-slate-300 hover:text-white"
                         title="Kembali ke Menu"
                       >
                         <ArrowLeft className="w-5 h-5" />
                       </button>
                     )}
                     
-                    <div className="p-2.5 bg-slate-900/60 border border-slate-800 rounded-xl shadow-inner">
+                    <div className="p-2.5 bg-slate-950/40 border border-white/10 rounded-xl shadow-inner">
                       {activeRoomIcon}
                     </div>
                     <div>
-                      <h3 className="font-black text-sm tracking-tight leading-none text-white flex items-center gap-1.5">
+                      <h3 className="font-black text-xs sm:text-sm tracking-tight leading-none text-white flex items-center gap-1.5">
                         {activeRoomTitle}
                       </h3>
-                      <p className="text-[10px] text-slate-400 font-extrabold mt-1.5 flex items-center gap-1">
+                      <p className="text-[9px] text-slate-300 font-extrabold mt-1.5 flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#E21F26] animate-pulse"></span>
                         {activeRoomSubtitle}
                       </p>
                     </div>
                   </div>
 
-                  {/* Close drawer button */}
+                  {/* Close drawer button - HIGHLY VISIBLE */}
                   <button
                     onClick={() => setIsOpen(false)}
-                    className="text-slate-400 hover:text-white p-2 hover:bg-slate-800/50 rounded-xl transition-all cursor-pointer"
+                    className="text-slate-800 hover:text-white p-2 bg-white/95 hover:bg-[#E21F26] border border-slate-300 rounded-full transition-all cursor-pointer shadow-md flex items-center justify-center w-8 h-8 shrink-0"
+                    title="Tutup Chat"
                   >
-                    <X className="w-5 h-5" />
+                    <X className="w-4 h-4 stroke-[3]" />
                   </button>
                 </div>
 
@@ -511,7 +512,7 @@ export const InternalMessaging: React.FC = () => {
               </div>
 
               {/* CHAT CHANNELS / ACTIVE CONVERSATION BODY */}
-              <div className="flex-1 flex flex-col overflow-hidden bg-[#070b13]">
+              <div className="flex-1 flex flex-col overflow-hidden bg-white/20 backdrop-blur-sm">
                 
                 {activeRoomId === 'ALL' ? (
                   /* ======================================================== */
@@ -525,23 +526,23 @@ export const InternalMessaging: React.FC = () => {
                         
                         {/* Global Chat Group */}
                         <div className="space-y-1.5">
-                          <p className="px-1.5 text-[9px] font-black text-slate-500 uppercase tracking-widest">Wadah Koordinasi Utama</p>
+                          <p className="px-1.5 text-[9px] font-black text-[#0F2D59] uppercase tracking-wider">Wadah Koordinasi Utama</p>
                           <div
                             onClick={() => {
                               setActiveRoomId('GLOBAL');
                             }}
-                            className="p-3 bg-slate-900/60 hover:bg-slate-900/90 border border-slate-800/60 hover:border-slate-700 rounded-2xl flex items-center justify-between cursor-pointer transition-all shadow-sm"
+                            className="p-3 bg-white/70 hover:bg-white/90 border border-slate-200 rounded-2xl flex items-center justify-between cursor-pointer transition-all shadow-sm"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-11 h-11 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+                              <div className="w-11 h-11 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-[#0F2D59] shrink-0">
                                 <Users className="w-5 h-5" />
                               </div>
                               <div className="space-y-1 overflow-hidden">
                                 <div className="flex items-center gap-1.5">
-                                  <span className="font-extrabold text-xs text-slate-200">Semua Tim (Grup Koordinasi)</span>
+                                  <span className="font-extrabold text-xs text-slate-900">Semua Tim (Grup Koordinasi)</span>
                                   <span className="text-[8px] font-black uppercase bg-[#E21F26] text-white px-1.5 py-0.2 rounded border border-red-500/10">UTAMA</span>
                                 </div>
-                                <p className="text-[11px] text-slate-400 truncate max-w-[210px] font-medium">
+                                <p className="text-[11px] text-slate-500 truncate max-w-[210px] font-semibold leading-none">
                                   {getLastMessageInfo('GLOBAL').text}
                                 </p>
                               </div>
@@ -560,21 +561,21 @@ export const InternalMessaging: React.FC = () => {
 
                         {/* Division Group */}
                         <div className="space-y-1.5 pt-1">
-                          <p className="px-1.5 text-[9px] font-black text-slate-500 uppercase tracking-widest">Grup Divisi Peran</p>
+                          <p className="px-1.5 text-[9px] font-black text-[#0F2D59] uppercase tracking-wider">Grup Divisi Peran</p>
                           <div
                             onClick={() => setActiveRoomId(`ROLE_${currentUser.role}`)}
-                            className="p-3 bg-slate-900/60 hover:bg-slate-900/90 border border-slate-800/60 hover:border-slate-700 rounded-2xl flex items-center justify-between cursor-pointer transition-all shadow-sm"
+                            className="p-3 bg-white/70 hover:bg-white/90 border border-slate-200 rounded-2xl flex items-center justify-between cursor-pointer transition-all shadow-sm"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-11 h-11 rounded-xl bg-amber-600/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+                              <div className="w-11 h-11 rounded-xl bg-amber-600/10 border border-amber-500/20 flex items-center justify-center text-amber-700 shrink-0">
                                 <Users className="w-5 h-5" />
                               </div>
                               <div className="space-y-1 overflow-hidden">
                                 <div className="flex items-center gap-1.5">
-                                  <span className="font-extrabold text-xs text-slate-200">Divisi {roleMeta[currentUser.role]?.label || currentUser.role}</span>
-                                  <span className="text-[8px] font-black uppercase bg-amber-500/15 text-amber-400 px-1.5 py-0.2 rounded border border-amber-500/20">DIVISI</span>
+                                  <span className="font-extrabold text-xs text-slate-900">Divisi {roleMeta[currentUser.role]?.label || currentUser.role}</span>
+                                  <span className="text-[8px] font-black uppercase bg-amber-500/15 text-amber-600 px-1.5 py-0.2 rounded border border-amber-500/20">DIVISI</span>
                                 </div>
-                                <p className="text-[11px] text-slate-400 truncate max-w-[210px] font-medium">
+                                <p className="text-[11px] text-slate-500 truncate max-w-[210px] font-semibold leading-none">
                                   {getLastMessageInfo(`ROLE_${currentUser.role}`).text}
                                 </p>
                               </div>
@@ -583,7 +584,7 @@ export const InternalMessaging: React.FC = () => {
                             <div className="flex flex-col items-end gap-1.5 shrink-0">
                               <span className="text-[9px] font-bold text-slate-500">{getLastMessageInfo(`ROLE_${currentUser.role}`).time}</span>
                               {unreadCounts[`ROLE_${currentUser.role}`] > 0 && (
-                                <span className="bg-amber-500 text-slate-950 rounded-full text-[9px] px-2 py-0.5 font-black">
+                                <span className="bg-amber-500 text-white rounded-full text-[9px] px-2 py-0.5 font-black">
                                   {unreadCounts[`ROLE_${currentUser.role}`]}
                                 </span>
                               )}
@@ -593,12 +594,12 @@ export const InternalMessaging: React.FC = () => {
 
                         {/* Active Vehicle/SPK Discussions */}
                         <div className="space-y-1.5 pt-2">
-                          <p className="px-1.5 text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
-                            <Wrench className="w-3 h-3 text-red-500" /> Diskusi Unit SPK Aktif
+                          <p className="px-1.5 text-[9px] font-black text-[#0F2D59] uppercase tracking-wider flex items-center gap-1">
+                            <Wrench className="w-3 h-3 text-[#E21F26]" /> Diskusi Unit SPK Aktif
                           </p>
                           
                           {workOrders.filter(w => !w.isArchived).length === 0 ? (
-                            <div className="p-4 text-center text-slate-600 text-xs font-bold border border-dashed border-slate-800 rounded-xl">
+                            <div className="p-4 text-center text-slate-500 text-xs font-bold border border-dashed border-slate-200 rounded-xl">
                               Belum ada kendaraan aktif di workshop
                             </div>
                           ) : (
@@ -613,26 +614,26 @@ export const InternalMessaging: React.FC = () => {
                                     <div
                                       key={wo.id}
                                       onClick={() => setActiveRoomId(roomId)}
-                                      className="p-3 bg-slate-950/60 hover:bg-slate-900/70 border border-slate-800/40 hover:border-slate-800 rounded-xl flex items-center justify-between cursor-pointer transition-all"
+                                      className="p-3 bg-white/60 hover:bg-white/80 border border-slate-200/80 hover:border-blue-500/30 rounded-xl flex items-center justify-between cursor-pointer transition-all shadow-sm"
                                     >
                                       <div className="flex items-center gap-3 overflow-hidden">
-                                        <div className="w-9 h-9 rounded-lg bg-slate-900 border border-slate-800 flex flex-col items-center justify-center shrink-0">
-                                          <span className="text-[8px] font-black text-slate-500">UNIT</span>
-                                          <span className="text-[10px] font-black text-red-400 -mt-1">{wo.plateNumber.slice(-3).toUpperCase()}</span>
+                                        <div className="w-9 h-9 rounded-lg bg-[#0F2D59] flex flex-col items-center justify-center shrink-0 shadow-sm">
+                                          <span className="text-[7px] font-black text-slate-300">UNIT</span>
+                                          <span className="text-[10px] font-black text-white -mt-1.5">{wo.plateNumber.slice(-3).toUpperCase()}</span>
                                         </div>
                                         <div className="space-y-0.5 overflow-hidden">
                                           <div className="flex items-center gap-1.5">
-                                            <span className="font-extrabold text-xs text-slate-200">{wo.plateNumber}</span>
-                                            <span className="text-[8px] font-extrabold text-slate-400 truncate max-w-[110px]">{wo.customerName}</span>
+                                            <span className="font-extrabold text-xs text-slate-900">{wo.plateNumber}</span>
+                                            <span className="text-[8px] font-extrabold text-slate-500 truncate max-w-[110px]">{wo.customerName}</span>
                                           </div>
-                                          <p className="text-[10px] text-slate-500 truncate max-w-[220px] font-semibold">
+                                          <p className="text-[10px] text-slate-500 truncate max-w-[220px] font-semibold leading-none">
                                             {msgInfo.text}
                                           </p>
                                         </div>
                                       </div>
 
                                       <div className="flex flex-col items-end gap-1 shrink-0 ml-1">
-                                        <span className="text-[8px] font-bold text-slate-600">{msgInfo.time}</span>
+                                        <span className="text-[8px] font-bold text-slate-500">{msgInfo.time}</span>
                                         {unreadCounts[roomId] > 0 && (
                                           <span className="bg-[#E21F26] text-white rounded-full text-[8px] px-1.5 py-0.5 font-black animate-pulse">
                                             {unreadCounts[roomId]}
@@ -653,18 +654,18 @@ export const InternalMessaging: React.FC = () => {
                     {activeTab === 'DIRECT' && (
                       <div className="flex-1 flex flex-col overflow-hidden">
                         {/* Search Bar */}
-                        <div className="p-3 border-b border-slate-900 bg-slate-950/30">
+                        <div className="p-3 border-b border-slate-200 bg-white/30">
                           <div className="relative">
                             <input
                               type="text"
                               value={contactSearch}
                               onChange={(e) => setContactSearch(e.target.value)}
                               placeholder="Cari mekanik, foreman, advisor..."
-                              className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-all font-semibold"
+                              className="w-full bg-white/90 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 transition-all font-semibold shadow-sm"
                             />
-                            <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                             {contactSearch && (
-                              <button onClick={() => setContactSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
+                              <button onClick={() => setContactSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-850">
                                 <X className="w-3.5 h-3.5" />
                               </button>
                             )}
@@ -673,7 +674,7 @@ export const InternalMessaging: React.FC = () => {
 
                         {/* Contacts List */}
                         <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                          <p className="px-2.5 py-1.5 text-[9px] font-black text-slate-500 uppercase tracking-widest">Daftar Kontak Staff ({filteredContacts.length})</p>
+                          <p className="px-2.5 py-1.5 text-[9px] font-black text-[#0F2D59] uppercase tracking-wider pl-3">Daftar Kontak Staff ({filteredContacts.length})</p>
                           
                           {filteredContacts.length === 0 ? (
                             <div className="p-6 text-center text-slate-500 text-xs font-bold">
@@ -688,7 +689,7 @@ export const InternalMessaging: React.FC = () => {
                                 <div
                                   key={u.id}
                                   onClick={() => setActiveRoomId(u.id)}
-                                  className="p-3 hover:bg-slate-900/60 rounded-xl flex items-center justify-between cursor-pointer transition-all border border-transparent hover:border-slate-800/40 my-0.5"
+                                  className="p-3 bg-white/50 hover:bg-white/85 rounded-xl flex items-center justify-between cursor-pointer transition-all border border-transparent hover:border-slate-200 my-0.5 shadow-sm"
                                 >
                                   <div className="flex items-center gap-3 overflow-hidden">
                                     <div className={`w-10 h-10 rounded-full ${meta.bg} flex items-center justify-center text-xs font-black uppercase text-white shrink-0 shadow-sm`}>
@@ -696,19 +697,19 @@ export const InternalMessaging: React.FC = () => {
                                     </div>
                                     <div className="space-y-0.5 overflow-hidden">
                                       <div className="flex items-center gap-1.5">
-                                        <span className="font-extrabold text-xs text-slate-200">{u.name}</span>
+                                        <span className="font-extrabold text-xs text-slate-900">{u.name}</span>
                                         <span className={`text-[7px] font-black uppercase px-1.5 py-0.2 rounded ${meta.bg}`}>
                                           {meta.short}
                                         </span>
                                       </div>
-                                      <p className="text-[10px] text-slate-500 truncate max-w-[210px] font-medium">
+                                      <p className="text-[10px] text-slate-500 truncate max-w-[210px] font-medium leading-none">
                                         {msgInfo.text}
                                       </p>
                                     </div>
                                   </div>
 
                                   <div className="flex flex-col items-end gap-1 shrink-0 ml-1">
-                                    <span className="text-[8px] font-bold text-slate-600">{msgInfo.time}</span>
+                                    <span className="text-[8px] font-bold text-slate-500">{msgInfo.time}</span>
                                     {unreadCounts[u.id] > 0 && (
                                       <span className="bg-[#E21F26] text-white rounded-full text-[8px] px-1.5 py-0.5 font-black">
                                         {unreadCounts[u.id]}
@@ -725,31 +726,31 @@ export const InternalMessaging: React.FC = () => {
 
                     {/* 3. STATUS & TTL INFO TAB */}
                     {activeTab === 'STATUS' && (
-                      <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar text-slate-300 text-xs">
-                        <div className="p-4 bg-slate-900/60 rounded-2xl border border-slate-800 space-y-3">
-                          <div className="flex items-center gap-2 text-amber-400 font-extrabold">
+                      <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar text-slate-700 text-xs">
+                        <div className="p-4 bg-white/85 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                          <div className="flex items-center gap-2 text-amber-700 font-extrabold">
                             <Info className="w-5 h-5 shrink-0" />
                             <span>Sistem Reset Chat 24 Jam</span>
                           </div>
-                          <p className="leading-relaxed text-[11px] font-semibold text-slate-400">
+                          <p className="leading-relaxed text-[11px] font-semibold text-slate-600">
                             Untuk menjaga performa database Indo Teknik ERP tetap optimal dan rapi, seluruh chat koordinasi workshop dirancang dengan sistem **Time-to-Live (TTL)**. 
                           </p>
-                          <ul className="list-disc list-inside space-y-1.5 text-[11px] text-slate-400 font-semibold pl-1">
+                          <ul className="list-disc list-inside space-y-1.5 text-[11px] text-slate-500 font-semibold pl-1">
                             <li>Chat otomatis dibersihkan setiap 24 jam.</li>
                             <li>Hanya menampilkan pesan per tanggal hari ini.</li>
                             <li>Mengurangi data sampah koordinasi pengerjaan lampau.</li>
                           </ul>
                         </div>
 
-                        <div className="p-4 bg-slate-900/30 rounded-2xl border border-slate-800 space-y-4">
-                          <h4 className="font-bold text-slate-200 uppercase tracking-wider text-[10px]">Statistik Data Chat</h4>
+                        <div className="p-4 bg-white/70 rounded-2xl border border-slate-200 space-y-4 shadow-sm">
+                          <h4 className="font-bold text-[#0F2D59] uppercase tracking-wider text-[10px]">Statistik Data Chat</h4>
                           <div className="grid grid-cols-2 gap-3">
-                            <div className="p-3 bg-slate-950 border border-slate-800/80 rounded-xl">
-                              <span className="block text-[9px] font-black text-slate-500 uppercase">Total Pesan Aktif</span>
-                              <span className="text-xl font-black text-white">{messages.length}</span>
+                            <div className="p-3 bg-white/90 border border-slate-200/80 rounded-xl shadow-inner">
+                              <span className="block text-[9px] font-black text-slate-400 uppercase">Total Pesan Aktif</span>
+                              <span className="text-xl font-black text-[#0F2D59]">{messages.length}</span>
                             </div>
-                            <div className="p-3 bg-slate-950 border border-slate-800/80 rounded-xl">
-                              <span className="block text-[9px] font-black text-slate-500 uppercase">Siklus Pembersihan</span>
+                            <div className="p-3 bg-white/90 border border-slate-200/80 rounded-xl shadow-inner">
+                              <span className="block text-[9px] font-black text-slate-400 uppercase">Siklus Pembersihan</span>
                               <span className="text-xs font-black text-[#E21F26]">Setiap Hari (TTL)</span>
                             </div>
                           </div>
@@ -758,7 +759,7 @@ export const InternalMessaging: React.FC = () => {
                             <button
                               onClick={handleManualPrune}
                               disabled={isCleaning}
-                              className="w-full bg-[#E21F26] hover:bg-red-600 disabled:bg-slate-800 text-white font-extrabold py-2.5 rounded-xl text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                              className="w-full bg-[#E21F26] hover:bg-red-600 disabled:bg-slate-400 text-white font-extrabold py-2.5 rounded-xl text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
                             >
                               <Trash2 className="w-4 h-4" />
                               {isCleaning ? 'Membersihkan...' : 'Hapus Chat Manual (> 24 Jam)'}
@@ -776,13 +777,13 @@ export const InternalMessaging: React.FC = () => {
                   <div className="flex-1 flex flex-col overflow-hidden">
                     
                     {/* Message Area */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-950/20 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-white/5 custom-scrollbar">
                       {activeRoomMessages.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3">
-                          <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-full shadow-lg">
-                            <Sparkles className="w-6 h-6 text-slate-500 animate-pulse" />
+                          <div className="p-3.5 bg-white/80 border border-slate-200 rounded-full shadow-md">
+                            <Sparkles className="w-6 h-6 text-slate-400 animate-pulse" />
                           </div>
-                          <h4 className="text-slate-300 font-extrabold text-xs">Belum Ada Pesan Hari Ini</h4>
+                          <h4 className="text-slate-800 font-extrabold text-xs">Belum Ada Pesan Hari Ini</h4>
                           <p className="text-[10px] text-slate-500 max-w-[280px] leading-relaxed font-semibold">
                             Kirim koordinasi atau tanyakan status perbaikan unit di bawah.
                           </p>
@@ -800,7 +801,7 @@ export const InternalMessaging: React.FC = () => {
                             >
                               {/* Sender Name in group threads */}
                               {!isOwn && (activeRoomId === 'ALL' || activeRoomId.startsWith('ROLE_') || activeRoomId.startsWith('WO_')) && (
-                                <div className="flex items-center gap-1.5 text-[9px] font-black text-slate-400 mb-0.5">
+                                <div className="flex items-center gap-1.5 text-[9px] font-black text-[#0F2D59] mb-0.5">
                                   <span>{msg.senderName}</span>
                                   <span className={`px-1 rounded-[4px] text-[7px] font-black uppercase tracking-wider ${senderMeta.bg}`}>
                                     {senderMeta.short}
@@ -812,14 +813,14 @@ export const InternalMessaging: React.FC = () => {
                               <div
                                 className={`max-w-[85%] rounded-2xl px-4 py-2 border text-xs leading-relaxed shadow-md relative group transition-all ${
                                   isOwn
-                                    ? 'bg-[#0F2D59]/90 text-white border-blue-500/20 rounded-tr-none'
-                                    : 'bg-slate-900 text-slate-100 border-slate-800/80 rounded-tl-none'
+                                    ? 'bg-gradient-to-r from-[#0F2D59] to-[#1c4d8c] text-white border-blue-500/10 rounded-tr-none'
+                                    : 'bg-white text-slate-900 border-slate-200 rounded-tl-none'
                                 }`}
                               >
                                 {/* Linked Unit/Plate Badge */}
                                 {msg.relatedPlateNumber && (
-                                  <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black uppercase mb-1 ${isOwn ? 'bg-slate-950/40 text-blue-300 border border-blue-500/10' : 'bg-slate-950 text-slate-400 border border-slate-800'}`}>
-                                    <Wrench className="w-2.5 h-2.5 text-blue-400" />
+                                  <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black uppercase mb-1 ${isOwn ? 'bg-black/25 text-blue-200 border border-white/10' : 'bg-slate-100 text-[#0F2D59] border border-slate-200'}`}>
+                                    <Wrench className="w-2.5 h-2.5 text-red-500" />
                                     <span>{msg.relatedPlateNumber}</span>
                                   </div>
                                 )}
@@ -827,7 +828,7 @@ export const InternalMessaging: React.FC = () => {
                                 <div className="break-words whitespace-pre-wrap font-semibold leading-relaxed">{msg.text}</div>
                                 
                                 {/* Time & check status */}
-                                <div className={`flex items-center justify-end gap-1 text-[8px] mt-1 font-bold ${isOwn ? 'text-blue-300/80' : 'text-slate-500'}`}>
+                                <div className={`flex items-center justify-end gap-1 text-[8px] mt-1 font-bold ${isOwn ? 'text-slate-300' : 'text-slate-400'}`}>
                                   <Clock className="w-2.5 h-2.5" />
                                   <span>{formattedTime}</span>
                                   {isOwn && (() => {
@@ -839,14 +840,14 @@ export const InternalMessaging: React.FC = () => {
                                     if (isDirectMessage) {
                                       const isReadByRecipient = msg.readBy && msg.recipientId && msg.readBy.includes(msg.recipientId);
                                       return isReadByRecipient ? (
-                                        <CheckCheck className="w-3.5 h-3.5 text-red-500 ml-0.5 shrink-0" title="Dibaca oleh penerima" />
+                                        <CheckCheck className="w-3.5 h-3.5 text-[#E21F26] ml-0.5 shrink-0" title="Dibaca oleh penerima" />
                                       ) : (
                                         <Check className="w-3.5 h-3.5 text-slate-400 ml-0.5 shrink-0" title="Terkirim" />
                                       );
                                     } else {
                                       const groupReadCount = msg.readBy ? msg.readBy.filter(uid => uid !== msg.senderId).length : 0;
                                       return groupReadCount > 0 ? (
-                                        <div className="flex items-center gap-0.5 ml-0.5 shrink-0 text-red-500 font-black text-[8px]" title={`Dibaca oleh ${groupReadCount} orang`}>
+                                        <div className="flex items-center gap-0.5 ml-0.5 shrink-0 text-[#E21F26] font-black text-[8px]" title={`Dibaca oleh ${groupReadCount} orang`}>
                                           <CheckCheck className="w-3.5 h-3.5" />
                                           <span className="text-[7px]">{groupReadCount}</span>
                                         </div>
@@ -875,18 +876,18 @@ export const InternalMessaging: React.FC = () => {
                     </div>
 
                     {/* Sub-chat bottom footer controls */}
-                    <div className="bg-slate-900 border-t border-slate-800 p-3 shrink-0 space-y-3 pb-safe">
+                    <div className="bg-white/90 border-t border-slate-200/60 p-3 shrink-0 space-y-3 pb-safe shadow-lg backdrop-blur-md">
                       
                       {/* Active plate binding logic */}
                       <div className="flex items-center gap-1.5 justify-between">
-                        <div className="flex items-center gap-1 text-[10px] text-slate-400 font-extrabold uppercase tracking-wide">
+                        <div className="flex items-center gap-1 text-[10px] text-slate-600 font-extrabold uppercase tracking-wide">
                           <Wrench className="w-3.5 h-3.5 text-[#E21F26]" />
                           <span>Tautkan Kendaraan:</span>
                         </div>
                         <select
                           value={selectedWOId}
                           onChange={(e) => setSelectedWOId(e.target.value)}
-                          className="bg-slate-950 border border-slate-800 rounded-lg text-[10px] px-2 py-1 text-slate-300 focus:outline-none focus:border-blue-500 transition-all font-semibold max-w-[200px]"
+                          className="bg-white border border-slate-250 rounded-lg text-[10px] px-2 py-1 text-slate-700 focus:outline-none focus:border-blue-500 transition-all font-semibold max-w-[200px] shadow-sm"
                         >
                           <option value="">-- Tanpa Tautan Unit --</option>
                           {workOrders
@@ -907,7 +908,7 @@ export const InternalMessaging: React.FC = () => {
                           onChange={(e) => setInputText(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                           placeholder={`Tulis pesan ke ${activeRoomTitle}...`}
-                          className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-all font-semibold"
+                          className="flex-1 bg-white border border-slate-250 rounded-xl px-3.5 py-2.5 text-xs text-slate-850 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/15 transition-all font-semibold shadow-sm"
                         />
                         <motion.button
                           whileHover={{ scale: 1.05 }}

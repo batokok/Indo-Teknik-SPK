@@ -29,7 +29,8 @@ const ClaimManagement: React.FC = () => {
     workOrders, 
     users, 
     customers, 
-    currentUser 
+    currentUser,
+    addNotification
   } = useApp();
 
   const isSAOrAdmin = currentUser?.role === 'SA' || currentUser?.role === 'ADMIN';
@@ -85,7 +86,7 @@ const ClaimManagement: React.FC = () => {
   const handleSubmitClaim = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerId) {
-      alert('Pilih customer terlebih dahulu!');
+      addNotification('Gagal Input', 'Silakan pilih customer terlebih dahulu!', 'warning');
       return;
     }
 
@@ -125,9 +126,9 @@ const ClaimManagement: React.FC = () => {
       setIsNegligence(false);
       setStatus('OPEN');
       setCompletedDate('');
-      alert('Registrasi klaim/komplain berhasil disimpan!');
+      addNotification('Klaim Tersimpan', 'Registrasi klaim/komplain berhasil disimpan!', 'success');
     } catch (err: any) {
-      alert('Gagal menyimpan klaim: ' + err.message);
+      addNotification('Gagal Menyimpan', 'Gagal menyimpan klaim: ' + err.message, 'error');
     }
   };
 
@@ -157,9 +158,9 @@ const ClaimManagement: React.FC = () => {
 
       await updateClaim(editingClaim.id, updates);
       setEditingClaim(null);
-      alert('Update progres klaim berhasil disimpan!');
+      addNotification('Klaim Diperbarui', 'Update progres klaim berhasil disimpan!', 'success');
     } catch (err: any) {
-      alert('Gagal memperbarui klaim: ' + err.message);
+      addNotification('Gagal Memperbarui', 'Gagal memperbarui klaim: ' + err.message, 'error');
     }
   };
 
@@ -182,9 +183,9 @@ const ClaimManagement: React.FC = () => {
     if (window.confirm('Apakah Anda yakin ingin menghapus catatan klaim ini?')) {
       try {
         await deleteClaim(id);
-        alert('Klaim berhasil dihapus.');
+        addNotification('Klaim Dihapus', 'Klaim berhasil dihapus dari database.', 'info');
       } catch (err: any) {
-        alert('Gagal menghapus klaim: ' + err.message);
+        addNotification('Gagal Menghapus', 'Gagal menghapus klaim: ' + err.message, 'error');
       }
     }
   };

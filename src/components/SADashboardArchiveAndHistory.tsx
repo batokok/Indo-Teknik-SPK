@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useApp } from '../store/AppContext';
 import { WorkOrder, User } from '../types';
 import { 
   Printer, 
@@ -13,7 +14,9 @@ import {
   ArrowRight, 
   FileSpreadsheet,
   Check,
-  Wrench
+  Wrench,
+  Copy,
+  Share2
 } from 'lucide-react';
 
 const formatRupiah = (value: string | number | undefined | null): string => {
@@ -37,7 +40,35 @@ export const SADashboardArchiveAndHistory: React.FC<SADashboardArchiveAndHistory
   updateWorkOrder,
   setPrintWO
 }) => {
+  const { trackingBaseUrl, addNotification } = useApp();
   const [archiveSubTab, setArchiveSubTab] = useState<'LIFETIME_HISTORY' | 'ADMIN_ARCHIVE'>('LIFETIME_HISTORY');
+
+  const getTrackingUrl = (woId: string) => {
+    const base = trackingBaseUrl || window.location.origin;
+    return `${base}/?tracking=${woId}`;
+  };
+
+  const handleCopyTrackingLink = (wo: any) => {
+    const link = getTrackingUrl(wo.id);
+    navigator.clipboard.writeText(link).then(() => {
+      addNotification?.(
+        'Salin Link Pelacakan',
+        `Link pelacakan live untuk WO ${wo.id} (${wo.customerName}) berhasil disalin ke clipboard!`,
+        'success',
+        wo.id
+      );
+    }).catch(err => {
+      console.error("Gagal menyalin link:", err);
+    });
+  };
+
+  const handleShareWhatsApp = (wo: any) => {
+    const link = getTrackingUrl(wo.id);
+    const text = `Halo Bapak/Ibu ${wo.customerName}, berikut adalah tautan pelacakan langsung (Live Tracking Link) untuk pengerjaan ${wo.vehicleBrand} (${wo.plateNumber}) Anda di Indo Teknik: ${link}. Terima kasih!`;
+    const cleanPhone = wo.customerPhone.replace(/\D/g, '');
+    const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
+    window.open(waUrl, '_blank');
+  };
 
   // Admin & Archive Sub-states
   const [adminYearFilter, setAdminYearFilter] = useState<string>('ALL');
@@ -418,7 +449,25 @@ export const SADashboardArchiveAndHistory: React.FC<SADashboardArchiveAndHistory
                                   <td className="p-2 font-mono text-[11px] text-blue-400 font-black">{wo.id}</td>
                                   <td className="p-2">
                                     <div className="font-bold text-slate-200">{wo.customerName}</div>
-                                    <div className="text-[9px] text-slate-500 font-mono">{wo.customerPhone}</div>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <span className="text-[9px] text-slate-500 font-mono truncate max-w-[100px]">{wo.customerPhone}</span>
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <button
+                                          onClick={() => handleCopyTrackingLink(wo)}
+                                          className="p-0.5 hover:bg-slate-700 hover:text-blue-400 rounded transition-colors text-slate-400 cursor-pointer"
+                                          title="Salin Link Pelacakan Live"
+                                        >
+                                          <Copy className="w-2.5 h-2.5" />
+                                        </button>
+                                        <button
+                                          onClick={() => handleShareWhatsApp(wo)}
+                                          className="p-0.5 hover:bg-slate-700 hover:text-emerald-400 rounded transition-colors text-slate-400 cursor-pointer"
+                                          title="Kirim Pelacakan via WhatsApp"
+                                        >
+                                          <Share2 className="w-2.5 h-2.5" />
+                                        </button>
+                                      </div>
+                                    </div>
                                   </td>
                                   <td className="p-2 font-mono font-black text-slate-200 uppercase">{wo.plateNumber}</td>
                                   <td className="p-2 font-mono text-amber-400 font-bold">{formatRupiah(estTotal)}</td>
@@ -592,7 +641,23 @@ export const SADashboardArchiveAndHistory: React.FC<SADashboardArchiveAndHistory
                               <div>
                                 <span className="text-[9px] text-slate-500 uppercase font-bold block">Pelanggan</span>
                                 <span className="font-bold text-slate-200 block truncate">{wo.customerName}</span>
-                                <span className="text-[9px] text-slate-400 font-mono block">{wo.customerPhone}</span>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-[9px] text-slate-400 font-mono truncate max-w-[80px] block">{wo.customerPhone}</span>
+                                  <button
+                                    onClick={() => handleCopyTrackingLink(wo)}
+                                    className="p-1 bg-slate-800 hover:bg-slate-700 text-blue-400 rounded transition-colors cursor-pointer"
+                                    title="Salin Link Pelacakan"
+                                  >
+                                    <Copy className="w-2.5 h-2.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleShareWhatsApp(wo)}
+                                    className="p-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded transition-colors cursor-pointer"
+                                    title="Kirim via WhatsApp"
+                                  >
+                                    <Share2 className="w-2.5 h-2.5" />
+                                  </button>
+                                </div>
                               </div>
                               <div>
                                 <span className="text-[9px] text-slate-500 uppercase font-bold block">Plat & Nilai</span>

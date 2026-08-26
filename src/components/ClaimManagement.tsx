@@ -39,7 +39,7 @@ const ClaimManagement: React.FC = () => {
   const [customerId, setCustomerId] = useState('');
   const [claimDate, setClaimDate] = useState(new Date().toISOString().split('T')[0]);
   const [relatedWOId, setRelatedWOId] = useState('');
-  const [divisionRelated, setDivisionRelated] = useState<'SUPPLY_PUMP' | 'COMMON_RAIL' | 'SA'>('SUPPLY_PUMP');
+  const [divisionRelated, setDivisionRelated] = useState<'SUPPLY_PUMP' | 'COMMON_RAIL' | 'TURBO' | 'SA'>('SUPPLY_PUMP');
   const [assignedPersonId, setAssignedPersonId] = useState('');
   const [claimType, setClaimType] = useState<Claim['claimType']>('COMPLAINT');
   const [cause, setCause] = useState('');
@@ -205,6 +205,9 @@ const ClaimManagement: React.FC = () => {
     if (currentUser?.role === 'COMMON_RAIL') {
       return matchesSearch && matchesStatus && matchesType && c.divisionRelated === 'COMMON_RAIL';
     }
+    if (currentUser?.role === 'TURBO') {
+      return matchesSearch && matchesStatus && matchesType && c.divisionRelated === 'TURBO';
+    }
 
     return matchesSearch && matchesStatus && matchesType;
   });
@@ -233,6 +236,7 @@ const ClaimManagement: React.FC = () => {
   const getDivisionLabel = (div: string) => {
     if (div === 'SUPPLY_PUMP') return 'Fuel Pump';
     if (div === 'COMMON_RAIL') return 'Common Rail';
+    if (div === 'TURBO') return 'Turbo';
     return 'Service Advisor / FO';
   };
 
@@ -509,6 +513,7 @@ const ClaimManagement: React.FC = () => {
                   >
                     <option value="SUPPLY_PUMP">Fuel Pump</option>
                     <option value="COMMON_RAIL">Common Rail</option>
+                    <option value="TURBO">Turbo</option>
                     <option value="SA">Service Advisor</option>
                   </select>
                 </div>
@@ -529,6 +534,9 @@ const ClaimManagement: React.FC = () => {
                         }
                         if (divisionRelated === 'COMMON_RAIL') {
                           return u.role === 'COMMON_RAIL';
+                        }
+                        if (divisionRelated === 'TURBO') {
+                          return u.role === 'TURBO';
                         }
                         return u.role === 'SA';
                       })

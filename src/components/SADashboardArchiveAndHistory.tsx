@@ -16,8 +16,12 @@ import {
   Check,
   Wrench,
   Copy,
-  Share2
+  Share2,
+  Pencil,
+  MessageSquare
 } from 'lucide-react';
+import { EditWorkOrderModal } from './EditWorkOrderModal';
+import { copyWADraftToClipboard } from '../utils/whatsappDraft';
 
 const formatRupiah = (value: string | number | undefined | null): string => {
   if (value === undefined || value === null) return '';
@@ -40,8 +44,11 @@ export const SADashboardArchiveAndHistory: React.FC<SADashboardArchiveAndHistory
   updateWorkOrder,
   setPrintWO
 }) => {
-  const { trackingBaseUrl, addNotification } = useApp();
+  const { trackingBaseUrl, addNotification, currentUser } = useApp();
   const [archiveSubTab, setArchiveSubTab] = useState<'LIFETIME_HISTORY' | 'ADMIN_ARCHIVE'>('LIFETIME_HISTORY');
+
+  const [editingWO, setEditingWO] = useState<WorkOrder | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const getTrackingUrl = (woId: string) => {
     const base = trackingBaseUrl || window.location.origin;
@@ -68,6 +75,19 @@ export const SADashboardArchiveAndHistory: React.FC<SADashboardArchiveAndHistory
     const cleanPhone = wo.customerPhone.replace(/\D/g, '');
     const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
     window.open(waUrl, '_blank');
+  };
+
+  const handleCopyWADraft = (wo: any) => {
+    const mechName = users.find(u => u.id === wo.mechanicId)?.name;
+    const link = getTrackingUrl(wo.id);
+    copyWADraftToClipboard(wo, mechName, link, () => {
+      addNotification?.(
+        'Draft WA Berhasil Disalin',
+        `Template pesan WhatsApp status WO ${wo.id} untuk ${wo.customerName} siap di-paste & dikirim!`,
+        'success',
+        wo.id
+      );
+    });
   };
 
   // Admin & Archive Sub-states
@@ -466,6 +486,14 @@ export const SADashboardArchiveAndHistory: React.FC<SADashboardArchiveAndHistory
                                         >
                                           <Share2 className="w-2.5 h-2.5" />
                                         </button>
+                                        <button
+                                          onClick={() => handleCopyWADraft(wo)}
+                                          className="px-1.5 py-0.5 bg-emerald-950/80 hover:bg-emerald-700 hover:text-white text-emerald-300 border border-emerald-800/80 rounded text-[8.5px] font-bold transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                                          title="Salin Draft Template Pesan WhatsApp Status Pengerjaan (Siap Kirim)"
+                                        >
+                                          <MessageSquare className="w-2.5 h-2.5 text-emerald-400" />
+                                          <span>Draft WA</span>
+                                        </button>
                                       </div>
                                     </div>
                                   </td>
@@ -504,6 +532,20 @@ export const SADashboardArchiveAndHistory: React.FC<SADashboardArchiveAndHistory
                                         <Download className="w-3 h-3" />
                                         PDF
                                       </button>
+                                      {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setEditingWO(wo);
+                                            setIsEditModalOpen(true);
+                                          }}
+                                          className="px-2 py-1 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-amber-600 hover:text-white rounded text-[9px] font-mono font-bold uppercase transition-all flex items-center gap-0.5 cursor-pointer"
+                                          title="Edit SPK / Koreksi Human Error"
+                                        >
+                                          <Pencil className="w-3 h-3" />
+                                          Edit
+                                        </button>
+                                      )}
                                       <button
                                         type="button"
                                         onClick={() => setSelectedAdminWO(isSelected ? null : wo.id)}
@@ -656,6 +698,14 @@ export const SADashboardArchiveAndHistory: React.FC<SADashboardArchiveAndHistory
                                     title="Kirim via WhatsApp"
                                   >
                                     <Share2 className="w-2.5 h-2.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleCopyWADraft(wo)}
+                                    className="p-1 px-1.5 bg-emerald-950/80 hover:bg-emerald-700 text-emerald-300 border border-emerald-800/80 rounded text-[9px] font-bold transition-colors flex items-center gap-0.5 cursor-pointer shadow-xs"
+                                    title="Salin Template Pesan WhatsApp Siap Kirim"
+                                  >
+                                    <MessageSquare className="w-2.5 h-2.5" />
+                                    <span>Draft WA</span>
                                   </button>
                                 </div>
                               </div>
@@ -1017,6 +1067,20 @@ export const SADashboardArchiveAndHistory: React.FC<SADashboardArchiveAndHistory
                                       )}
 
                                       <div className="flex gap-2 justify-end pt-1">
+                                        {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setEditingWO(visit);
+                                              setIsEditModalOpen(true);
+                                            }}
+                                            className="px-2.5 py-1 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-amber-600 hover:text-white rounded font-mono font-bold uppercase transition-all flex items-center gap-1 cursor-pointer"
+                                            title="Koreksi Data Human Error SPK Ini"
+                                          >
+                                            <Pencil className="w-3 h-3" />
+                                            Koreksi / Edit SPK
+                                          </button>
+                                        )}
                                         <button
                                           type="button"
                                           onClick={() => setPrintWO(visit)}
@@ -1062,6 +1126,16 @@ export const SADashboardArchiveAndHistory: React.FC<SADashboardArchiveAndHistory
           })()}
         </div>
       )}
+
+      {/* Edit Work Order Modal (SA & Admin) */}
+      <EditWorkOrderModal
+        wo={editingWO}
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingWO(null);
+        }}
+      />
     </div>
   );
 };

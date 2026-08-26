@@ -13,6 +13,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../store/AppContext';
 import { QRCodeSVG } from 'qrcode.react';
+import { FuelGauge } from './FuelGauge';
 
 export const GENERAL_TRACKING_MILESTONES = [
   { id: 'm1', label: 'Intake & Verifikasi', desc: 'Serah terima fisik unit/komponen dari pelanggan' },
@@ -1015,13 +1016,22 @@ const PublicTrackingView: React.FC<{ initialWoId?: string; onBackToLogin: () => 
                         <span className="font-mono font-black text-blue-400 block mt-0.5">{workOrder.plateNumber || 'N/A'}</span>
                       </div>
                       <div>
-                        <span className="text-slate-500 text-[8px] font-mono uppercase block">Fuel Status</span>
+                        <span className="text-slate-500 text-[8px] font-mono uppercase block">Fuel Quality</span>
                         <span className={`text-[9px] font-bold mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded ${workOrder.fuelContaminated ? 'bg-red-500/10 border border-red-500/20 text-red-400' : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'}`}>
                           <span className={`w-1 h-1 rounded-full ${workOrder.fuelContaminated ? 'bg-red-400 animate-pulse' : 'bg-emerald-400'}`} />
                           {workOrder.fuelContaminated ? 'SOLAR KOTOR (HAZARD)' : 'BERSIH (OK)'}
                         </span>
                       </div>
                     </div>
+
+                    {workOrder.dropMethod === 'WHOLE' && workOrder.fuelLevel && (
+                      <div className="border-t border-white/5 pt-3.5 space-y-2">
+                        <span className="text-[8px] font-mono text-slate-400 uppercase block tracking-wider">Live Fuel Level (Dashboard)</span>
+                        <div className="flex justify-center bg-black/40 p-3 rounded-xl border border-white/5">
+                          <FuelGauge level={workOrder.fuelLevel} theme="dark" size="sm" className="w-full bg-transparent border-none p-0" />
+                        </div>
+                      </div>
+                    )}
 
                     {/* Loose Parts Identifikasi if available */}
                     {workOrder.looseParts && workOrder.looseParts.length > 0 && (

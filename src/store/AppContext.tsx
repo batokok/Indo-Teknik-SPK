@@ -358,6 +358,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         data.updatedAt = parseTimestampToISO(data.updatedAt);
         dbCusts.push(data as Customer);
       });
+      dbCusts.sort((a, b) => {
+        const timeA = new Date(a.createdAt || 0).getTime();
+        const timeB = new Date(b.createdAt || 0).getTime();
+        return timeB - timeA;
+      });
       setCustomers(dbCusts);
       customersLoaded = true;
       checkLoadingComplete();
@@ -375,6 +380,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         data.createdAt = parseTimestampToISO(data.createdAt);
         data.updatedAt = parseTimestampToISO(data.updatedAt);
         dbVehs.push(data as Vehicle);
+      });
+      dbVehs.sort((a, b) => {
+        const timeA = new Date(a.createdAt || 0).getTime();
+        const timeB = new Date(b.createdAt || 0).getTime();
+        return timeB - timeA;
       });
       setVehicles(dbVehs);
       vehiclesLoaded = true;
@@ -406,7 +416,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         dbWOs.push(data as WorkOrder);
       });
       
-      // Sort by createdAt descending
+      // Sort by createdAt descending (Terakhir dibuat sampai paling lama)
+      dbWOs.sort((a, b) => {
+        const timeA = new Date(a.createdAt || a.intakeDate || 0).getTime();
+        const timeB = new Date(b.createdAt || b.intakeDate || 0).getTime();
+        return timeB - timeA;
+      });
       // Only process real-time change events for toasts after the initial load batch is fully complete
       if (!isInitial) {
         snapshot.docChanges().forEach((change) => {
@@ -831,7 +846,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const docRef = doc(db, 'workOrders', id);
       const currentData = workOrders.find(w => w.id === id);
-      const isArchived = status === 'COMPLETED' ? true : (currentData?.isArchived || false);
+      const isArchived = currentData?.isArchived || false;
 
       const updates: any = { status, isArchived };
       if (mechanicId !== undefined) {

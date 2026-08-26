@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { Priority, PartDetails, InventoryItem, DamageReport, TodoAction, LoosePartDetails } from '../types';
-import { Printer, Car, ShieldAlert, Plus, Trash2, Camera, User, ClipboardList, Check, ChevronRight, ChevronLeft, Wrench, Archive, Search, GripVertical, Calendar, TrendingUp, Clock, Download, History, BarChart2, ArrowRight, BookOpen, FileSpreadsheet, ChevronDown, ChevronUp, RefreshCw, MapPin, Copy, Share2 } from 'lucide-react';
+import { Printer, Car, ShieldAlert, Plus, Trash2, Camera, User, ClipboardList, Check, ChevronRight, ChevronLeft, Wrench, Archive, Search, GripVertical, Calendar, TrendingUp, Clock, Download, History, BarChart2, ArrowRight, BookOpen, FileSpreadsheet, ChevronDown, ChevronUp, RefreshCw, MapPin, Copy, Share2, Pencil, CheckCircle2, FileCheck, Sparkles, AlertCircle, MessageSquare } from 'lucide-react';
 import { Reorder, motion } from 'motion/react';
+import { FuelGauge } from './FuelGauge';
+import { EditWorkOrderModal } from './EditWorkOrderModal';
+import { copyWADraftToClipboard } from '../utils/whatsappDraft';
 
 const formatRupiah = (value: string | number | undefined | null): string => {
   if (value === undefined || value === null) return '';
@@ -61,7 +64,7 @@ const INITIAL_PARTS_TRACKING = [
 ];
 
 const SADashboard: React.FC = () => {
-  const { addWorkOrder, setPrintWO, setPrintType, workOrders, users, updateWorkOrder, isLoading, customers, vehicles, trackingBaseUrl, addNotification } = useApp();
+  const { addWorkOrder, setPrintWO, setPrintType, workOrders, users, updateWorkOrder, isLoading, customers, vehicles, trackingBaseUrl, addNotification, currentUser } = useApp();
 
   const getTrackingUrl = (woId: string) => {
     const base = trackingBaseUrl || window.location.origin;
@@ -90,14 +93,79 @@ const SADashboard: React.FC = () => {
     window.open(waUrl, '_blank');
   };
 
+  const handleCopyWADraft = (wo: any) => {
+    const mechName = users.find(u => u.id === wo.mechanicId)?.name;
+    const link = getTrackingUrl(wo.id);
+    copyWADraftToClipboard(wo, mechName, link, () => {
+      addNotification?.(
+        'Draft WA Berhasil Disalin',
+        `Template pesan WhatsApp status WO ${wo.id} untuk ${wo.customerName} siap di-paste & dikirim!`,
+        'success',
+        wo.id
+      );
+    });
+  };
+
   // Component Lifecycle Tracking
   const [selectedHistoryPn, setSelectedHistoryPn] = useState<string | null>(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+
+  // Edit Work Order states (for SA and Super Admin)
+  const [editingWO, setEditingWO] = useState<any | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  // Post-Handover 3-Action Dialog State
+  const [handoverSuccessWO, setHandoverSuccessWO] = useState<any | null>(null);
+
+  const handleConfirmHandover = (wo: any) => {
+    const hasMilestone = (wo.milestoneHistory || []).some((h: any) => h.milestone === 'Selesai & Siap Diserahkan');
+    const newHistory = hasMilestone ? (wo.milestoneHistory || []) : [
+      ...(wo.milestoneHistory || []),
+      {
+        milestone: 'Selesai & Siap Diserahkan',
+        timestamp: new Date().toISOString(),
+        updatedBy: currentUser?.name || 'Service Advisor'
+      }
+    ];
+    const updatedData: Partial<any> = {
+      isHandoverConfirmed: true,
+      handoverDate: new Date().toISOString(),
+      handoverConfirmedBy: currentUser?.name || 'Service Advisor',
+      status: 'COMPLETED',
+      currentMilestone: 'Selesai & Siap Diserahkan',
+      milestoneHistory: newHistory
+    };
+    updateWorkOrder(wo.id, updatedData);
+    setHandoverSuccessWO({ ...wo, ...updatedData });
+    addNotification?.(
+      'Konfirmasi Serah Terima Berhasil',
+      `Unit WO ${wo.id} (${wo.customerName}) telah resmi diserahkan. Silakan cetak bukti serah terima atau selesaikan arsip.`,
+      'success',
+      wo.id
+    );
+  };
+
+  const handleArchiveWithToast = (wo: any) => {
+    updateWorkOrder(wo.id, { isArchived: true });
+    addNotification?.(
+      'SPK Berhasil Diarsipkan',
+      `SPK ${wo.id} (${wo.customerName}) telah dipindahkan ke Lemari Arsip & Buku Servis Lifetime Kendaraan.`,
+      'success',
+      wo.id
+    );
+  };
 
   // Search and Filter states for the Live Work Order Status Monitor
   const [queueSearch, setQueueSearch] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<'ALL' | '1' | '2' | '3'>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'QUEUE' | 'IN_PROGRESS' | 'PENDING_APPROVAL' | 'PENDING_PARTS' | 'COMPLETED'>('ALL');
+  const [woListPage, setWoListPage] = useState(1);
+  const [woListLimit, setWoListLimit] = useState(5);
+  const [activeTab, setActiveTab] = useState<'MONITOR' | 'FORM'>('MONITOR');
+
+  React.useEffect(() => {
+    setWoListPage(1);
+  }, [queueSearch, priorityFilter, statusFilter]);
 
   const getHistoricalWorkOrders = (pn: string) => {
     if (!pn || pn.trim().length < 3) return [];
@@ -135,7 +203,7 @@ const SADashboard: React.FC = () => {
   const [inventory, setInventory] = useState<InventoryItem[]>(INITIAL_INVENTORY);
   const [damages, setDamages] = useState<DamageReport[]>([]);
   const [priority, setPriority] = useState<Priority>(3);
-  const [divisionFlow, setDivisionFlow] = useState<('SUPPLY_PUMP' | 'COMMON_RAIL')[]>(['SUPPLY_PUMP']);
+  const [divisionFlow, setDivisionFlow] = useState<('SUPPLY_PUMP' | 'COMMON_RAIL' | 'TURBO')[]>(['SUPPLY_PUMP']);
   
   const [todoActions, setTodoActions] = useState<TodoAction[]>(INITIAL_TODO_ACTIONS);
 
@@ -392,6 +460,8 @@ const SADashboard: React.FC = () => {
     ]);
     setWizardStep(1);
     setWizardError(null);
+    setWoListPage(1);
+    setActiveTab('MONITOR');
   };
 
   const blockedWOs = workOrders.filter(w => w.status === 'PENDING_APPROVAL' && w.blockedReason === 'HIDDEN_DEFECT');
@@ -495,8 +565,38 @@ const SADashboard: React.FC = () => {
         </div>
       ))}
 
-      {/* LIVE WORK ORDER TRACKING DASHBOARD */}
-      <div className="bg-slate-900 text-white p-4 rounded-lg shadow-md border border-slate-700">
+      {/* WORKSPACE TAB SWITCHER */}
+      <div className="flex bg-slate-200/80 p-1 rounded-xl border border-slate-300 max-w-lg mx-auto shadow-sm select-none">
+        <button
+          type="button"
+          onClick={() => setActiveTab('MONITOR')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-5 text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+            activeTab === 'MONITOR'
+              ? 'bg-[#0F2D59] text-white shadow-md scale-[1.02]'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-300/50'
+          }`}
+        >
+          <Clock className="w-3.5 h-3.5" />
+          Monitor Antrean ({workOrders.filter(w => w.status !== 'COMPLETED').length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('FORM')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-5 text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+            activeTab === 'FORM'
+              ? 'bg-[#0F2D59] text-white shadow-md scale-[1.02]'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-300/50'
+          }`}
+        >
+          <ClipboardList className="w-3.5 h-3.5" />
+          Registrasi SPK Baru
+        </button>
+      </div>
+
+      {activeTab === 'MONITOR' ? (
+        <>
+          {/* LIVE WORK ORDER TRACKING DASHBOARD */}
+          <div className="bg-slate-900 text-white p-4 rounded-lg shadow-md border border-slate-700">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
             <h3 className="text-xs font-black uppercase tracking-wider text-blue-400 flex items-center">
@@ -801,12 +901,16 @@ const SADashboard: React.FC = () => {
                 }
 
                 return true;
+              }).sort((a, b) => {
+                const tA = new Date(a.createdAt || a.intakeDate || 0).getTime();
+                const tB = new Date(b.createdAt || b.intakeDate || 0).getTime();
+                return tB - tA;
               });
               
               if (filteredWOs.length === 0) {
                 const hasFilters = queueSearch || priorityFilter !== 'ALL' || statusFilter !== 'ALL';
                 return (
-                  <div className="text-center p-8 text-slate-500 text-xs bg-slate-850 rounded-lg border border-slate-850 flex flex-col items-center justify-center gap-2">
+                  <div className="text-center p-8 text-slate-400 text-xs bg-slate-900 rounded-lg border border-slate-800 flex flex-col items-center justify-center gap-2">
                     <p>
                       {hasFilters 
                         ? "Tidak ada SPK yang cocok dengan kata kunci pencarian atau filter yang aktif."
@@ -830,6 +934,11 @@ const SADashboard: React.FC = () => {
                 );
               }
 
+              const totalItems = filteredWOs.length;
+              const totalPages = Math.ceil(totalItems / woListLimit);
+              const startIndex = (woListPage - 1) * woListLimit;
+              const paginatedWOs = filteredWOs.slice(startIndex, startIndex + woListLimit);
+
               return (
                 <div id="wo-list-container">
                   {/* Desktop Table View */}
@@ -847,7 +956,7 @@ const SADashboard: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-800">
-                        {filteredWOs.map((wo) => {
+                        {paginatedWOs.map((wo) => {
                           const assignedMech = users.find(u => u.id === wo.mechanicId)?.name || 'Queue Antrean';
                           return (
                             <tr key={wo.id} className="hover:bg-slate-800/50 transition-colors">
@@ -875,6 +984,14 @@ const SADashboard: React.FC = () => {
                                       title="Kirim Pelacakan via WhatsApp"
                                     >
                                       <Share2 className="w-2.5 h-2.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleCopyWADraft(wo)}
+                                      className="px-1.5 py-0.5 bg-emerald-950/80 hover:bg-emerald-700 hover:text-white text-emerald-300 border border-emerald-800/80 rounded text-[8.5px] font-bold transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                                      title="Salin Draft Template Pesan WhatsApp Status Pengerjaan (Siap Kirim)"
+                                    >
+                                      <MessageSquare className="w-2.5 h-2.5 text-emerald-400" />
+                                      <span>Draft WA</span>
                                     </button>
                                   </div>
                                 </div>
@@ -909,81 +1026,122 @@ const SADashboard: React.FC = () => {
                                 </select>
                               </td>
                               <td className="p-2">
-                                <div className="flex flex-col gap-1 items-center justify-center">
+                                <div className="flex flex-col gap-1.5 items-center justify-center">
                                   {wo.status === 'COMPLETED' && !wo.isHandoverConfirmed ? (
                                     <button
                                       type="button"
-                                      onClick={() => {
-                                        const hasMilestone = (wo.milestoneHistory || []).some(h => h.milestone === 'Selesai & Siap Diserahkan');
-                                        const newHistory = hasMilestone ? (wo.milestoneHistory || []) : [
-                                          ...(wo.milestoneHistory || []),
-                                          {
-                                            milestone: 'Selesai & Siap Diserahkan',
-                                            timestamp: new Date().toISOString(),
-                                            updatedBy: 'Service Advisor'
-                                          }
-                                        ];
-                                        updateWorkOrder(wo.id, { 
-                                          isHandoverConfirmed: true, 
-                                          handoverDate: new Date().toISOString(),
-                                          status: 'COMPLETED',
-                                          currentMilestone: 'Selesai & Siap Diserahkan',
-                                          milestoneHistory: newHistory
-                                        });
-                                      }}
-                                      className="w-full px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1 shadow-md cursor-pointer animate-pulse"
+                                      onClick={() => handleConfirmHandover(wo)}
+                                      className="w-full px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[9.5px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1 shadow-md cursor-pointer animate-pulse"
                                     >
-                                      <Check className="w-3 h-3" />
+                                      <Check className="w-3.5 h-3.5" />
                                       <span>Konfirmasi Serah</span>
                                     </button>
                                   ) : null}
 
-                                  <div className="flex items-center gap-1.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setPrintType('SPK');
-                                        setPrintWO(wo);
-                                      }}
-                                      className="px-2 py-1 bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white text-[9px] font-bold rounded-md font-mono uppercase transition-all flex items-center gap-0.5 cursor-pointer"
-                                      title="Cetak SPK Standard / Bukti Invoice Kerja"
-                                    >
-                                      <Printer className="w-3 h-3" />
-                                      <span>SPK</span>
-                                    </button>
+                                  {wo.status === 'COMPLETED' && wo.isHandoverConfirmed ? (
+                                    <div className="w-full flex flex-col gap-1">
+                                      <div className="flex items-center gap-1 w-full">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setPrintType('HANDOVER');
+                                            setPrintWO(wo);
+                                          }}
+                                          className="flex-1 px-1.5 py-1 bg-blue-950/80 border border-blue-800/70 text-blue-300 hover:bg-blue-600 hover:text-white text-[8.5px] font-bold rounded uppercase transition-all flex items-center justify-center gap-1 cursor-pointer"
+                                          title="Simpan & Preview Dokumen Penyerahan PDF"
+                                        >
+                                          <Download className="w-2.5 h-2.5" />
+                                          <span>Simpan PDF</span>
+                                        </button>
 
-                                    {wo.status === 'COMPLETED' && wo.isHandoverConfirmed && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setPrintType('HANDOVER');
+                                            setPrintWO(wo);
+                                            setTimeout(() => window.print(), 300);
+                                          }}
+                                          className="flex-1 px-1.5 py-1 bg-purple-950/80 border border-purple-800/70 text-purple-300 hover:bg-purple-600 hover:text-white text-[8.5px] font-bold rounded uppercase transition-all flex items-center justify-center gap-1 cursor-pointer"
+                                          title="Cetak Fisik Surat Bukti Serah Terima Resmi"
+                                        >
+                                          <Printer className="w-2.5 h-2.5" />
+                                          <span>Cetak Serah</span>
+                                        </button>
+                                      </div>
+
+                                      <div className="flex items-center gap-1 w-full">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleArchiveWithToast(wo)}
+                                          className="flex-1 px-2 py-1 bg-emerald-950/90 border border-emerald-700/80 text-emerald-300 hover:bg-emerald-600 hover:text-white text-[8.5px] font-black rounded uppercase transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs"
+                                          title="Selesai pengerjaan dan pindahkan ke Buku Servis Lifetime & Arsip"
+                                        >
+                                          <Archive className="w-2.5 h-2.5" />
+                                          <span>Selesai & Archive</span>
+                                        </button>
+
+                                        {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setEditingWO(wo);
+                                              setIsEditModalOpen(true);
+                                            }}
+                                            className="px-2 py-1 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-amber-600 hover:text-white text-[8.5px] font-bold rounded uppercase transition-all flex items-center justify-center gap-0.5 cursor-pointer"
+                                            title="Edit SPK / Koreksi Data Human Error"
+                                          >
+                                            <Pencil className="w-2.5 h-2.5" />
+                                            <span>Edit</span>
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-1.5">
                                       <button
                                         type="button"
                                         onClick={() => {
-                                          setPrintType('HANDOVER');
+                                          setPrintType('SPK');
                                           setPrintWO(wo);
                                         }}
-                                        className="px-2 py-1 bg-purple-900/40 border border-purple-700/50 text-purple-300 hover:bg-purple-600 hover:text-white text-[9px] font-black rounded-md font-mono uppercase transition-all flex items-center gap-0.5 cursor-pointer"
-                                        title="Cetak Surat Penyerahan Barang Resmi"
+                                        className="px-2 py-1 bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white text-[9px] font-bold rounded-md font-mono uppercase transition-all flex items-center gap-0.5 cursor-pointer"
+                                        title="Cetak SPK Standard / Bukti Invoice Kerja"
                                       >
-                                        <Printer className="w-3 h-3 text-purple-400" />
-                                        <span>Serah Terima</span>
+                                        <Printer className="w-3 h-3" />
+                                        <span>SPK</span>
                                       </button>
-                                    )}
 
-                                    <button
-                                      type="button"
-                                      disabled={wo.status === 'COMPLETED' && !wo.isHandoverConfirmed}
-                                      title={wo.status === 'COMPLETED' && !wo.isHandoverConfirmed ? "Harap konfirmasi penyerahan barang terlebih dahulu" : "Sembunyikan/pindahkan pekerjaan ke tab Arsip Selesai"}
-                                      onClick={() => updateWorkOrder(wo.id, { isArchived: true })}
-                                      className={`px-2 py-1 text-[9px] font-bold rounded-md uppercase transition-all flex items-center gap-0.5 cursor-pointer border ${
-                                        wo.status === 'COMPLETED' && !wo.isHandoverConfirmed
-                                          ? 'bg-slate-800/40 text-slate-500 border-slate-800 cursor-not-allowed opacity-50'
-                                          : wo.status === 'COMPLETED'
-                                            ? 'bg-emerald-950 text-emerald-400 border-emerald-800/60 hover:bg-blue-600 hover:text-white hover:border-blue-500'
+                                      {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setEditingWO(wo);
+                                            setIsEditModalOpen(true);
+                                          }}
+                                          className="px-2 py-1 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-amber-600 hover:text-white text-[9px] font-bold rounded-md font-mono uppercase transition-all flex items-center gap-0.5 cursor-pointer"
+                                          title="Edit SPK / Koreksi Data Human Error"
+                                        >
+                                          <Pencil className="w-3 h-3" />
+                                          <span>Edit</span>
+                                        </button>
+                                      )}
+
+                                      <button
+                                        type="button"
+                                        disabled={wo.status === 'COMPLETED' && !wo.isHandoverConfirmed}
+                                        title={wo.status === 'COMPLETED' && !wo.isHandoverConfirmed ? "Harap konfirmasi penyerahan barang terlebih dahulu" : "Sembunyikan/pindahkan pekerjaan ke tab Arsip Selesai"}
+                                        onClick={() => handleArchiveWithToast(wo)}
+                                        className={`px-2 py-1 text-[9px] font-bold rounded-md uppercase transition-all flex items-center gap-0.5 cursor-pointer border ${
+                                          wo.status === 'COMPLETED' && !wo.isHandoverConfirmed
+                                            ? 'bg-slate-800/40 text-slate-500 border-slate-800 cursor-not-allowed opacity-50'
                                             : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-blue-600 hover:text-white hover:border-blue-500'
-                                      }`}
-                                    >
-                                      <Archive className="w-3 h-3" />
-                                      <span>Arsip</span>
-                                    </button>
-                                  </div>
+                                        }`}
+                                      >
+                                        <Archive className="w-3 h-3" />
+                                        <span>Arsip</span>
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -995,7 +1153,7 @@ const SADashboard: React.FC = () => {
 
                   {/* Mobile Responsive Cards View */}
                   <div className="block md:hidden space-y-3">
-                    {filteredWOs.map((wo, index) => {
+                    {paginatedWOs.map((wo, index) => {
                       const assignedMech = users.find(u => u.id === wo.mechanicId)?.name || 'Queue Antrean';
                       return (
                         <motion.div
@@ -1034,6 +1192,14 @@ const SADashboard: React.FC = () => {
                                   title="Kirim via WhatsApp"
                                 >
                                   <Share2 className="w-2.5 h-2.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleCopyWADraft(wo)}
+                                  className="p-1 px-1.5 bg-emerald-950/80 hover:bg-emerald-700 text-emerald-300 border border-emerald-800/80 rounded text-[9px] font-bold transition-colors flex items-center gap-0.5 cursor-pointer shadow-xs"
+                                  title="Salin Template Pesan WhatsApp Siap Kirim"
+                                >
+                                  <MessageSquare className="w-2.5 h-2.5" />
+                                  <span>Draft WA</span>
                                 </button>
                               </div>
                             </div>
@@ -1077,85 +1243,286 @@ const SADashboard: React.FC = () => {
                           {wo.status === 'COMPLETED' && !wo.isHandoverConfirmed && (
                             <button
                               type="button"
-                              onClick={() => {
-                                const hasMilestone = (wo.milestoneHistory || []).some(h => h.milestone === 'Selesai & Siap Diserahkan');
-                                const newHistory = hasMilestone ? (wo.milestoneHistory || []) : [
-                                  ...(wo.milestoneHistory || []),
-                                  {
-                                    milestone: 'Selesai & Siap Diserahkan',
-                                    timestamp: new Date().toISOString(),
-                                    updatedBy: 'Service Advisor'
-                                  }
-                                ];
-                                updateWorkOrder(wo.id, { 
-                                  isHandoverConfirmed: true, 
-                                  handoverDate: new Date().toISOString(),
-                                  status: 'COMPLETED',
-                                  currentMilestone: 'Selesai & Siap Diserahkan',
-                                  milestoneHistory: newHistory
-                                });
-                              }}
-                              className="w-full py-2 mb-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer animate-pulse"
+                              onClick={() => handleConfirmHandover(wo)}
+                              className="w-full py-2.5 mb-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[10.5px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer animate-pulse"
                             >
-                              <Check className="w-3.5 h-3.5" />
+                              <Check className="w-4 h-4" />
                               <span>Konfirmasi Serah Terima Unit</span>
                             </button>
                           )}
 
-                          <div className="flex gap-2 pt-2 border-t border-slate-800/80">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setPrintType('SPK');
-                                setPrintWO(wo);
-                              }}
-                              className="flex-1 py-2 bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                            >
-                              <Printer className="w-3.5 h-3.5" />
-                              <span>SPK</span>
-                            </button>
+                          {wo.status === 'COMPLETED' && wo.isHandoverConfirmed ? (
+                            <div className="space-y-1.5 pt-2 border-t border-slate-800/80">
+                              <div className="grid grid-cols-2 gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPrintType('HANDOVER');
+                                    setPrintWO(wo);
+                                  }}
+                                  className="py-2 bg-blue-950 border border-blue-800 text-blue-300 hover:bg-blue-900 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                  <span>Simpan PDF</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPrintType('HANDOVER');
+                                    setPrintWO(wo);
+                                    setTimeout(() => window.print(), 300);
+                                  }}
+                                  className="py-2 bg-purple-950 border border-purple-800 text-purple-300 hover:bg-purple-900 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                >
+                                  <Printer className="w-3.5 h-3.5 text-purple-400" />
+                                  <span>Cetak Serah</span>
+                                </button>
+                              </div>
 
-                            {wo.status === 'COMPLETED' && wo.isHandoverConfirmed && (
+                              <div className="flex gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleArchiveWithToast(wo)}
+                                  className="flex-1 py-2 bg-emerald-950 border border-emerald-800 text-emerald-300 hover:bg-emerald-900 text-[10px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                >
+                                  <Archive className="w-3.5 h-3.5" />
+                                  <span>Selesai & Archive</span>
+                                </button>
+
+                                {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingWO(wo);
+                                      setIsEditModalOpen(true);
+                                    }}
+                                    className="px-3 py-2 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-slate-700 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                    <span>Edit</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex gap-2 pt-2 border-t border-slate-800/80">
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setPrintType('HANDOVER');
+                                  setPrintType('SPK');
                                   setPrintWO(wo);
                                 }}
-                                className="flex-1 py-2 bg-purple-950 border border-purple-800 text-purple-300 hover:bg-purple-900 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                className="flex-1 py-2 bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                               >
-                                <Printer className="w-3.5 h-3.5 text-purple-400" />
-                                <span>Serah Terima</span>
+                                <Printer className="w-3.5 h-3.5" />
+                                <span>SPK</span>
                               </button>
-                            )}
 
-                            <button
-                              type="button"
-                              disabled={wo.status === 'COMPLETED' && !wo.isHandoverConfirmed}
-                              onClick={() => updateWorkOrder(wo.id, { isArchived: true })}
-                              className={`flex-1 py-2 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer border ${
-                                wo.status === 'COMPLETED' && !wo.isHandoverConfirmed
-                                  ? 'bg-slate-800/40 text-slate-500 border-slate-800 cursor-not-allowed opacity-50'
-                                  : wo.status === 'COMPLETED'
-                                    ? 'bg-emerald-950 text-emerald-300 border-emerald-800/80 hover:bg-blue-600 hover:text-white'
+                              {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingWO(wo);
+                                    setIsEditModalOpen(true);
+                                  }}
+                                  className="px-3 py-2 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-slate-700 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer"
+                                  title="Edit SPK"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                  <span>Edit</span>
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
+                                disabled={wo.status === 'COMPLETED' && !wo.isHandoverConfirmed}
+                                onClick={() => handleArchiveWithToast(wo)}
+                                className={`flex-1 py-2 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer border ${
+                                  wo.status === 'COMPLETED' && !wo.isHandoverConfirmed
+                                    ? 'bg-slate-800/40 text-slate-500 border-slate-800 cursor-not-allowed opacity-50'
                                     : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-blue-600 hover:text-white'
-                              }`}
-                            >
-                              <Archive className="w-3.5 h-3.5" />
-                              <span>Arsipkan</span>
-                            </button>
-                          </div>
+                                }`}
+                              >
+                                <Archive className="w-3.5 h-3.5" />
+                                <span>Arsipkan</span>
+                              </button>
+                            </div>
+                          )}
                         </motion.div>
                       );
                     })}
+                  </div>
+
+                  {/* Pagination Controls */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-slate-850 bg-slate-900/40 p-4 rounded-xl">
+                    {/* Items status */}
+                    <div className="flex flex-col sm:flex-row items-center gap-3">
+                      <span className="text-xs text-slate-400 font-medium text-center sm:text-left">
+                        Menampilkan <strong className="text-slate-200">{totalItems === 0 ? 0 : startIndex + 1}</strong> - <strong className="text-slate-200">{Math.min(startIndex + woListLimit, totalItems)}</strong> dari <strong className="text-slate-200">{totalItems}</strong> SPK Aktif
+                      </span>
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <span className="text-slate-500 text-[11px] uppercase tracking-wider font-bold">Baris per Halaman:</span>
+                        <select
+                          value={woListLimit}
+                          onChange={(e) => {
+                            setWoListLimit(Number(e.target.value));
+                            setWoListPage(1);
+                          }}
+                          className="bg-slate-950 border border-slate-800 text-slate-200 py-1 px-2.5 rounded-lg text-xs font-bold outline-none cursor-pointer focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all"
+                        >
+                          <option value="5">5</option>
+                          <option value="10">10</option>
+                          <option value="15">15</option>
+                          <option value="25">25</option>
+                          <option value="50">50</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Page buttons */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center gap-1.5 select-none">
+                        <button
+                          type="button"
+                          disabled={woListPage === 1}
+                          onClick={() => setWoListPage(1)}
+                          className={`w-8 h-8 rounded-lg border text-xs font-bold transition-all flex items-center justify-center ${
+                            woListPage === 1
+                              ? 'bg-slate-900/20 text-slate-600 border-slate-900/40 cursor-not-allowed'
+                              : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer'
+                          }`}
+                          title="Halaman Pertama"
+                        >
+                          «
+                        </button>
+                        <button
+                          type="button"
+                          disabled={woListPage === 1}
+                          onClick={() => setWoListPage(prev => Math.max(prev - 1, 1))}
+                          className={`w-8 h-8 rounded-lg border text-xs font-bold transition-all flex items-center justify-center ${
+                            woListPage === 1
+                              ? 'bg-slate-900/20 text-slate-600 border-slate-900/40 cursor-not-allowed'
+                              : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer'
+                          }`}
+                          title="Halaman Sebelumnya"
+                        >
+                          <ChevronLeft className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Page number buttons */}
+                        {(() => {
+                          const pages = [];
+                          const startPage = Math.max(1, woListPage - 2);
+                          const endPage = Math.min(totalPages, startPage + 4);
+                          const adjustedStart = Math.max(1, endPage - 4);
+                          
+                          for (let i = adjustedStart; i <= endPage; i++) {
+                            pages.push(
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() => setWoListPage(i)}
+                                className={`w-8 h-8 rounded-lg border text-xs font-bold transition-all ${
+                                  woListPage === i
+                                    ? 'bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-900/30 font-black scale-105'
+                                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer'
+                                }`}
+                              >
+                                {i}
+                              </button>
+                            );
+                          }
+                          return pages;
+                        })()}
+
+                        <button
+                          type="button"
+                          disabled={woListPage === totalPages}
+                          onClick={() => setWoListPage(prev => Math.min(prev + 1, totalPages))}
+                          className={`w-8 h-8 rounded-lg border text-xs font-bold transition-all flex items-center justify-center ${
+                            woListPage === totalPages
+                              ? 'bg-slate-900/20 text-slate-600 border-slate-900/40 cursor-not-allowed'
+                              : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer'
+                          }`}
+                          title="Halaman Berikutnya"
+                        >
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={woListPage === totalPages}
+                          onClick={() => setWoListPage(totalPages)}
+                          className={`w-8 h-8 rounded-lg border text-xs font-bold transition-all flex items-center justify-center ${
+                            woListPage === totalPages
+                              ? 'bg-slate-900/20 text-slate-600 border-slate-900/40 cursor-not-allowed'
+                              : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer'
+                          }`}
+                          title="Halaman Terakhir"
+                        >
+                          »
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
             })()}
           </>
-      </div>
+        </div>
+          
+          {/* Quick Action Banner to open Form */}
+          <div className="bg-white p-5 rounded-xl shadow-xs border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-blue-50 text-[#1e3a8a] rounded-xl border border-blue-100">
+                <Plus className="w-6 h-6 animate-pulse text-blue-600" />
+              </div>
+              <div className="text-center sm:text-left">
+                <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Registrasi Unit / Komponen Baru</h4>
+                <p className="text-[10px] text-slate-500 mt-0.5">Ingin mendaftarkan SPK baru? Buka Wizard Pengisian SPK Masuk dengan cepat.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('FORM');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="w-full sm:w-auto px-5 py-2.5 bg-[#0F2D59] hover:bg-blue-850 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" /> Buka Form Registrasi
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="space-y-4">
+          {/* HIGH-DENSITY MINI STATUS TICKER FOR WORKSHOP LOADS */}
+          <div className="bg-slate-900 text-white rounded-xl p-4 border border-slate-800 shadow-md flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in duration-300">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 block">Status Lab Terkini (Real-Time)</span>
+                <span className="text-[9px] text-slate-400 font-medium">Beban kerja aktif saat ini di laboratorium diesel</span>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-bold font-mono">
+              <span className="text-slate-400">Antrean: <strong className="text-white text-sm font-black">{workOrders.filter(w => w.status === 'QUEUE').length}</strong></span>
+              <span className="text-slate-400">Dalam Proses: <strong className="text-blue-400 text-sm font-black">{workOrders.filter(w => w.status === 'IN_PROGRESS').length}</strong></span>
+              <span className="text-slate-400">Butuh Parts: <strong className="text-amber-400 text-sm font-black">{workOrders.filter(w => w.status === 'PENDING_PARTS').length}</strong></span>
+              <span className="text-slate-400">Butuh Approval: <strong className="text-rose-400 text-sm font-black">{workOrders.filter(w => w.status === 'PENDING_APPROVAL').length}</strong></span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('MONITOR')}
+              className="text-[10px] font-black text-blue-400 hover:text-blue-300 underline uppercase tracking-wider transition-colors cursor-pointer"
+            >
+              Buka Monitor Status &rarr;
+            </button>
+          </div>
 
-      {/* WIZARD PROGRESS BAR */}
+          {/* WIZARD PROGRESS BAR */}
       <div id="intake-form-header" className="bg-white p-5 rounded-xl shadow-md border border-slate-200">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -1300,11 +1667,11 @@ const SADashboard: React.FC = () => {
                     <h4 className="font-bold text-[11px] uppercase text-blue-900">Alur Divisi Pengerjaan (Work Flow) <span className="text-red-500">*</span></h4>
                     <p className="text-[9px] text-slate-500 italic mt-0.5">Atur urutan divisi dengan drag & drop (tahan dan geser ikon ⠿).</p>
                   </div>
-                  {divisionFlow.length < 2 && (
+                  {divisionFlow.length < 3 && (
                     <button
                       type="button"
                       onClick={() => {
-                        const available = (['SUPPLY_PUMP', 'COMMON_RAIL'] as const).find(d => !divisionFlow.includes(d));
+                        const available = (['SUPPLY_PUMP', 'COMMON_RAIL', 'TURBO'] as const).find(d => !divisionFlow.includes(d));
                         if (available) setDivisionFlow([...divisionFlow, available]);
                       }}
                       className="text-[9px] flex items-center gap-1 bg-white border border-blue-200 text-blue-600 px-2 py-1 rounded hover:bg-blue-50 font-bold"
@@ -1328,7 +1695,7 @@ const SADashboard: React.FC = () => {
                         {index + 1}
                       </div>
                       <div className="flex-1 font-bold text-xs text-slate-700">
-                        {div === 'SUPPLY_PUMP' ? '⚙️ Fuel Pump' : '🔬 Common Rail'}
+                        {div === 'SUPPLY_PUMP' ? '⚙️ Fuel Pump' : div === 'COMMON_RAIL' ? '🔬 Common Rail' : '🌀 Turbo'}
                       </div>
                       {divisionFlow.length > 1 && (
                         <button
@@ -1560,17 +1927,27 @@ const SADashboard: React.FC = () => {
                   {dropMethod === 'WHOLE' && (
                     <div className="flex flex-col bg-slate-50/50 p-3 rounded-lg border border-slate-100">
                       <label className="text-[10px] font-black uppercase text-slate-700">Volume Solar / BBM</label>
-                      <span className="text-[9px] text-slate-400 italic mb-1">Pilih indikator jarum bahan bakar</span>
-                      <div className="flex gap-1 mt-1.5">
-                        {['E', '1/4', '1/2', '3/4', 'F'].map((level) => (
-                          <span 
-                            key={level} 
-                            onClick={() => setFuelLevel(level as any)}
-                            className={`flex-1 text-[10px] font-bold border text-center py-2 cursor-pointer rounded-lg transition-all ${fuelLevel === level ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-700 shadow-sm'}`}
-                          >
-                            {level}
-                          </span>
-                        ))}
+                      <span className="text-[9px] text-slate-400 italic mb-1.5">Pilih indikator jarum bahan bakar</span>
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                        <div className="md:col-span-7">
+                          <div className="flex gap-1.5">
+                            {['E', '1/4', '1/2', '3/4', 'F'].map((level) => (
+                              <span 
+                                key={level} 
+                                onClick={() => setFuelLevel(level as any)}
+                                className={`flex-1 text-xs font-black border text-center py-2.5 cursor-pointer rounded-lg transition-all ${fuelLevel === level ? 'bg-[#0F2D59] text-white border-[#0F2D59] shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-700 shadow-sm'}`}
+                              >
+                                {level}
+                              </span>
+                            ))}
+                          </div>
+                          <p className="text-[8.5px] text-slate-500 mt-2 leading-relaxed">
+                            Penunjuk status BBM terekam dan ditampilkan dalam visualisasi indikator dasbor pada Lembar Kerja (SPK) cetak serta halaman pelacakan pelanggan.
+                          </p>
+                        </div>
+                        <div className="md:col-span-5 flex justify-center">
+                          <FuelGauge level={fuelLevel} theme="light" size="sm" className="w-full max-w-[170px]" />
+                        </div>
                       </div>
                     </div>
                   )}
@@ -2162,6 +2539,8 @@ const SADashboard: React.FC = () => {
           </div>
         </div>
       </form>
+        </div>
+      )}
 
 
 
@@ -2275,6 +2654,130 @@ const SADashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* POST-HANDOVER SUCCESS ACTION MODAL (3 Buttons: Simpan PDF, Cetak Bukti Serah, Selesai dan Archive) */}
+      {handoverSuccessWO && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-750 text-slate-100 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
+            <div className="bg-gradient-to-r from-emerald-900/60 to-emerald-800/40 p-6 border-b border-emerald-700/40 flex items-start gap-4">
+              <div className="p-3 bg-emerald-500 text-slate-950 rounded-xl shadow-lg shadow-emerald-500/20">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              <div className="flex-1">
+                <span className="text-[11px] font-mono font-black text-emerald-400 uppercase tracking-widest block mb-1">
+                  Status Penyerahan Terverifikasi
+                </span>
+                <h3 className="text-lg font-black text-white tracking-tight">
+                  Unit Berhasil Diserahkan ke Pelanggan
+                </h3>
+                <p className="text-xs text-slate-300 mt-1">
+                  Serah terima SPK <span className="font-mono font-bold text-white">{handoverSuccessWO.id}</span> telah tercatat resmi di log sistem.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHandoverSuccessWO(null)}
+                className="text-slate-400 hover:text-white text-lg font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 space-y-2">
+                <div className="flex items-center justify-between text-xs border-b border-slate-850 pb-2">
+                  <span className="text-slate-400 font-medium">Pelanggan:</span>
+                  <span className="font-bold text-slate-200">{handoverSuccessWO.customerName} ({handoverSuccessWO.customerPhone})</span>
+                </div>
+                <div className="flex items-center justify-between text-xs border-b border-slate-850 pb-2">
+                  <span className="text-slate-400 font-medium">Kendaraan:</span>
+                  <span className="font-bold text-blue-400">{handoverSuccessWO.vehicleBrand} - {handoverSuccessWO.plateNumber}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400 font-medium">Waktu Serah Terima:</span>
+                  <span className="font-mono font-semibold text-emerald-300">
+                    {new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-400 text-center">
+                Silakan pilih tindakan dokumen resmi selanjutnya di bawah ini:
+              </p>
+
+              {/* The 3 Action Buttons */}
+              <div className="space-y-2.5">
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPrintType('HANDOVER');
+                      setPrintWO(handoverSuccessWO);
+                    }}
+                    className="p-3 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/50 text-blue-200 hover:text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex flex-col items-center justify-center gap-1.5 shadow-md cursor-pointer group"
+                  >
+                    <Download className="w-5 h-5 text-blue-400 group-hover:scale-110 transition-transform" />
+                    <span>1. Simpan PDF</span>
+                    <span className="text-[9px] text-blue-300/70 font-normal lowercase">download & preview</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPrintType('HANDOVER');
+                      setPrintWO(handoverSuccessWO);
+                      setTimeout(() => window.print(), 300);
+                    }}
+                    className="p-3 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/50 text-purple-200 hover:text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex flex-col items-center justify-center gap-1.5 shadow-md cursor-pointer group"
+                  >
+                    <Printer className="w-5 h-5 text-purple-400 group-hover:scale-110 transition-transform" />
+                    <span>2. Cetak Bukti Serah</span>
+                    <span className="text-[9px] text-purple-300/70 font-normal lowercase">cetak surat fisik</span>
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    updateWorkOrder(handoverSuccessWO.id, { isArchived: true });
+                    addNotification?.(
+                      'SPK Berhasil Diselesaikan & Diarsipkan',
+                      `SPK ${handoverSuccessWO.id} telah dikeluarkan dari SPK Aktif dan tersimpan aman di Buku Servis Lifetime Kendaraan.`,
+                      'success',
+                      handoverSuccessWO.id
+                    );
+                    setHandoverSuccessWO(null);
+                  }}
+                  className="w-full p-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30 cursor-pointer group"
+                >
+                  <Archive className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  <span>3. Selesai dan Archive (Hapus dari SPK Aktif)</span>
+                </button>
+              </div>
+
+              <div className="pt-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => setHandoverSuccessWO(null)}
+                  className="text-[11px] text-slate-400 hover:text-slate-200 underline cursor-pointer"
+                >
+                  Tutup jendela (Biarkan tetap di daftar SPK Aktif)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT WORK ORDER MODAL (SA & Admin Human Error Fixes) */}
+      <EditWorkOrderModal
+        wo={editingWO}
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingWO(null);
+        }}
+      />
     </div>
   );
 };

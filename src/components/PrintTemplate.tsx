@@ -3,6 +3,7 @@ import { useApp } from '../store/AppContext';
 import { Printer, Download, ArrowLeft, Mail, Phone, Globe, MapPin } from 'lucide-react';
 import { SmartLogo } from './SmartLogo';
 import { QRCodeSVG } from 'qrcode.react';
+import { FuelGauge } from './FuelGauge';
 
 const formatRupiah = (value: string | number | undefined | null): string => {
   if (value === undefined || value === null) return '';
@@ -428,13 +429,27 @@ const PrintTemplate: React.FC = () => {
                 <h3 className="font-extrabold border-b border-slate-200 pb-1 mb-1.5 text-[#0F2D59] text-[8px] uppercase tracking-wider flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span> Detail Kendaraan / Komponen
                 </h3>
-                <div className="grid grid-cols-3 gap-y-1 gap-x-0.5 text-[8.5px] text-slate-800">
-                  <span className="text-slate-500">Brand/Model:</span> <span className="col-span-2 font-bold text-slate-900">{printWO.vehicleBrand}</span>
-                  <span className="text-slate-500">No. Polisi:</span> <span className="col-span-2 font-black text-[#0F2D59] tracking-wider font-mono bg-blue-50 px-1 rounded inline-block w-fit">{printWO.plateNumber}</span>
-                  <span className="text-slate-500">No. Rangka (VIN):</span> <span className="col-span-2 font-mono">{printWO.vin || '-'}</span>
-                  <span className="text-slate-500">Odo / HM:</span> <span className="col-span-2 font-semibold text-slate-800">{printWO.odometer}</span>
-                  <span className="text-slate-500">Level BBM:</span> <span className="col-span-2 font-semibold text-slate-800">{printWO.fuelLevel}</span>
-                </div>
+                {printWO.dropMethod === 'WHOLE' && printWO.fuelLevel ? (
+                  <div className="grid grid-cols-12 gap-2">
+                    <div className="col-span-7 grid grid-cols-3 gap-y-1.5 gap-x-0.5 text-[8.5px] text-slate-800 items-center">
+                      <span className="text-slate-500 font-medium">Brand/Model:</span> <span className="col-span-2 font-bold text-slate-900 truncate">{printWO.vehicleBrand}</span>
+                      <span className="text-slate-500 font-medium">No. Polisi:</span> <span className="col-span-2 font-black text-[#0F2D59] tracking-wider font-mono bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 inline-block w-fit text-[8px]">{printWO.plateNumber}</span>
+                      <span className="text-slate-500 font-medium">VIN:</span> <span className="col-span-2 font-mono text-slate-700 truncate">{printWO.vin || '-'}</span>
+                      <span className="text-slate-500 font-medium">Odometer:</span> <span className="col-span-2 font-semibold text-slate-800">{printWO.odometer}</span>
+                    </div>
+                    <div className="col-span-5 flex flex-col items-center justify-center border-l border-dashed border-slate-300 pl-2">
+                      <span className="text-[7px] font-mono text-slate-400 uppercase tracking-widest mb-0.5 font-extrabold">Fuel Level</span>
+                      <FuelGauge level={printWO.fuelLevel} theme="print" size="xs" className="border-none bg-transparent p-0 w-full" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-y-1 gap-x-0.5 text-[8.5px] text-slate-800">
+                    <span className="text-slate-500">Brand/Model:</span> <span className="col-span-2 font-bold text-slate-900">{printWO.vehicleBrand}</span>
+                    <span className="text-slate-500">No. Polisi:</span> <span className="col-span-2 font-black text-[#0F2D59] tracking-wider font-mono bg-blue-50 px-1 rounded inline-block w-fit">{printWO.plateNumber}</span>
+                    <span className="text-slate-500">No. Rangka (VIN):</span> <span className="col-span-2 font-mono">{printWO.vin || '-'}</span>
+                    <span className="text-slate-500">Odo / HM:</span> <span className="col-span-2 font-semibold text-slate-800">{printWO.odometer}</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -673,11 +688,25 @@ const PrintTemplate: React.FC = () => {
                 <h3 className="font-extrabold border-b border-slate-200 pb-1 mb-1.5 text-[#0F2D59] text-[8px] uppercase tracking-wider flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span> Identitas Teknis Komponen
                 </h3>
-                <div className="grid grid-cols-3 gap-y-1 gap-x-0.5 text-[8.5px] text-slate-800">
-                  <span className="text-slate-500">Model/Year:</span> <span className="col-span-2 font-bold text-slate-900">{printWO.vehicleBrand}</span>
-                  <span className="text-slate-500">No. Polisi:</span> <span className="col-span-2 font-black text-[#0F2D59] tracking-wider font-mono bg-blue-50 px-1 rounded inline-block w-fit">{printWO.plateNumber || '-'}</span>
-                  <span className="text-slate-500">No. Rangka (VIN):</span> <span className="col-span-2 font-mono">{printWO.vin || '-'}</span>
-                </div>
+                {printWO.dropMethod === 'WHOLE' && printWO.fuelLevel ? (
+                  <div className="grid grid-cols-12 gap-2">
+                    <div className="col-span-7 grid grid-cols-3 gap-y-1.5 gap-x-0.5 text-[8.5px] text-slate-800 items-center">
+                      <span className="text-slate-500 font-medium">Model/Year:</span> <span className="col-span-2 font-bold text-slate-900 truncate">{printWO.vehicleBrand}</span>
+                      <span className="text-slate-500 font-medium">No. Polisi:</span> <span className="col-span-2 font-black text-[#0F2D59] tracking-wider font-mono bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 inline-block w-fit text-[8px]">{printWO.plateNumber || '-'}</span>
+                      <span className="text-slate-500 font-medium">VIN:</span> <span className="col-span-2 font-mono text-slate-700 truncate">{printWO.vin || '-'}</span>
+                    </div>
+                    <div className="col-span-5 flex flex-col items-center justify-center border-l border-dashed border-slate-300 pl-2">
+                      <span className="text-[7px] font-mono text-slate-400 uppercase tracking-widest mb-0.5 font-extrabold">Fuel Level</span>
+                      <FuelGauge level={printWO.fuelLevel} theme="print" size="xs" className="border-none bg-transparent p-0 w-full" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-y-1 gap-x-0.5 text-[8.5px] text-slate-800">
+                    <span className="text-slate-500">Model/Year:</span> <span className="col-span-2 font-bold text-slate-900">{printWO.vehicleBrand}</span>
+                    <span className="text-slate-500">No. Polisi:</span> <span className="col-span-2 font-black text-[#0F2D59] tracking-wider font-mono bg-blue-50 px-1 rounded inline-block w-fit">{printWO.plateNumber || '-'}</span>
+                    <span className="text-slate-500">No. Rangka (VIN):</span> <span className="col-span-2 font-mono">{printWO.vin || '-'}</span>
+                  </div>
+                )}
               </div>
             </div>
 

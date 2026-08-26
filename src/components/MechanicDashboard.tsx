@@ -38,6 +38,7 @@ const parseEstimasiToSeconds = (estimasi: string): number => {
 const getDivisionLabel = (div: string) => {
   if (div === 'SUPPLY_PUMP' || div === 'MECHANIC') return 'Fuel Pump';
   if (div === 'COMMON_RAIL') return 'Common Rail';
+  if (div === 'TURBO') return 'Turbo';
   return div.replace(/_/g, ' ');
 };
 
@@ -132,6 +133,7 @@ const MechanicDashboard: React.FC = () => {
   // Transfer WO State
   const [transferModalOpen, setTransferModalOpen] = useState(false);
   const [transferNote, setTransferNote] = useState('');
+  const [transferTargetDivision, setTransferTargetDivision] = useState<'SUPPLY_PUMP' | 'COMMON_RAIL' | 'TURBO'>('SUPPLY_PUMP');
 
   // Toast message state for FO sync alerts
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -239,6 +241,9 @@ const MechanicDashboard: React.FC = () => {
 
       if (currentUser?.role === 'COMMON_RAIL') {
         return wo.currentDivision === 'COMMON_RAIL' && (!wo.mechanicId || isAssignedToMe);
+      }
+      if (currentUser?.role === 'TURBO') {
+        return wo.currentDivision === 'TURBO' && (!wo.mechanicId || isAssignedToMe);
       }
       // Fuel Pump Mechanics & Foreman can only see tasks explicitly assigned to them
       return (!wo.currentDivision || wo.currentDivision === 'SUPPLY_PUMP') && isAssignedToMe;
@@ -361,7 +366,7 @@ const MechanicDashboard: React.FC = () => {
     if (!activeWO) return;
     
     // Check if there's a next division in the flow
-    let nextDivision: 'SUPPLY_PUMP' | 'COMMON_RAIL' | 'SA' | undefined = undefined;
+    let nextDivision: 'SUPPLY_PUMP' | 'COMMON_RAIL' | 'TURBO' | 'SA' | undefined = undefined;
     if (activeWO.divisionFlow && activeWO.currentDivision) {
       const currentIndex = activeWO.divisionFlow.indexOf(activeWO.currentDivision as any);
       if (currentIndex !== -1 && currentIndex < activeWO.divisionFlow.length - 1) {
@@ -426,7 +431,7 @@ const MechanicDashboard: React.FC = () => {
 
   const handleTransferWO = () => {
     if (!activeWO) return;
-    const targetDivision = currentUser?.role === 'COMMON_RAIL' ? 'SUPPLY_PUMP' : 'COMMON_RAIL';
+    const targetDivision = transferTargetDivision;
     const noteEntry = {
       from: currentUser?.role || 'MECHANIC',
       to: targetDivision,
@@ -849,20 +854,18 @@ const MechanicDashboard: React.FC = () => {
                 </div>
                 
                 <div className="flex gap-2 w-full justify-end flex-wrap">
-                  {currentUser?.role === 'MECHANIC' && activeWO.status === 'IN_PROGRESS' && activeWO.divisionFlow?.includes('SUPPLY_PUMP') && activeWO.divisionFlow?.includes('COMMON_RAIL') && (
+                  {activeWO.status === 'IN_PROGRESS' && activeWO.divisionFlow && activeWO.divisionFlow.length > 1 && (
                     <button 
-                      onClick={() => setTransferModalOpen(true)}
+                      onClick={() => {
+                        const otherDiv = activeWO.divisionFlow?.find(d => d !== activeWO.currentDivision);
+                        if (otherDiv) {
+                          setTransferTargetDivision(otherDiv);
+                        }
+                        setTransferModalOpen(true);
+                      }}
                       className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-xs font-bold shadow-md uppercase tracking-wider flex items-center gap-1.5 transition-all"
                     >
-                      <Send className="w-3.5 h-3.5" /> KE COMMON RAIL
-                    </button>
-                  )}
-                  {currentUser?.role === 'COMMON_RAIL' && activeWO.status === 'IN_PROGRESS' && activeWO.divisionFlow?.includes('SUPPLY_PUMP') && activeWO.divisionFlow?.includes('COMMON_RAIL') && (
-                    <button 
-                      onClick={() => setTransferModalOpen(true)}
-                      className="px-4 py-1.5 bg-orange-600 hover:bg-orange-500 text-white rounded text-xs font-bold shadow-md uppercase tracking-wider flex items-center gap-1.5 transition-all"
-                    >
-                      <Send className="w-3.5 h-3.5" /> KEMBALIKAN KE FILL PUMP
+                      <Send className="w-3.5 h-3.5" /> TRANSFER DIVISI
                     </button>
                   )}
                   {activeWO.status === 'IN_PROGRESS' && (
@@ -1676,6 +1679,26 @@ const MechanicDashboard: React.FC = () => {
               </h3>
             </div>
             <div className="p-5 space-y-4">
+              {activeWO && activeWO.divisionFlow && activeWO.divisionFlow.length > 1 && (
+                <div>
+                  <label className="block text-xs font-black text-slate-700 uppercase mb-1">
+                    Pilih Divisi Tujuan
+                  </label>
+                  <select
+                    className="w-full text-xs font-bold text-slate-800 bg-slate-50 border border-slate-300 p-2.5 rounded outline-none focus:border-indigo-500"
+                    value={transferTargetDivision}
+                    onChange={(e) => setTransferTargetDivision(e.target.value as any)}
+                  >
+                    {activeWO.divisionFlow
+                      .filter(d => d !== activeWO.currentDivision)
+                      .map(d => (
+                        <option key={d} value={d}>
+                          {d === 'SUPPLY_PUMP' ? '⚙️ Fuel Pump' : d === 'COMMON_RAIL' ? '🔬 Common Rail' : '🌀 Turbo'}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-black text-slate-700 uppercase mb-1">
                   Catatan untuk Divisi Tujuan
@@ -1689,7 +1712,7 @@ const MechanicDashboard: React.FC = () => {
                 ></textarea>
               </div>
               <div className="bg-indigo-50 border border-indigo-200 rounded p-3 text-[11px] text-indigo-800 leading-normal">
-                <strong>Info:</strong> Work Order ini akan dihapus dari antrean Anda dan dikirim ke divisi {currentUser?.role === 'COMMON_RAIL' ? 'Fuel Pump' : 'Common Rail'}.
+                <strong>Info:</strong> Work Order ini akan dihapus dari antrean Anda dan dikirim ke divisi <strong>{getDivisionLabel(transferTargetDivision)}</strong>.
               </div>
             </div>
             <div className="bg-slate-50 p-4 flex justify-end gap-3 border-t border-slate-200">

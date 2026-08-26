@@ -25,7 +25,8 @@ import {
   MapPin,
   Navigation,
   Globe,
-  Link
+  Link,
+  Sparkles
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -171,6 +172,7 @@ export const AdminDashboard: React.FC = () => {
   // Claims by Division
   const claimsFP = claims.filter(c => c.divisionRelated === 'SUPPLY_PUMP').length;
   const claimsCR = claims.filter(c => c.divisionRelated === 'COMMON_RAIL').length;
+  const claimsTB = claims.filter(c => c.divisionRelated === 'TURBO').length;
   const claimsSA = claims.filter(c => c.divisionRelated === 'SA').length;
 
   // Claims by Mechanic lookup
@@ -183,6 +185,7 @@ export const AdminDashboard: React.FC = () => {
   // Division performance completed units
   const completedFPCount = workOrders.filter(w => (!w.currentDivision || w.currentDivision === 'SUPPLY_PUMP') && w.status === 'COMPLETED').length;
   const completedCRCount = workOrders.filter(w => w.currentDivision === 'COMMON_RAIL' && w.status === 'COMPLETED').length;
+  const completedTBCount = workOrders.filter(w => w.currentDivision === 'TURBO' && w.status === 'COMPLETED').length;
 
   // Calculate Average Duration helper
   const calculateUserAverageDuration = (userId: string) => {
@@ -537,6 +540,16 @@ export const AdminDashboard: React.FC = () => {
 
                   <div>
                     <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
+                      <span>Divisi Turbo</span>
+                      <span className="font-mono">{claimsTB} Klaim</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div className="bg-teal-500 h-full rounded-full" style={{ width: `${totalClaimsCount > 0 ? (claimsTB / totalClaimsCount) * 100 : 0}%` }}></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs font-bold text-slate-700 mb-1">
                       <span>Service Advisor / FO</span>
                       <span className="font-mono">{claimsSA} Klaim</span>
                     </div>
@@ -574,7 +587,7 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               {/* Division KPI Cards */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="p-4 bg-slate-50 border border-slate-150 rounded-xl space-y-2">
                   <div className="flex items-center gap-1.5">
                     <Layers className="w-4 h-4 text-amber-500" />
@@ -600,6 +613,20 @@ export const AdminDashboard: React.FC = () => {
                   </div>
                   <div className="h-1 bg-slate-200 rounded-full overflow-hidden">
                     <div className="bg-purple-500 h-full rounded-full" style={{ width: `${totalWOsCount > 0 ? (completedCRCount / totalWOsCount) * 100 : 0}%` }}></div>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-slate-50 border border-slate-150 rounded-xl space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-teal-500" />
+                    <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Divisi Turbo</span>
+                  </div>
+                  <div className="flex justify-between items-baseline pt-1">
+                    <span className="text-2xl font-black text-slate-800 font-mono">{completedTBCount}</span>
+                    <span className="text-[10px] text-slate-400 font-bold">SPK Selesai</span>
+                  </div>
+                  <div className="h-1 bg-slate-200 rounded-full overflow-hidden">
+                    <div className="bg-teal-500 h-full rounded-full" style={{ width: `${totalWOsCount > 0 ? (completedTBCount / totalWOsCount) * 100 : 0}%` }}></div>
                   </div>
                 </div>
               </div>
@@ -656,7 +683,7 @@ export const AdminDashboard: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-150">
                   {users
-                    .filter(u => u.role === 'MECHANIC' || u.role === 'COMMON_RAIL' || u.role === 'FOREMAN')
+                    .filter(u => u.role === 'MECHANIC' || u.role === 'COMMON_RAIL' || u.role === 'TURBO' || u.role === 'FOREMAN')
                     .map(user => {
                       const completedCount = workOrders.filter(w => w.mechanicId === user.id && w.status === 'COMPLETED').length;
                       const activeCount = workOrders.filter(w => w.mechanicId === user.id && w.status === 'IN_PROGRESS').length;
@@ -674,6 +701,8 @@ export const AdminDashboard: React.FC = () => {
                               <span className="px-2 py-0.5 bg-orange-100 text-orange-800 rounded-md font-bold text-[9px] border border-orange-200 uppercase tracking-wider">🔧 Foreman (Pekerjaan Mandiri)</span>
                             ) : user.role === 'COMMON_RAIL' ? (
                               <span className="px-2 py-0.5 bg-purple-100 text-purple-800 rounded-md font-bold text-[9px] border border-purple-200 uppercase tracking-wider">🔬 Common Rail</span>
+                            ) : user.role === 'TURBO' ? (
+                              <span className="px-2 py-0.5 bg-teal-100 text-teal-800 rounded-md font-bold text-[9px] border border-teal-200 uppercase tracking-wider">🌀 Turbo</span>
                             ) : (
                               <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-md font-bold text-[9px] border border-emerald-200 uppercase tracking-wider">⚙️ Fuel Pump</span>
                             )}
@@ -839,6 +868,7 @@ export const AdminDashboard: React.FC = () => {
                       <option value="SA">Service Advisor</option>
                       <option value="MECHANIC">Mekanik Fuel Pump</option>
                       <option value="COMMON_RAIL">Common Rail</option>
+                      <option value="TURBO">Mekanik Turbo</option>
                       <option value="FOREMAN">Foreman Fuel Pump</option>
                       <option value="ADMIN">Super Admin</option>
                     </select>
@@ -997,6 +1027,8 @@ export const AdminDashboard: React.FC = () => {
                             <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded border border-blue-200 text-[10px] font-black uppercase">Service Advisor</span>
                           ) : user.role === 'COMMON_RAIL' ? (
                             <span className="px-2.5 py-1 bg-violet-50 text-violet-700 rounded border border-violet-200 text-[10px] font-black uppercase">Common Rail</span>
+                          ) : user.role === 'TURBO' ? (
+                            <span className="px-2.5 py-1 bg-teal-50 text-teal-700 rounded border border-teal-200 text-[10px] font-black uppercase">Mekanik Turbo</span>
                           ) : (
                             <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded border border-emerald-200 text-[10px] font-black uppercase">Mekanik Fuel Pump</span>
                           )}
@@ -1095,6 +1127,7 @@ export const AdminDashboard: React.FC = () => {
                   <option value="SA">Service Advisor</option>
                   <option value="MECHANIC">Mekanik Fuel Pump</option>
                   <option value="COMMON_RAIL">Common Rail</option>
+                  <option value="TURBO">Mekanik Turbo</option>
                   <option value="FOREMAN">Foreman Fuel Pump</option>
                   <option value="ADMIN">Super Admin</option>
                 </select>

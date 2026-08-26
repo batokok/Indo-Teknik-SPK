@@ -1,4 +1,4 @@
-export type Role = 'SA' | 'MECHANIC' | 'COMMON_RAIL' | 'FOREMAN' | 'ADMIN' | 'CUSTOMER';
+export type Role = 'SA' | 'MECHANIC' | 'COMMON_RAIL' | 'TURBO' | 'FOREMAN' | 'ADMIN' | 'CUSTOMER';
 
 export interface User {
   id: string;
@@ -164,8 +164,8 @@ export interface WorkOrder {
   blockedReason?: 'HIDDEN_DEFECT' | 'WAITING_PARTS';
   calibrationData?: CalibrationData;
   repairResults?: Record<number, string>;
-  currentDivision?: 'SUPPLY_PUMP' | 'COMMON_RAIL' | 'SA';
-  divisionFlow?: ('SUPPLY_PUMP' | 'COMMON_RAIL')[];
+  currentDivision?: 'SUPPLY_PUMP' | 'COMMON_RAIL' | 'TURBO' | 'SA';
+  divisionFlow?: ('SUPPLY_PUMP' | 'COMMON_RAIL' | 'TURBO')[];
   divisionNotes?: { from: string, to: string, note: string, date: string }[];
   isArchived?: boolean;
   currentMilestone?: string;
@@ -191,7 +191,7 @@ export interface Claim {
   customerName: string;
   claimDate: string;
   relatedWOId?: string;
-  divisionRelated: 'SUPPLY_PUMP' | 'COMMON_RAIL' | 'SA';
+  divisionRelated: 'SUPPLY_PUMP' | 'COMMON_RAIL' | 'TURBO' | 'SA';
   assignedPersonId?: string;
   assignedPersonName?: string;
   claimType: 'DAMAGE' | 'COMPLAINT' | 'COMEBACK_JOB' | 'WARRANTY' | 'OTHER';

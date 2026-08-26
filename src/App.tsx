@@ -192,34 +192,35 @@ const MainLayout: React.FC = () => {
 
   return (
     <LocationGuard currentUser={currentUser} logout={logout}>
-      <div className="flex h-screen w-full bg-[#f1f5f9] text-[#0f172a] font-sans overflow-hidden print:h-auto print:overflow-visible print:block">
+      <div className="flex h-screen w-full bg-[#f8fafc] text-slate-800 font-sans overflow-hidden print:h-auto print:overflow-visible print:block selection:bg-blue-600 selection:text-white">
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 md:hidden transition-opacity duration-300"
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-40 md:hidden transition-opacity duration-300"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar Navigation */}
-      <aside className={`fixed inset-y-0 left-0 w-64 bg-[#0a1526] text-white flex flex-col shrink-0 print:hidden z-50 transform md:transform-none md:static md:flex transition-transform duration-300 ease-in-out ${
+      <aside className={`fixed inset-y-0 left-0 w-64 bg-[#0A1120] border-r border-slate-800/80 text-white flex flex-col shrink-0 print:hidden z-50 transform md:transform-none md:static md:flex transition-transform duration-300 ease-in-out shadow-2xl ${
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       }`}>
-        <div className="p-4 border-b border-slate-800 flex flex-col gap-3 shrink-0">
+        <div className="p-4 border-b border-slate-800/80 flex flex-col gap-3 shrink-0 bg-gradient-to-b from-slate-900/60 to-transparent">
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
-              <h1 className="text-sm font-black text-white uppercase tracking-wider">
-                INDO <span className="text-[#dc2626]">TEKNIK</span>
+              <h1 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+                <span className="text-blue-400">INDO</span>
+                <span className="text-[#EF4444]">TEKNIK</span>
               </h1>
-              <div className="flex items-center gap-1.5 bg-slate-900/80 border border-slate-800 py-1 px-2.5 rounded mt-1.5 self-start shadow-xs">
-                <SmartLogo baseName="logo-itech" alt="ITech" className="h-3.5 object-contain bg-white px-1 py-0.5 rounded" />
-                <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest whitespace-nowrap">Authorized Dealer</span>
+              <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 py-1 px-2.5 rounded-lg mt-1.5 self-start shadow-inner">
+                <SmartLogo baseName="logo-itech" alt="ITech" className="h-3.5 object-contain bg-white px-1 py-0.5 rounded shadow-2xs" />
+                <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest whitespace-nowrap">Authorized Dealer</span>
               </div>
             </div>
             {/* Close Button on mobile */}
             <button
               onClick={() => setIsSidebarOpen(false)}
-              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 md:hidden flex items-center justify-center min-h-[44px] min-w-[44px]"
+              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 md:hidden flex items-center justify-center min-h-[44px] min-w-[44px] cursor-pointer"
               title="Close Sidebar"
             >
               <X className="w-5 h-5" />
@@ -227,11 +228,12 @@ const MainLayout: React.FC = () => {
           </div>
 
           {/* Premium Welcome Card aligned with Indo Teknik red/blue branding */}
-          <div id="user-profile" className="bg-[#1e3a8a]/10 border border-[#1e3a8a]/20 border-l-4 border-l-[#dc2626] p-2.5 rounded-lg flex flex-col gap-0.5 shadow-inner">
+          <div id="user-profile" className="bg-gradient-to-r from-blue-950/40 via-slate-900/60 to-slate-900/30 border border-blue-900/40 border-l-4 border-l-[#EF4444] p-3 rounded-xl flex flex-col gap-0.5 shadow-md">
             <span className="text-xs font-bold text-slate-100 leading-tight">
               {getGreeting()}, <span className="text-blue-300 font-black">{getGreetingName(currentUser)}</span>!
             </span>
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+            <span className="text-[9.5px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1 mt-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
               {currentUser.role === 'ADMIN' ? 'Super Admin' :
                currentUser.role === 'FOREMAN' ? 'Foreman Fuel Pump' :
                currentUser.role === 'SA' ? 'Service Advisor' :
@@ -241,15 +243,15 @@ const MainLayout: React.FC = () => {
           </div>
         </div>
         
-        <nav id="sidebar-navigation" className="shrink-0 py-2.5 px-3 space-y-4">
+        <nav id="sidebar-navigation" className="shrink-0 py-3 px-3 space-y-4 overflow-y-auto custom-scrollbar">
           {/* GROUP 1: OPERASIONAL LAB & BENGKEL */}
           <div className="space-y-1">
             <button
               onClick={() => setIsLabOpsOpen(!isLabOpsOpen)}
-              className="w-full flex items-center justify-between px-3 py-2.5 text-[10px] font-black text-slate-400 hover:text-white uppercase tracking-wider hover:bg-slate-800/40 rounded-lg transition-colors cursor-pointer min-h-[44px]"
+              className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-black text-slate-400 hover:text-white uppercase tracking-wider hover:bg-slate-800/50 rounded-lg transition-colors cursor-pointer min-h-[40px]"
             >
               <span className="flex items-center gap-2">
-                <Wrench className="w-3.5 h-3.5 text-[#dc2626]" />
+                <Wrench className="w-3.5 h-3.5 text-[#EF4444]" />
                 Operasional Lab & Bengkel
               </span>
               {isLabOpsOpen ? (
@@ -260,40 +262,40 @@ const MainLayout: React.FC = () => {
             </button>
 
             {isLabOpsOpen && (
-              <div className="space-y-1.5 md:space-y-1 pl-1">
+              <div className="space-y-1 pl-1">
                 {currentUser.role === 'ADMIN' ? (
                   <>
                     <motion.button
                       initial={{ opacity: 0, x: -6 }}
                       animate={{ opacity: 1, x: 0 }}
-                      whileHover={{ scale: 1.015, x: 2 }}
-                      whileTap={{ scale: 0.985 }}
-                      transition={{ duration: 0.2 }}
+                      whileHover={{ scale: 1.01, x: 2 }}
+                      whileTap={{ scale: 0.99 }}
+                      transition={{ duration: 0.15 }}
                       onClick={() => { setCurrentView('ARCHIVE_HISTORY'); setIsSidebarOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-3 py-3 md:py-1.5 rounded-lg text-sm transition-all duration-150 cursor-pointer border-l-4 border-b ${
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer border-l-4 ${
                         currentView === 'ARCHIVE_HISTORY' 
-                          ? 'bg-[#1e3a8a] text-white border-l-[#dc2626] border-b-transparent font-black shadow-xs' 
-                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent border-b-[#1e3a8a]/35 hover:border-b-[#1e3a8a]/60 font-medium'
+                          ? 'bg-blue-600/20 text-blue-200 border-l-[#EF4444] border-t border-r border-b border-blue-500/30 font-bold shadow-md' 
+                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent font-medium'
                       }`}
                     >
-                      <Archive className={`w-5 h-5 md:w-4 md:h-4 transition-colors flex-shrink-0 ${currentView === 'ARCHIVE_HISTORY' ? 'text-white' : 'text-blue-400/90'}`} />
+                      <Archive className={`w-4 h-4 transition-colors flex-shrink-0 ${currentView === 'ARCHIVE_HISTORY' ? 'text-blue-400' : 'text-slate-400'}`} />
                       Buku Servis & Arsip
                     </motion.button>
 
                     <motion.button
                       initial={{ opacity: 0, x: -6 }}
                       animate={{ opacity: 1, x: 0 }}
-                      whileHover={{ scale: 1.015, x: 2 }}
-                      whileTap={{ scale: 0.985 }}
-                      transition={{ duration: 0.2, delay: 0.05 }}
+                      whileHover={{ scale: 1.01, x: 2 }}
+                      whileTap={{ scale: 0.99 }}
+                      transition={{ duration: 0.15, delay: 0.03 }}
                       onClick={() => { setCurrentView('CLAIMS'); setIsSidebarOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-3 py-3 md:py-1.5 rounded-lg text-sm transition-all duration-150 cursor-pointer border-l-4 border-b ${
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer border-l-4 ${
                         currentView === 'CLAIMS' 
-                          ? 'bg-[#1e3a8a] text-white border-l-[#dc2626] border-b-transparent font-black shadow-xs' 
-                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent border-b-[#1e3a8a]/35 hover:border-b-[#1e3a8a]/60 font-medium'
+                          ? 'bg-red-600/20 text-red-200 border-l-[#EF4444] border-t border-r border-b border-red-500/30 font-bold shadow-md' 
+                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent font-medium'
                       }`}
                     >
-                      <ShieldAlert className={`w-5 h-5 md:w-4 md:h-4 transition-colors flex-shrink-0 ${currentView === 'CLAIMS' ? 'text-white' : 'text-red-400'}`} />
+                      <ShieldAlert className={`w-4 h-4 transition-colors flex-shrink-0 ${currentView === 'CLAIMS' ? 'text-red-400' : 'text-slate-400'}`} />
                       Klaim & Garansi
                     </motion.button>
                   </>
@@ -302,34 +304,34 @@ const MainLayout: React.FC = () => {
                     <motion.button
                       initial={{ opacity: 0, x: -6 }}
                       animate={{ opacity: 1, x: 0 }}
-                      whileHover={{ scale: 1.015, x: 2 }}
-                      whileTap={{ scale: 0.985 }}
-                      transition={{ duration: 0.2 }}
+                      whileHover={{ scale: 1.01, x: 2 }}
+                      whileTap={{ scale: 0.99 }}
+                      transition={{ duration: 0.15 }}
                       onClick={() => { setCurrentView('DEFAULT'); setIsSidebarOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-3 py-3 md:py-1.5 rounded-lg text-sm transition-all duration-150 cursor-pointer border-l-4 border-b ${
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer border-l-4 ${
                         currentView === 'DEFAULT' 
-                          ? 'bg-[#1e3a8a] text-white border-l-[#dc2626] border-b-transparent font-black shadow-xs' 
-                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent border-b-[#1e3a8a]/35 hover:border-b-[#1e3a8a]/60 font-medium'
+                          ? 'bg-blue-600/20 text-blue-200 border-l-[#EF4444] border-t border-r border-b border-blue-500/30 font-bold shadow-md' 
+                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent font-medium'
                       }`}
                     >
-                      <ClipboardList className={`w-5 h-5 md:w-4 md:h-4 transition-colors flex-shrink-0 ${currentView === 'DEFAULT' ? 'text-white' : 'text-blue-400/90'}`} />
+                      <ClipboardList className={`w-4 h-4 transition-colors flex-shrink-0 ${currentView === 'DEFAULT' ? 'text-blue-400' : 'text-slate-400'}`} />
                       {getDashboardTitle()}
                     </motion.button>
 
                     <motion.button
                       initial={{ opacity: 0, x: -6 }}
                       animate={{ opacity: 1, x: 0 }}
-                      whileHover={{ scale: 1.015, x: 2 }}
-                      whileTap={{ scale: 0.985 }}
-                      transition={{ duration: 0.2, delay: 0.05 }}
+                      whileHover={{ scale: 1.01, x: 2 }}
+                      whileTap={{ scale: 0.99 }}
+                      transition={{ duration: 0.15, delay: 0.03 }}
                       onClick={() => { setCurrentView('ARCHIVE_HISTORY'); setIsSidebarOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-3 py-3 md:py-1.5 rounded-lg text-sm transition-all duration-150 cursor-pointer border-l-4 border-b ${
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer border-l-4 ${
                         currentView === 'ARCHIVE_HISTORY' 
-                          ? 'bg-[#1e3a8a] text-white border-l-[#dc2626] border-b-transparent font-black shadow-xs' 
-                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent border-b-[#1e3a8a]/35 hover:border-b-[#1e3a8a]/60 font-medium'
+                          ? 'bg-blue-600/20 text-blue-200 border-l-[#EF4444] border-t border-r border-b border-blue-500/30 font-bold shadow-md' 
+                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent font-medium'
                       }`}
                     >
-                      <Archive className={`w-5 h-5 md:w-4 md:h-4 transition-colors flex-shrink-0 ${currentView === 'ARCHIVE_HISTORY' ? 'text-white' : 'text-blue-400/90'}`} />
+                      <Archive className={`w-4 h-4 transition-colors flex-shrink-0 ${currentView === 'ARCHIVE_HISTORY' ? 'text-blue-400' : 'text-slate-400'}`} />
                       Buku Servis & Arsip
                     </motion.button>
                   </>
@@ -342,10 +344,10 @@ const MainLayout: React.FC = () => {
           <div className="space-y-1">
             <button
               onClick={() => setIsManagementOpen(!isManagementOpen)}
-              className="w-full flex items-center justify-between px-3 py-2.5 text-[10px] font-black text-slate-400 hover:text-white uppercase tracking-wider hover:bg-slate-800/40 rounded-lg transition-colors cursor-pointer min-h-[44px]"
+              className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-black text-slate-400 hover:text-white uppercase tracking-wider hover:bg-slate-800/50 rounded-lg transition-colors cursor-pointer min-h-[40px]"
             >
               <span className="flex items-center gap-2">
-                <Briefcase className="w-3.5 h-3.5 text-[#3b82f6]" />
+                <Briefcase className="w-3.5 h-3.5 text-blue-400" />
                 Administrasi & Manajemen
               </span>
               {isManagementOpen ? (
@@ -356,57 +358,57 @@ const MainLayout: React.FC = () => {
             </button>
 
             {isManagementOpen && (
-              <div className="space-y-1.5 md:space-y-1 pl-1">
+              <div className="space-y-1 pl-1">
                 {currentUser.role === 'ADMIN' ? (
                   <>
                     <motion.button
                       initial={{ opacity: 0, x: -6 }}
                       animate={{ opacity: 1, x: 0 }}
-                      whileHover={{ scale: 1.015, x: 2 }}
-                      whileTap={{ scale: 0.985 }}
-                      transition={{ duration: 0.2 }}
+                      whileHover={{ scale: 1.01, x: 2 }}
+                      whileTap={{ scale: 0.99 }}
+                      transition={{ duration: 0.15 }}
                       onClick={() => { setCurrentView('DEFAULT'); setIsSidebarOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-3 py-3 md:py-1.5 rounded-lg text-sm transition-all duration-150 cursor-pointer border-l-4 border-b ${
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer border-l-4 ${
                         currentView === 'DEFAULT' 
-                          ? 'bg-[#1e3a8a] text-white border-l-[#dc2626] border-b-transparent font-black shadow-xs' 
-                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent border-b-[#1e3a8a]/35 hover:border-b-[#1e3a8a]/60 font-medium'
+                          ? 'bg-blue-600/20 text-blue-200 border-l-[#EF4444] border-t border-r border-b border-blue-500/30 font-bold shadow-md' 
+                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent font-medium'
                       }`}
                     >
-                      <Users className={`w-5 h-5 md:w-4 md:h-4 transition-colors flex-shrink-0 ${currentView === 'DEFAULT' ? 'text-white' : 'text-blue-400/90'}`} />
+                      <Users className={`w-4 h-4 transition-colors flex-shrink-0 ${currentView === 'DEFAULT' ? 'text-blue-400' : 'text-slate-400'}`} />
                       Kelola Pengguna
                     </motion.button>
 
                     <motion.button
                       initial={{ opacity: 0, x: -6 }}
                       animate={{ opacity: 1, x: 0 }}
-                      whileHover={{ scale: 1.015, x: 2 }}
-                      whileTap={{ scale: 0.985 }}
-                      transition={{ duration: 0.2, delay: 0.05 }}
+                      whileHover={{ scale: 1.01, x: 2 }}
+                      whileTap={{ scale: 0.99 }}
+                      transition={{ duration: 0.15, delay: 0.03 }}
                       onClick={() => { setCurrentView('CUSTOMERS'); setIsSidebarOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-3 py-3 md:py-1.5 rounded-lg text-sm transition-all duration-150 cursor-pointer border-l-4 border-b ${
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer border-l-4 ${
                         currentView === 'CUSTOMERS' 
-                          ? 'bg-[#1e3a8a] text-white border-l-[#dc2626] border-b-transparent font-black shadow-xs' 
-                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent border-b-[#1e3a8a]/35 hover:border-b-[#1e3a8a]/60 font-medium'
+                          ? 'bg-blue-600/20 text-blue-200 border-l-[#EF4444] border-t border-r border-b border-blue-500/30 font-bold shadow-md' 
+                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent font-medium'
                       }`}
                     >
-                      <Users className={`w-5 h-5 md:w-4 md:h-4 transition-colors flex-shrink-0 ${currentView === 'CUSTOMERS' ? 'text-white' : 'text-blue-400/90'}`} />
+                      <Users className={`w-4 h-4 transition-colors flex-shrink-0 ${currentView === 'CUSTOMERS' ? 'text-blue-400' : 'text-slate-400'}`} />
                       Kelola Konsumen
                     </motion.button>
 
                     <motion.button
                       initial={{ opacity: 0, x: -6 }}
                       animate={{ opacity: 1, x: 0 }}
-                      whileHover={{ scale: 1.015, x: 2 }}
-                      whileTap={{ scale: 0.985 }}
-                      transition={{ duration: 0.2, delay: 0.1 }}
+                      whileHover={{ scale: 1.01, x: 2 }}
+                      whileTap={{ scale: 0.99 }}
+                      transition={{ duration: 0.15, delay: 0.06 }}
                       onClick={() => { setCurrentView('ANALYTICS'); setIsSidebarOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-3 py-3 md:py-1.5 rounded-lg text-sm transition-all duration-150 cursor-pointer border-l-4 border-b ${
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer border-l-4 ${
                         currentView === 'ANALYTICS' 
-                          ? 'bg-[#1e3a8a] text-white border-l-[#dc2626] border-b-transparent font-black shadow-xs' 
-                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent border-b-[#1e3a8a]/35 hover:border-b-[#1e3a8a]/60 font-medium'
+                          ? 'bg-blue-600/20 text-blue-200 border-l-[#EF4444] border-t border-r border-b border-blue-500/30 font-bold shadow-md' 
+                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent font-medium'
                       }`}
                     >
-                      <BarChart3 className={`w-5 h-5 md:w-4 md:h-4 transition-colors flex-shrink-0 ${currentView === 'ANALYTICS' ? 'text-white' : 'text-blue-400/90'}`} />
+                      <BarChart3 className={`w-4 h-4 transition-colors flex-shrink-0 ${currentView === 'ANALYTICS' ? 'text-blue-400' : 'text-slate-400'}`} />
                       Analitik & KPI
                     </motion.button>
                   </>
@@ -415,17 +417,17 @@ const MainLayout: React.FC = () => {
                     <motion.button
                       initial={{ opacity: 0, x: -6 }}
                       animate={{ opacity: 1, x: 0 }}
-                      whileHover={{ scale: 1.015, x: 2 }}
-                      whileTap={{ scale: 0.985 }}
-                      transition={{ duration: 0.2 }}
+                      whileHover={{ scale: 1.01, x: 2 }}
+                      whileTap={{ scale: 0.99 }}
+                      transition={{ duration: 0.15 }}
                       onClick={() => { setCurrentView('CLAIMS'); setIsSidebarOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-3 py-3 md:py-1.5 rounded-lg text-sm transition-all duration-150 cursor-pointer border-l-4 border-b ${
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer border-l-4 ${
                         currentView === 'CLAIMS' 
-                          ? 'bg-[#1e3a8a] text-white border-l-[#dc2626] border-b-transparent font-black shadow-xs' 
-                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent border-b-[#1e3a8a]/35 hover:border-b-[#1e3a8a]/60 font-medium'
+                          ? 'bg-red-600/20 text-red-200 border-l-[#EF4444] border-t border-r border-b border-red-500/30 font-bold shadow-md' 
+                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent font-medium'
                       }`}
                     >
-                      <ShieldAlert className={`w-5 h-5 md:w-4 md:h-4 transition-colors flex-shrink-0 ${currentView === 'CLAIMS' ? 'text-white' : 'text-red-400'}`} />
+                      <ShieldAlert className={`w-4 h-4 transition-colors flex-shrink-0 ${currentView === 'CLAIMS' ? 'text-red-400' : 'text-slate-400'}`} />
                       Klaim & Garansi
                     </motion.button>
                   </>
@@ -437,19 +439,19 @@ const MainLayout: React.FC = () => {
         
         {currentUser && (
           /* Workshop Feed section inside Sidebar */
-          <div className="px-3 mt-2 flex-1 flex flex-col min-h-0 border-t border-slate-800 pt-4 overflow-hidden">
+          <div className="px-3 mt-2 flex-1 flex flex-col min-h-0 border-t border-slate-800/80 pt-3 overflow-hidden">
             <div className="flex items-center justify-between px-2 mb-2 shrink-0">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                 <Bell className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
                 Workshop Feed
                 {notifications.filter(n => !n.read).length > 0 && (
-                  <span className="bg-amber-500 text-slate-950 font-bold text-[9px] px-1.5 py-0.5 rounded-full">
+                  <span className="bg-amber-400 text-slate-950 font-black text-[9px] px-1.5 py-0.2 rounded-full">
                     {notifications.filter(n => !n.read).length}
                   </span>
                 )}
                 <button
                   onClick={refreshWorkshopFeed}
-                  className="ml-1.5 p-1 hover:bg-slate-800 rounded transition-colors text-slate-400 hover:text-white flex items-center justify-center cursor-pointer"
+                  className="ml-1 p-1 hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-white flex items-center justify-center cursor-pointer"
                   title="Sinkronisasi Live Feed"
                 >
                   <RefreshCw className={`w-3 h-3 ${isRefreshingFeed ? 'animate-spin text-blue-400' : ''}`} />
@@ -458,30 +460,30 @@ const MainLayout: React.FC = () => {
               {notifications.length > 0 && (
                 <button
                   onClick={markAllAsRead}
-                  className="text-[10px] text-slate-400 hover:text-white underline transition-colors cursor-pointer"
+                  className="text-[10px] text-slate-400 hover:text-blue-300 underline transition-colors cursor-pointer"
                 >
                   Read All
                 </button>
               )}
             </div>
 
-            <div className={`flex-1 overflow-y-auto space-y-2 pr-1 select-none scrollbar-thin scrollbar-thumb-slate-700 transition-opacity duration-300 ${isRefreshingFeed ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+            <div className={`flex-1 overflow-y-auto space-y-2 pr-1 select-none custom-scrollbar transition-opacity duration-300 ${isRefreshingFeed ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
               {notifications.length === 0 ? (
                 <div className="text-center py-6 text-slate-500 text-xs italic">
-                  No live updates yet. Waiting for workshop activity...
+                  Menunggu aktivitas bengkel terbaru...
                 </div>
               ) : (
                 notifications.map((notif) => (
                   <div
                     key={notif.id}
-                    className={`p-2 rounded-md border text-xs transition-colors ${
+                    className={`p-2.5 rounded-xl border text-xs transition-colors ${
                       notif.read 
-                        ? 'bg-slate-900/40 border-slate-800/80 text-slate-500' 
-                        : 'bg-slate-900 border-slate-700 text-slate-200'
+                        ? 'bg-slate-900/30 border-slate-800/60 text-slate-400' 
+                        : 'bg-slate-900/90 border-slate-800 text-slate-200 shadow-sm'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-1.5">
-                      <span className={`font-semibold tracking-wide ${
+                      <span className={`font-black tracking-wide text-[11px] ${
                         notif.type === 'success' ? 'text-emerald-400' :
                         notif.type === 'warning' ? 'text-amber-400' :
                         notif.type === 'error' ? 'text-red-400' : 'text-blue-400'
@@ -490,7 +492,7 @@ const MainLayout: React.FC = () => {
                       </span>
                       <span className="text-[9px] text-slate-500 font-mono shrink-0">{notif.timestamp}</span>
                     </div>
-                    <p className="mt-0.5 leading-relaxed text-[11px] break-words">{notif.message}</p>
+                    <p className="mt-0.5 leading-relaxed text-[11px] break-words text-slate-300">{notif.message}</p>
                   </div>
                 ))
               )}
@@ -499,26 +501,26 @@ const MainLayout: React.FC = () => {
             {notifications.length > 0 && (
               <button
                 onClick={clearNotifications}
-                className="w-full mt-2 text-center text-[10px] text-slate-500 hover:text-red-400 py-1 transition-colors hover:bg-slate-900/50 rounded shrink-0 border-t border-slate-800/50"
+                className="w-full mt-2 text-center text-[10px] text-slate-400 hover:text-red-400 py-1 transition-colors hover:bg-slate-900/50 rounded-lg shrink-0 border-t border-slate-800/50 cursor-pointer"
               >
-                Clear Feed History
+                Bersihkan Histori Feed
               </button>
             )}
           </div>
         )}
 
-        <div className="p-4 mt-auto bg-slate-900 border-t border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold uppercase">
+        <div className="p-3 mt-auto bg-slate-950/80 border-t border-slate-800/80">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-blue-400 flex items-center justify-center text-xs font-black uppercase text-white shadow-md shadow-blue-900/20">
               {currentUser.name.slice(0, 2)}
             </div>
             <div className="text-xs flex-1 min-w-0">
-              <p className="font-semibold truncate">{currentUser.name}</p>
-              <p className="text-slate-400 truncate">{currentUser.role}</p>
+              <p className="font-bold truncate text-slate-100">{currentUser.name}</p>
+              <p className="text-[10px] text-slate-400 truncate">{currentUser.role}</p>
             </div>
             <button
               onClick={() => setAreToastsMuted(!areToastsMuted)}
-              className={`p-2 rounded transition-colors flex-shrink-0 cursor-pointer ${
+              className={`p-1.5 rounded-lg transition-colors flex-shrink-0 cursor-pointer ${
                 areToastsMuted ? 'text-red-400 hover:text-red-300 hover:bg-slate-800' : 'text-slate-400 hover:text-emerald-400 hover:bg-slate-800'
               }`}
               title={areToastsMuted ? "Aktifkan Notifikasi Layar (Muted)" : "Senyapkan Notifikasi Layar"}
@@ -540,14 +542,14 @@ const MainLayout: React.FC = () => {
                   }
                 }
               }}
-              className="p-2 text-slate-400 hover:text-blue-400 rounded transition-colors flex-shrink-0 cursor-pointer"
+              className="p-1.5 text-slate-400 hover:text-blue-400 rounded-lg transition-colors flex-shrink-0 cursor-pointer"
               title="Panduan Sistem"
             >
               <HelpCircle className="w-4 h-4" />
             </button>
             <button
               onClick={logout}
-              className="p-2 text-slate-400 hover:text-[#ef4444] rounded transition-colors flex-shrink-0 cursor-pointer"
+              className="p-1.5 text-slate-400 hover:text-[#EF4444] rounded-lg transition-colors flex-shrink-0 cursor-pointer"
               title="Logout"
             >
               <LogOut className="w-4 h-4" />
@@ -559,61 +561,64 @@ const MainLayout: React.FC = () => {
       {/* Main Content Viewport */}
       <main className="flex-1 flex flex-col min-w-0 print:hidden bg-[#f8fafc]">
         {/* Header */}
-        <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 shrink-0 print:hidden shadow-2xs">
+        <header className="h-16 bg-white/95 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 md:px-8 shrink-0 print:hidden shadow-xs">
           <div className="flex items-center gap-4">
             {/* Mobile Hamburger menu */}
             <button
               onClick={() => setIsSidebarOpen(true)}
-              className="p-2.5 -ml-2.5 rounded-xl text-slate-500 hover:text-[#1e3a8a] hover:bg-slate-100 md:hidden transition-all cursor-pointer"
+              className="p-2 -ml-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 md:hidden transition-all cursor-pointer"
               title="Open Sidebar"
             >
               <Menu className="w-5 h-5" />
             </button>
             <div className="flex flex-col">
-              <span className="text-[10px] font-black text-blue-600 tracking-widest uppercase">Indo Teknik Pekanbaru • ITech Authorized Dealer</span>
-              <h2 className="text-base md:text-xl font-extrabold text-slate-800 tracking-tight leading-none mt-1">
+              <span className="text-[9.5px] font-black text-blue-600 tracking-widest uppercase flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                Indo Teknik Pekanbaru • ITech Authorized Dealer
+              </span>
+              <h2 className="text-sm md:text-lg font-black text-slate-900 tracking-tight leading-none mt-1">
                 {getHeaderTitle()}
               </h2>
             </div>
           </div>
 
           {/* Right Header Widgets */}
-          <div className="hidden sm:flex items-center gap-4">
+          <div className="hidden sm:flex items-center gap-3">
             {/* Live Sync Status Pill */}
-            <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-xl text-emerald-800 shadow-3xs">
+            <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl text-emerald-700 shadow-2xs">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
-              <span className="text-[10px] font-black tracking-widest uppercase">Live Synchronized</span>
+              <span className="text-[9.5px] font-black tracking-widest uppercase">Live Synchronized</span>
             </div>
 
             {/* Date Pill */}
-            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/80 px-3 py-1.5 rounded-xl text-slate-700 shadow-3xs">
-              <Calendar className="w-4 h-4 text-[#1e3a8a]" />
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1 rounded-xl text-slate-700 shadow-2xs">
+              <Calendar className="w-3.5 h-3.5 text-blue-600" />
               <span className="text-xs font-bold font-mono">
-                {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}
+                {new Date().toLocaleDateString('id-ID', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
               </span>
             </div>
           </div>
         </header>
 
         {/* Main Content Area */}
-        <div className="flex-1 overflow-y-auto relative bg-slate-50 pb-24 md:pb-6">
+        <div className="flex-1 overflow-y-auto relative bg-[#f8fafc] pb-24 md:pb-6 custom-scrollbar">
           {/* Brand Announcement / Welcome Banner */}
-          <div className="mx-4 md:mx-6 mt-4 md:mt-6 p-4 bg-white border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs print:hidden">
+          <div className="mx-4 md:mx-6 mt-4 md:mt-5 p-3.5 bg-white border border-slate-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs print:hidden">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
-                <Wrench className="w-5 h-5 text-[#1e3a8a]" />
+              <div className="p-2.5 bg-blue-50 border border-blue-200 text-blue-600 rounded-xl">
+                <Wrench className="w-4 h-4 text-blue-600" />
               </div>
               <div>
-                <h4 className="text-sm font-black text-slate-800 uppercase tracking-wider">INDO TEKNIK PEKANBARU</h4>
+                <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">INDO TEKNIK PEKANBARU</h4>
                 <p className="text-[10px] text-slate-500 font-medium">Authorized Diesel Fuel Injection Specialist • ITech & Denso Partner</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 self-start sm:self-auto">
-              <SmartLogo baseName="logo-itech" alt="ITech" className="h-4 object-contain bg-white px-1.5 py-0.5 rounded shadow-3xs" />
-              <span className="text-[10px] font-black text-[#dc2626] tracking-widest uppercase">ITech Authorized Dealer</span>
+            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1 rounded-xl border border-slate-200 self-start sm:self-auto shadow-2xs">
+              <SmartLogo baseName="logo-itech" alt="ITech" className="h-3.5 object-contain bg-white px-1.5 py-0.5 rounded shadow-2xs border border-slate-200" />
+              <span className="text-[9.5px] font-black text-[#EF4444] tracking-widest uppercase">ITech Authorized Dealer</span>
             </div>
           </div>
 
@@ -649,16 +654,16 @@ const MainLayout: React.FC = () => {
         </div>
         
         {/* Footer Status Bar */}
-        <footer className="min-h-8 md:h-8 bg-slate-50 border-t border-slate-200/80 px-4 flex flex-col md:flex-row items-center justify-between gap-y-1.5 py-1.5 md:py-0 shrink-0 print:hidden select-none">
+        <footer className="min-h-8 md:h-8 bg-white border-t border-slate-200 px-4 flex flex-col md:flex-row items-center justify-between gap-y-1.5 py-1.5 md:py-0 shrink-0 print:hidden select-none text-slate-600">
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-5 gap-y-1">
-            <span className="flex items-center gap-1.5 text-[9px] font-bold text-slate-600 uppercase tracking-wider">
+            <span className="flex items-center gap-1.5 text-[9px] font-bold text-slate-700 uppercase tracking-wider">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
               </span>
               Database Connected
             </span>
-            <span className="flex items-center gap-1.5 text-[9px] font-bold text-slate-600 uppercase tracking-wider">
+            <span className="flex items-center gap-1.5 text-[9px] font-bold text-slate-700 uppercase tracking-wider">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
@@ -670,19 +675,19 @@ const MainLayout: React.FC = () => {
               WA Gateway Offline
             </span>
           </div>
-          <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400 font-mono text-center md:text-right">
+          <div className="text-[9px] font-bold uppercase tracking-wider text-slate-500 font-mono text-center md:text-right">
             ITech Authorized Dealer • {new Date().getFullYear()}
           </div>
         </footer>
       </main>
 
-      {/* Premium Floating Mobile Bottom Dock */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md bg-slate-900/95 backdrop-blur-md border border-slate-800/80 rounded-2xl shadow-2xl z-40 md:hidden flex items-center justify-around p-1.5 text-white print:hidden">
+      {/* Floating Mobile Bottom Dock */}
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md bg-[#0A1120]/95 backdrop-blur-md border border-slate-800 rounded-2xl shadow-2xl z-40 md:hidden flex items-center justify-around p-1.5 text-slate-300 print:hidden">
         {/* Home/Dashboard Tab */}
         <button
           onClick={() => { setCurrentView('DEFAULT'); setIsSidebarOpen(false); }}
-          className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all ${
-            currentView === 'DEFAULT' ? 'text-blue-400 bg-blue-500/10 font-bold' : 'text-slate-400 hover:text-slate-200'
+          className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all cursor-pointer ${
+            currentView === 'DEFAULT' ? 'text-blue-400 bg-blue-500/20 font-bold' : 'text-slate-400 hover:text-white'
           }`}
         >
           <ClipboardList className="w-5 h-5" />
@@ -692,8 +697,8 @@ const MainLayout: React.FC = () => {
         {/* Archive/History Tab */}
         <button
           onClick={() => { setCurrentView('ARCHIVE_HISTORY'); setIsSidebarOpen(false); }}
-          className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all ${
-            currentView === 'ARCHIVE_HISTORY' ? 'text-blue-400 bg-blue-500/10 font-bold' : 'text-slate-400 hover:text-slate-200'
+          className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all cursor-pointer ${
+            currentView === 'ARCHIVE_HISTORY' ? 'text-blue-400 bg-blue-500/20 font-bold' : 'text-slate-400 hover:text-white'
           }`}
         >
           <Archive className="w-5 h-5" />
@@ -704,8 +709,8 @@ const MainLayout: React.FC = () => {
         {(currentUser.role === 'ADMIN' || currentUser.role === 'SA') && (
           <button
             onClick={() => { setCurrentView('CLAIMS'); setIsSidebarOpen(false); }}
-            className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all ${
-              currentView === 'CLAIMS' ? 'text-red-400 bg-red-500/10 font-bold' : 'text-slate-400 hover:text-slate-200'
+            className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all cursor-pointer ${
+              currentView === 'CLAIMS' ? 'text-red-400 bg-red-500/20 font-bold' : 'text-slate-400 hover:text-white'
             }`}
           >
             <ShieldAlert className="w-5 h-5" />
@@ -717,8 +722,8 @@ const MainLayout: React.FC = () => {
         {currentUser.role === 'ADMIN' && (
           <button
             onClick={() => { setCurrentView('CUSTOMERS'); setIsSidebarOpen(false); }}
-            className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all ${
-              currentView === 'CUSTOMERS' ? 'text-blue-400 bg-blue-500/10 font-bold' : 'text-slate-400 hover:text-slate-200'
+            className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all cursor-pointer ${
+              currentView === 'CUSTOMERS' ? 'text-blue-400 bg-blue-500/20 font-bold' : 'text-slate-400 hover:text-white'
             }`}
           >
             <Users className="w-5 h-5" />
@@ -729,8 +734,8 @@ const MainLayout: React.FC = () => {
         {/* Toggle Sidebar Tab */}
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all ${
-            isSidebarOpen ? 'text-red-400 bg-red-500/10 font-bold' : 'text-slate-400 hover:text-slate-200'
+          className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all cursor-pointer ${
+            isSidebarOpen ? 'text-red-400 bg-red-500/20 font-bold' : 'text-slate-400 hover:text-white'
           }`}
         >
           <Menu className="w-5 h-5" />

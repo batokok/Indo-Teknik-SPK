@@ -14,6 +14,7 @@ const roleMeta: Record<Role, { label: string; bg: string; text: string; iconBg: 
   SA: { label: 'Service Advisor', bg: 'bg-blue-600/15 text-blue-400 border border-blue-500/20', text: 'text-blue-400', iconBg: 'bg-blue-600', short: 'SA' },
   MECHANIC: { label: 'Mekanik', bg: 'bg-amber-500/15 text-amber-400 border border-amber-500/20', text: 'text-amber-400', iconBg: 'bg-amber-600', short: 'MK' },
   COMMON_RAIL: { label: 'Lab Common Rail', bg: 'bg-purple-500/15 text-purple-400 border border-purple-500/20', text: 'text-purple-400', iconBg: 'bg-purple-600', short: 'CR' },
+  TURBO: { label: 'Spesialis Turbo', bg: 'bg-teal-500/15 text-teal-400 border border-teal-500/20', text: 'text-teal-400', iconBg: 'bg-teal-600', short: 'TB' },
   FOREMAN: { label: 'Foreman', bg: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20', text: 'text-emerald-400', iconBg: 'bg-emerald-600', short: 'FM' },
   ADMIN: { label: 'Admin/Manager', bg: 'bg-red-500/15 text-red-400 border border-red-500/20', text: 'text-red-400', iconBg: 'bg-red-600', short: 'AD' },
   CUSTOMER: { label: 'Konsumen', bg: 'bg-slate-500/15 text-slate-400 border border-slate-500/20', text: 'text-slate-400', iconBg: 'bg-slate-600', short: 'CS' }

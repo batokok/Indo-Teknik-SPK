@@ -132,33 +132,33 @@ export const PrintTemplate: React.FC = () => {
 
             {/* HEADER AREA */}
             <div className="border-b-2 border-[#0F2D59] pb-2 mb-2">
-              <div className="flex justify-between items-start gap-4">
-                <div className="flex-shrink-0">
+              <div className="flex justify-between items-start gap-3">
+                <div className="flex-shrink min-w-0">
                   <div className="flex items-center gap-2">
                     <SmartLogo 
                       baseName="logo-indo-teknik" 
                       alt="IT INDO TEKNIK" 
-                      className="h-9 w-auto object-contain flex-shrink-0" 
-                      style={{ height: '38px', maxWidth: '170px' }}
+                      className="h-8 w-auto object-contain flex-shrink-0" 
+                      style={{ height: '32px', maxWidth: '140px' }}
                     />
                     <div className="border-l-2 border-slate-300 pl-2 leading-tight text-left">
-                      <p className="text-[10.5px] font-black tracking-widest text-[#0F2D59] uppercase">INDO TEKNIK PEKANBARU</p>
-                      <p className="text-[8.5px] text-slate-600 flex items-center gap-1 mt-0.5"><MapPin className="w-3 h-3 text-[#E21F26] shrink-0" /> Jl. Riau Ujung No.898-904, Pekanbaru</p>
+                      <p className="text-[10px] font-black tracking-widest text-[#0F2D59] uppercase">INDO TEKNIK PEKANBARU</p>
+                      <p className="text-[8px] text-slate-600 flex items-center gap-1 mt-0.5"><MapPin className="w-3 h-3 text-[#E21F26] shrink-0" /> Jl. Riau Ujung No.898-904, Pekanbaru</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 mt-1 pl-0.5">
+                  <div className="flex items-center gap-2 mt-1 pl-0.5">
                     <SmartLogo 
                       baseName="logo-itech" 
                       alt="ITech" 
-                      className="h-4 w-auto object-contain flex-shrink-0" 
-                      style={{ height: '16px', maxWidth: '50px' }}
+                      className="h-5.5 w-auto object-contain flex-shrink-0" 
+                      style={{ height: '22px', maxWidth: '75px' }}
                     />
                     <p className="text-[8px] font-black tracking-widest text-[#0F2D59] whitespace-nowrap bg-blue-50 px-2 py-0.5 rounded border border-blue-200">ITECH AUTHORIZED DEALER & WORKSHOP</p>
                   </div>
                 </div>
-                <div className="text-right flex-shrink-0">
-                  <h2 className="text-[12px] font-black bg-[#0F2D59]/10 px-3 py-1 rounded border border-blue-300 text-[#0F2D59] tracking-wider whitespace-nowrap uppercase">BUKTI SERAH TERIMA UNIT</h2>
-                  <p className="text-[10.5px] font-mono mt-0.5 text-[#0f172a] font-black whitespace-nowrap">NO. WO: {printWO.id}</p>
+                <div className="text-right flex flex-col items-end shrink-0 max-w-[48%]">
+                  <h2 className="text-[10.5px] font-black bg-[#0F2D59]/10 px-2 py-0.5 rounded border border-blue-300 text-[#0F2D59] tracking-wider uppercase">BUKTI SERAH TERIMA UNIT</h2>
+                  <p className="text-[10px] font-mono mt-0.5 text-[#0f172a] font-black">NO. WO: <span className="text-[#0F2D59]">{printWO.id}</span></p>
                 </div>
               </div>
             </div>
@@ -379,10 +379,10 @@ export const PrintTemplate: React.FC = () => {
         }
       `}</style>
 
-      <div className="max-w-[210mm] mx-auto bg-white p-6 shadow-2xl print:shadow-none print:max-w-none print:w-full print:p-0 print:m-0 print-wrapper">
+      <div className="max-w-[210mm] w-full mx-auto bg-white p-4 sm:p-6 shadow-2xl print:shadow-none print:max-w-none print:w-full print:p-0 print:m-0 print-wrapper box-border overflow-x-hidden">
         
         {/* ================= ACTION BAR (Hidden in print) ================= */}
-        <div className="flex justify-between items-center mb-5 print:hidden no-print border-b pb-3 bg-slate-50 -mx-6 -mt-6 p-4 rounded-t-lg border-slate-200">
+        <div className="flex justify-between items-center mb-5 print:hidden no-print border-b pb-3 bg-slate-50 -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 p-4 rounded-t-lg border-slate-200">
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setPrintWO(null)} 
@@ -414,33 +414,33 @@ export const PrintTemplate: React.FC = () => {
         {/* ========================================================
             PAGE 1: LEMBAR PEMERIKSAAN KENDARAAN (INSPECTION SHEET)
             ======================================================== */}
-        <div className="print-sheet-1 border-b-4 border-dashed border-slate-300 print:border-none pb-6 print:pb-0 mb-8 print:mb-0 min-h-[280mm] print:min-h-0 flex flex-col justify-between">
+        <div className="print-sheet-1 border-b-4 border-dashed border-slate-300 print:border-none pb-6 print:pb-0 mb-8 print:mb-0 min-h-[280mm] print:min-h-0 flex flex-col justify-between box-border">
           <div className="flex-1 flex flex-col justify-start min-h-0">
             
             {/* Header Page 1 */}
             <div className="border-b-2 border-[#0F2D59] pb-1.5 mb-1.5">
               <div className="flex justify-between items-start gap-3">
-                <div className="flex-shrink-0">
-                  <div className="flex items-center gap-2.5">
+                <div className="flex-shrink min-w-0">
+                  <div className="flex items-center gap-2">
                     <SmartLogo 
                       baseName="logo-indo-teknik" 
                       alt="IT INDO TEKNIK" 
                       className="h-8 w-auto object-contain flex-shrink-0" 
-                      style={{ height: '34px', maxWidth: '160px' }}
+                      style={{ height: '32px', maxWidth: '140px' }}
                     />
-                    <div className="border-l-2 border-slate-300 pl-2.5 leading-tight text-left">
-                      <p className="text-[11px] font-black tracking-widest text-[#0F2D59] uppercase">INDO TEKNIK PEKANBARU</p>
-                      <p className="text-[8.5px] text-slate-600 flex items-center gap-1 mt-0.5">
+                    <div className="border-l-2 border-slate-300 pl-2 leading-tight text-left">
+                      <p className="text-[10px] font-black tracking-widest text-[#0F2D59] uppercase">INDO TEKNIK PEKANBARU</p>
+                      <p className="text-[8px] text-slate-600 flex items-center gap-1 mt-0.5">
                         <MapPin className="w-3 h-3 text-red-600 shrink-0" /> Jl. Riau Ujung No.898-904, Pekanbaru • Telp: (0761) 853798
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-0.5 pl-0.5">
+                  <div className="flex items-center gap-2 mt-1 pl-0.5">
                     <SmartLogo 
                       baseName="logo-itech" 
                       alt="ITech" 
-                      className="h-3.5 w-auto object-contain flex-shrink-0" 
-                      style={{ height: '14px', maxWidth: '45px' }}
+                      className="h-5.5 w-auto object-contain flex-shrink-0" 
+                      style={{ height: '22px', maxWidth: '75px' }}
                     />
                     <p className="text-[8px] font-black tracking-widest text-[#0F2D59] whitespace-nowrap bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                       ITECH AUTHORIZED DEALER & WORKSHOP
@@ -448,25 +448,25 @@ export const PrintTemplate: React.FC = () => {
                   </div>
                 </div>
                 
-                <div className="text-right flex-shrink-0">
-                  <div className="flex items-center justify-end gap-1.5">
-                    <h2 className="text-[11.5px] font-black bg-[#0F2D59] text-white px-2.5 py-0.5 rounded tracking-wider whitespace-nowrap uppercase shadow-xs">
+                <div className="text-right flex flex-col items-end shrink-0 max-w-[48%]">
+                  <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                    <h2 className="text-[10px] font-black bg-[#0F2D59] text-white px-2 py-0.5 rounded tracking-wider uppercase shadow-xs">
                       LEMBAR PEMERIKSAAN KENDARAAN
                     </h2>
-                    <span className="text-[8.5px] font-black bg-blue-100 text-blue-900 border border-blue-300 px-1.5 py-0.5 rounded uppercase">
+                    <span className="text-[7.5px] font-black bg-blue-100 text-blue-900 border border-blue-300 px-1.5 py-0.5 rounded uppercase shrink-0">
                       CUSTOMER COPY
                     </span>
                   </div>
-                  <div className="flex items-center justify-end gap-2 mt-0.5">
-                    <p className="text-[10.5px] font-mono text-[#0f172a] font-bold whitespace-nowrap">
-                      NO. WO: <span className="text-[#0F2D59] font-black text-[11.5px]">{printWO.id}</span>
+                  <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                    <p className="text-[10px] font-mono text-[#0f172a] font-bold">
+                      NO. WO: <span className="text-[#0F2D59] font-black text-[11px]">{printWO.id}</span>
                     </p>
                     {printWO.status === 'COMPLETED' ? (
-                      <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      <span className="text-[7.5px] font-black px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
                         HASIL AKHIR
                       </span>
                     ) : (
-                      <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                      <span className="text-[7.5px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300 shrink-0">
                         ESTIMASI AWAL
                       </span>
                     )}
@@ -809,33 +809,33 @@ export const PrintTemplate: React.FC = () => {
         {/* ========================================================
             PAGE 2: SURAT PERINTAH KERJA / SPK (WORKSHOP COPY)
             ======================================================== */}
-        <div className="print-sheet-2 min-h-[280mm] print:min-h-0 flex flex-col justify-between">
+        <div className="print-sheet-2 min-h-[280mm] print:min-h-0 flex flex-col justify-between box-border">
           <div className="flex-1 flex flex-col justify-start min-h-0">
             
             {/* Header Page 2 */}
             <div className="border-b-2 border-[#0F2D59] pb-1.5 mb-1.5">
               <div className="flex justify-between items-start gap-3">
-                <div className="flex-shrink-0">
-                  <div className="flex items-center gap-2.5">
+                <div className="flex-shrink min-w-0">
+                  <div className="flex items-center gap-2">
                     <SmartLogo 
                       baseName="logo-indo-teknik" 
                       alt="IT INDO TEKNIK" 
                       className="h-8 w-auto object-contain flex-shrink-0" 
-                      style={{ height: '34px', maxWidth: '160px' }}
+                      style={{ height: '32px', maxWidth: '140px' }}
                     />
-                    <div className="border-l-2 border-slate-300 pl-2.5 leading-tight text-left">
-                      <p className="text-[11px] font-black tracking-widest text-[#0F2D59] uppercase">INDO TEKNIK PEKANBARU</p>
-                      <p className="text-[8.5px] text-slate-600 flex items-center gap-1 mt-0.5">
+                    <div className="border-l-2 border-slate-300 pl-2 leading-tight text-left">
+                      <p className="text-[10px] font-black tracking-widest text-[#0F2D59] uppercase">INDO TEKNIK PEKANBARU</p>
+                      <p className="text-[8px] text-slate-600 flex items-center gap-1 mt-0.5">
                         <MapPin className="w-3 h-3 text-red-600 shrink-0" /> Jl. Riau Ujung No.898-904, Pekanbaru • Telp: (0761) 853798
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-0.5 pl-0.5">
+                  <div className="flex items-center gap-2 mt-1 pl-0.5">
                     <SmartLogo 
                       baseName="logo-itech" 
                       alt="ITech" 
-                      className="h-3.5 w-auto object-contain flex-shrink-0" 
-                      style={{ height: '14px', maxWidth: '45px' }}
+                      className="h-5.5 w-auto object-contain flex-shrink-0" 
+                      style={{ height: '22px', maxWidth: '75px' }}
                     />
                     <p className="text-[8px] font-black tracking-widest text-[#0F2D59] whitespace-nowrap bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                       ITECH AUTHORIZED DEALER & WORKSHOP
@@ -843,22 +843,22 @@ export const PrintTemplate: React.FC = () => {
                   </div>
                 </div>
                 
-                <div className="text-right flex-shrink-0">
-                  <div className="flex items-center justify-end gap-1.5">
-                    <h2 className="text-[11.5px] font-black bg-[#0F2D59] text-white px-2.5 py-0.5 rounded tracking-wider whitespace-nowrap uppercase shadow-xs">
+                <div className="text-right flex flex-col items-end shrink-0 max-w-[48%]">
+                  <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                    <h2 className="text-[10px] font-black bg-[#0F2D59] text-white px-2 py-0.5 rounded tracking-wider uppercase shadow-xs">
                       SURAT PERINTAH KERJA (SPK)
                     </h2>
-                    <span className="text-[8.5px] font-black bg-slate-100 text-slate-900 border border-slate-400 px-1.5 py-0.5 rounded uppercase">
+                    <span className="text-[7.5px] font-black bg-slate-100 text-slate-900 border border-slate-400 px-1.5 py-0.5 rounded uppercase shrink-0">
                       WORKSHOP COPY
                     </span>
                   </div>
-                  <div className="flex items-center justify-end gap-2 mt-0.5">
-                    <p className="text-[10.5px] font-mono text-[#0f172a] font-bold whitespace-nowrap">
-                      NO. WO: <span className="text-[#0F2D59] font-black text-[11.5px]">{printWO.id}</span>
+                  <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                    <p className="text-[10px] font-mono text-[#0f172a] font-bold">
+                      NO. WO: <span className="text-[#0F2D59] font-black text-[11px]">{printWO.id}</span>
                     </p>
-                    {printWO.priority === 1 && <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-red-100 text-red-800 border border-red-300">P1: URGENT</span>}
-                    {printWO.priority === 2 && <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">P2: BOOKING</span>}
-                    {printWO.priority === 3 && <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-300">P3: REGULAR</span>}
+                    {printWO.priority === 1 && <span className="text-[7.5px] font-black px-1.5 py-0.5 rounded bg-red-100 text-red-800 border border-red-300 shrink-0">P1: URGENT</span>}
+                    {printWO.priority === 2 && <span className="text-[7.5px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300 shrink-0">P2: BOOKING</span>}
+                    {printWO.priority === 3 && <span className="text-[7.5px] font-black px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-300 shrink-0">P3: REGULAR</span>}
                   </div>
                 </div>
               </div>

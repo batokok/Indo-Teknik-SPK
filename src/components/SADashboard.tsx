@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../store/AppContext';
 import { Priority, PartDetails, InventoryItem, DamageReport, TodoAction, LoosePartDetails } from '../types';
-import { Printer, Car, ShieldAlert, Plus, Trash2, Camera, User, ClipboardList, Check, ChevronRight, ChevronLeft, Wrench, Archive, Search, GripVertical, Calendar, TrendingUp, Clock, Download, History, BarChart2, ArrowRight, BookOpen, FileSpreadsheet, ChevronDown, ChevronUp, RefreshCw, MapPin, Copy, Share2, Pencil, CheckCircle2, FileCheck, Sparkles, AlertCircle, MessageSquare } from 'lucide-react';
+import { Printer, Car, ShieldAlert, Plus, Trash2, Camera, User, ClipboardList, Check, ChevronRight, ChevronLeft, Wrench, Archive, RotateCcw, Search, GripVertical, Calendar, TrendingUp, Clock, Download, History, BarChart2, ArrowRight, BookOpen, FileSpreadsheet, ChevronDown, ChevronUp, RefreshCw, MapPin, Copy, Share2, Pencil, CheckCircle2, FileCheck, Sparkles, AlertCircle, AlertTriangle, MessageSquare, Ban, XCircle } from 'lucide-react';
 import { Reorder, motion } from 'motion/react';
 import { FuelGauge } from './FuelGauge';
 import { EditWorkOrderModal } from './EditWorkOrderModal';
@@ -117,6 +117,79 @@ const SADashboard: React.FC = () => {
   // Post-Handover 3-Action Dialog State
   const [handoverSuccessWO, setHandoverSuccessWO] = useState<any | null>(null);
 
+  // Cancel Work Order state (Customer declined / cancelled)
+  const [cancellingWO, setCancellingWO] = useState<any | null>(null);
+  const [cancelReason, setCancelReason] = useState<string>('');
+  const [cancelCustomNotes, setCancelCustomNotes] = useState<string>('');
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [isProcessingCancel, setIsProcessingCancel] = useState<boolean>(false);
+
+  const handleOpenCancelModal = (wo: any) => {
+    setCancellingWO(wo);
+    setCancelReason('');
+    setCancelCustomNotes('');
+    setCancelError(null);
+  };
+
+  const handleConfirmCancelWO = async () => {
+    if (!cancellingWO) return;
+    
+    // Strict validation: user must select a reason from the dropdown
+    if (!cancelReason || !cancelReason.trim()) {
+      setCancelError('Silakan pilih salah satu alasan pembatalan dari dropdown terlebih dahulu.');
+      return;
+    }
+
+    if (cancelReason === 'Lainnya (Wajib Tuliskan Keterangan Tambahan)' && !cancelCustomNotes.trim()) {
+      setCancelError('Harap tuliskan keterangan detail alasan pembatalan pada kolom catatan tambahan.');
+      return;
+    }
+
+    const finalReason = cancelReason.startsWith('Lainnya')
+      ? (cancelCustomNotes.trim() || 'Dibatalkan oleh Pelanggan')
+      : (cancelCustomNotes.trim() ? `${cancelReason} - ${cancelCustomNotes.trim()}` : cancelReason);
+
+    const hasMilestone = (cancellingWO.milestoneHistory || []).some((h: any) => h.milestone === 'SPK Dibatalkan');
+    const newHistory = hasMilestone ? (cancellingWO.milestoneHistory || []) : [
+      ...(cancellingWO.milestoneHistory || []),
+      {
+        milestone: 'SPK Dibatalkan',
+        timestamp: new Date().toISOString(),
+        updatedBy: currentUser?.name || 'Service Advisor'
+      }
+    ];
+
+    try {
+      setIsProcessingCancel(true);
+      setCancelError(null);
+
+      await updateWorkOrder(cancellingWO.id, {
+        status: 'CANCELLED',
+        cancelledAt: new Date().toISOString(),
+        cancelledBy: currentUser?.name || 'Service Advisor',
+        cancelReason: finalReason,
+        currentMilestone: 'SPK Dibatalkan',
+        milestoneHistory: newHistory
+      });
+
+      addNotification?.(
+        'SPK Berhasil Dibatalkan',
+        `SPK ${cancellingWO.id} (${cancellingWO.customerName}) telah dibatalkan di sistem. Alasan: ${finalReason}.`,
+        'warning',
+        cancellingWO.id
+      );
+
+      setCancellingWO(null);
+      setCancelReason('');
+      setCancelCustomNotes('');
+    } catch (err: any) {
+      console.error('Error cancelling work order in Firestore:', err);
+      setCancelError(`Gagal menyimpan pembatalan ke Firestore: ${err.message || err}`);
+    } finally {
+      setIsProcessingCancel(false);
+    }
+  };
+
   const handleConfirmHandover = (wo: any) => {
     const hasMilestone = (wo.milestoneHistory || []).some((h: any) => h.milestone === 'Selesai & Siap Diserahkan');
     const newHistory = hasMilestone ? (wo.milestoneHistory || []) : [
@@ -155,17 +228,28 @@ const SADashboard: React.FC = () => {
     );
   };
 
+  const handleRestoreWithToast = (wo: any) => {
+    updateWorkOrder(wo.id, { isArchived: false });
+    addNotification?.(
+      'SPK Berhasil Dipulihkan',
+      `SPK ${wo.id} (${wo.customerName}) telah dipulihkan dari arsip dan kembali aktif ke antrean/monitor.`,
+      'success',
+      wo.id
+    );
+  };
+
   // Search and Filter states for the Live Work Order Status Monitor
   const [queueSearch, setQueueSearch] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<'ALL' | '1' | '2' | '3'>('ALL');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'QUEUE' | 'IN_PROGRESS' | 'PENDING_APPROVAL' | 'PENDING_PARTS' | 'COMPLETED'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'QUEUE' | 'IN_PROGRESS' | 'PENDING_APPROVAL' | 'PENDING_PARTS' | 'COMPLETED' | 'CANCELLED' | 'ARCHIVED'>('ALL');
+  const [showArchived, setShowArchived] = useState(false);
   const [woListPage, setWoListPage] = useState(1);
   const [woListLimit, setWoListLimit] = useState(5);
   const [activeTab, setActiveTab] = useState<'MONITOR' | 'FORM'>('MONITOR');
 
   React.useEffect(() => {
     setWoListPage(1);
-  }, [queueSearch, priorityFilter, statusFilter]);
+  }, [queueSearch, priorityFilter, statusFilter, showArchived]);
 
   const getHistoricalWorkOrders = (pn: string) => {
     if (!pn || pn.trim().length < 3) return [];
@@ -825,42 +909,74 @@ const SADashboard: React.FC = () => {
                       onChange={(e) => setStatusFilter(e.target.value as any)}
                       className="bg-slate-950 border border-slate-800 hover:border-blue-500 focus:border-blue-500 text-xs font-black text-slate-200 py-1.5 pl-3 pr-8 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none transition-all cursor-pointer shadow-sm appearance-none"
                     >
-                      <option value="ALL">📋 Semua Status</option>
+                      <option value="ALL">📋 Semua Aktif</option>
                       <option value="QUEUE">⏳ Antrean</option>
                       <option value="IN_PROGRESS">⚡ Sedang Kerja</option>
                       <option value="PENDING_APPROVAL">⚠️ Butuh Persetujuan</option>
                       <option value="PENDING_PARTS">🔧 Tertunda Parts</option>
                       <option value="COMPLETED">✅ Selesai / Siap QC</option>
+                      <option value="CANCELLED">❌ Dibatalkan (Cancel)</option>
+                      <option value="ARCHIVED">📦 Hanya Diarsipkan</option>
                     </select>
                     <span className="absolute inset-y-0 right-0 flex items-center pr-2.5 pointer-events-none text-slate-400 text-[10px]">
                       ▼
                     </span>
                   </div>
                 </div>
+
+                {/* Show Archived Quick Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setShowArchived(!showArchived)}
+                  className={`px-2.5 py-1.5 text-[10px] sm:text-[11px] font-black rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer ${
+                    showArchived 
+                      ? 'bg-amber-950/80 border-amber-600 text-amber-300 shadow-sm' 
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  }`}
+                  title="Tampilkan juga SPK yang sudah diarsipkan agar dapat dipulihkan atau ditinjau"
+                >
+                  <Archive className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Termasuk Arsip</span>
+                  {showArchived && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>}
+                </button>
               </div>
 
               {/* Clear Filters Button if any is active */}
-              {(queueSearch || priorityFilter !== 'ALL' || statusFilter !== 'ALL') && (
+              {(queueSearch || priorityFilter !== 'ALL' || statusFilter !== 'ALL' || showArchived) && (
                 <button
                   type="button"
                   onClick={() => {
                     setQueueSearch('');
                     setPriorityFilter('ALL');
                     setStatusFilter('ALL');
+                    setShowArchived(false);
                   }}
-                  className="text-[10px] text-blue-400 hover:text-blue-300 underline font-bold"
+                  className="text-[10px] text-blue-400 hover:text-blue-300 underline font-bold cursor-pointer"
                 >
-                  Reset
+                  Reset Filter
                 </button>
               )}
             </div>
 
             {(() => {
               const filteredWOs = workOrders.filter(wo => {
-                // Live work order only contains active/unfinished work + completed work of today
-                if (wo.status === 'COMPLETED') {
-                  if (wo.isArchived) return false;
+                const isSearchActive = Boolean(queueSearch.trim());
 
+                // Filter by archive status
+                if (statusFilter === 'ARCHIVED') {
+                  if (!wo.isArchived) return false;
+                } else if (!showArchived && !isSearchActive) {
+                  // Hide archived items by default when browsing active queue without search
+                  if (wo.isArchived) return false;
+                }
+
+                // Filter by operational status
+                if (statusFilter !== 'ALL' && statusFilter !== 'ARCHIVED') {
+                  if (wo.status !== statusFilter) return false;
+                }
+
+                // For COMPLETED items without search / without showArchived / without ARCHIVED status:
+                if (statusFilter === 'ALL' && !showArchived && !isSearchActive && wo.status === 'COMPLETED') {
                   // If handover is not yet confirmed, we must show it in the active list so SA can confirm handover!
                   if (!wo.isHandoverConfirmed) return true;
 
@@ -882,7 +998,7 @@ const SADashboard: React.FC = () => {
                 }
 
                 // Filter by search query
-                if (queueSearch.trim()) {
+                if (isSearchActive) {
                   const query = queueSearch.toLowerCase();
                   const matchesId = wo.id.toLowerCase().includes(query);
                   const matchesCustomer = wo.customerName.toLowerCase().includes(query);
@@ -893,11 +1009,6 @@ const SADashboard: React.FC = () => {
                 // Filter by priority
                 if (priorityFilter !== 'ALL') {
                   if (wo.priority !== parseInt(priorityFilter, 10)) return false;
-                }
-
-                // Filter by status
-                if (statusFilter !== 'ALL') {
-                  if (wo.status !== statusFilter) return false;
                 }
 
                 return true;
@@ -959,8 +1070,37 @@ const SADashboard: React.FC = () => {
                         {paginatedWOs.map((wo) => {
                           const assignedMech = users.find(u => u.id === wo.mechanicId)?.name || 'Queue Antrean';
                           return (
-                            <tr key={wo.id} className="hover:bg-slate-800/50 transition-colors">
-                              <td className="p-2 font-mono text-[11px] text-blue-400 font-bold">{wo.id}</td>
+                            <tr 
+                              key={wo.id} 
+                              className={`transition-colors ${
+                                wo.isArchived 
+                                  ? 'bg-slate-900/60 opacity-80 hover:opacity-100 border-b border-dashed border-amber-900/40' 
+                                  : 'hover:bg-slate-800/50'
+                              }`}
+                            >
+                              <td className="p-2 font-mono text-[11px] text-blue-400 font-bold">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span>{wo.id}</span>
+                                  {wo.status === 'CANCELLED' && (
+                                    <span 
+                                      className="px-1.5 py-0.5 bg-rose-950 text-rose-300 text-[8px] font-black rounded border border-rose-800 flex items-center gap-0.5 shadow-xs tracking-wider"
+                                      title={wo.cancelReason ? `Dibatalkan: ${wo.cancelReason}` : 'SPK Dibatalkan (Decline)'}
+                                    >
+                                      <Ban className="w-2.5 h-2.5 text-rose-400" />
+                                      CANCEL
+                                    </span>
+                                  )}
+                                  {wo.isArchived && (
+                                    <span 
+                                      className="px-1.5 py-0.5 bg-amber-950/90 text-amber-300 text-[8px] font-black rounded border border-amber-800/80 flex items-center gap-0.5 shadow-xs tracking-wider"
+                                      title="Dokumen berstatus DIARSIPKAN. Klik Pulihkan untuk mengembalikan ke antrean aktif."
+                                    >
+                                      <Archive className="w-2.5 h-2.5 text-amber-400" />
+                                      ARSIP
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
                               <td className="p-2 whitespace-nowrap">
                                 {wo.priority === 1 && <span className="px-1.5 py-0.5 bg-red-900/40 text-red-300 text-[9px] font-black rounded border border-red-800 whitespace-nowrap inline-block">🔴 P1 Urgent</span>}
                                 {wo.priority === 2 && <span className="px-1.5 py-0.5 bg-yellow-900/40 text-yellow-300 text-[9px] font-black rounded border border-yellow-800 whitespace-nowrap inline-block">🟡 P2 Booking</span>}
@@ -1009,12 +1149,20 @@ const SADashboard: React.FC = () => {
                               <td className="p-2 text-center">
                                 <select
                                   value={wo.status}
-                                  onChange={(e) => updateWorkOrder(wo.id, { status: e.target.value as any })}
+                                  onChange={(e) => {
+                                    const nextStatus = e.target.value as any;
+                                    if (nextStatus === 'CANCELLED') {
+                                      handleOpenCancelModal(wo);
+                                    } else {
+                                      updateWorkOrder(wo.id, { status: nextStatus });
+                                    }
+                                  }}
                                   className={`px-2 py-1 text-[10px] font-black rounded-lg border uppercase tracking-wider outline-none cursor-pointer transition-all shadow-xs ${
                                     wo.status === 'QUEUE' ? 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700' :
                                     wo.status === 'IN_PROGRESS' ? 'bg-blue-950 text-blue-300 border-blue-800/80 hover:bg-blue-900/50' :
                                     wo.status === 'PENDING_APPROVAL' ? 'bg-red-950 text-red-300 border-red-800/80 hover:bg-red-900/50' :
                                     wo.status === 'PENDING_PARTS' ? 'bg-amber-950 text-amber-300 border-amber-850 hover:bg-amber-900/50' :
+                                    wo.status === 'CANCELLED' ? 'bg-rose-950 text-rose-300 border-rose-800/80 hover:bg-rose-900/50' :
                                     'bg-emerald-950 text-emerald-300 border-emerald-800/80 hover:bg-emerald-900/50'
                                   }`}
                                 >
@@ -1023,11 +1171,92 @@ const SADashboard: React.FC = () => {
                                   <option value="PENDING_APPROVAL" className="bg-slate-900 text-slate-200 font-semibold">⚠️ Butuh Approval</option>
                                   <option value="PENDING_PARTS" className="bg-slate-900 text-slate-200 font-semibold">🔧 Tertunda Parts</option>
                                   <option value="COMPLETED" className="bg-slate-900 text-slate-200 font-semibold">✅ Selesai / Siap QC</option>
+                                  <option value="CANCELLED" className="bg-slate-900 text-slate-200 font-semibold">❌ Dibatalkan (Cancel)</option>
                                 </select>
                               </td>
                               <td className="p-2">
                                 <div className="flex flex-col gap-1.5 items-center justify-center">
-                                  {wo.status === 'COMPLETED' && !wo.isHandoverConfirmed ? (
+                                  {wo.isArchived ? (
+                                    <div className="flex items-center gap-1 w-full justify-center">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRestoreWithToast(wo)}
+                                        className="px-2 py-1 bg-emerald-950/90 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-700/80 text-[8.5px] font-black rounded uppercase transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                                        title="Pulihkan SPK ini dari arsip kembali aktif ke antrean"
+                                      >
+                                        <RotateCcw className="w-2.5 h-2.5 text-emerald-400" />
+                                        <span>Pulihkan</span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setPrintType('SPK');
+                                          setPrintWO(wo);
+                                        }}
+                                        className="px-2 py-1 bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white text-[8.5px] font-bold rounded uppercase transition-all flex items-center gap-0.5 cursor-pointer"
+                                        title="Cetak Dokumen SPK"
+                                      >
+                                        <Printer className="w-2.5 h-2.5" />
+                                        <span>SPK</span>
+                                      </button>
+
+                                      {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setEditingWO(wo);
+                                            setIsEditModalOpen(true);
+                                          }}
+                                          className="px-2 py-1 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-amber-600 hover:text-white text-[8.5px] font-bold rounded uppercase transition-all flex items-center gap-0.5 cursor-pointer"
+                                          title="Edit SPK / Koreksi Human Error"
+                                        >
+                                          <Pencil className="w-2.5 h-2.5" />
+                                          <span>Edit</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  ) : wo.status === 'CANCELLED' ? (
+                                    <div className="flex items-center gap-1 w-full justify-center">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleArchiveWithToast(wo)}
+                                        className="px-2 py-1 bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white text-[8.5px] font-black rounded uppercase transition-all flex items-center gap-1 cursor-pointer"
+                                        title="Arsipkan SPK Dibatalkan"
+                                      >
+                                        <Archive className="w-2.5 h-2.5 text-slate-400" />
+                                        <span>Arsipkan</span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setPrintType('SPK');
+                                          setPrintWO(wo);
+                                        }}
+                                        className="px-2 py-1 bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white text-[8.5px] font-bold rounded uppercase transition-all flex items-center gap-0.5 cursor-pointer"
+                                        title="Cetak Dokumen SPK"
+                                      >
+                                        <Printer className="w-2.5 h-2.5" />
+                                        <span>SPK</span>
+                                      </button>
+
+                                      {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setEditingWO(wo);
+                                            setIsEditModalOpen(true);
+                                          }}
+                                          className="px-2 py-1 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-amber-600 hover:text-white text-[8.5px] font-bold rounded uppercase transition-all flex items-center gap-0.5 cursor-pointer"
+                                          title="Edit SPK / Koreksi Status"
+                                        >
+                                          <Pencil className="w-2.5 h-2.5" />
+                                          <span>Edit</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  ) : wo.status === 'COMPLETED' && !wo.isHandoverConfirmed ? (
                                     <button
                                       type="button"
                                       onClick={() => handleConfirmHandover(wo)}
@@ -1036,9 +1265,7 @@ const SADashboard: React.FC = () => {
                                       <Check className="w-3.5 h-3.5" />
                                       <span>Konfirmasi Serah</span>
                                     </button>
-                                  ) : null}
-
-                                  {wo.status === 'COMPLETED' && wo.isHandoverConfirmed ? (
+                                  ) : wo.status === 'COMPLETED' && wo.isHandoverConfirmed ? (
                                     <div className="w-full flex flex-col gap-1">
                                       <div className="flex items-center gap-1 w-full">
                                         <button
@@ -1128,17 +1355,12 @@ const SADashboard: React.FC = () => {
 
                                       <button
                                         type="button"
-                                        disabled={wo.status === 'COMPLETED' && !wo.isHandoverConfirmed}
-                                        title={wo.status === 'COMPLETED' && !wo.isHandoverConfirmed ? "Harap konfirmasi penyerahan barang terlebih dahulu" : "Sembunyikan/pindahkan pekerjaan ke tab Arsip Selesai"}
-                                        onClick={() => handleArchiveWithToast(wo)}
-                                        className={`px-2 py-1 text-[9px] font-bold rounded-md uppercase transition-all flex items-center gap-0.5 cursor-pointer border ${
-                                          wo.status === 'COMPLETED' && !wo.isHandoverConfirmed
-                                            ? 'bg-slate-800/40 text-slate-500 border-slate-800 cursor-not-allowed opacity-50'
-                                            : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-blue-600 hover:text-white hover:border-blue-500'
-                                        }`}
+                                        onClick={() => handleOpenCancelModal(wo)}
+                                        className="px-2 py-1 bg-rose-950/60 border border-rose-800/70 text-rose-300 hover:bg-rose-600 hover:text-white text-[9px] font-bold rounded-md font-mono uppercase transition-all flex items-center gap-0.5 cursor-pointer"
+                                        title="Batalkan SPK ini jika pelanggan decline / menolak estimasi pengerjaan"
                                       >
-                                        <Archive className="w-3 h-3" />
-                                        <span>Arsip</span>
+                                        <Ban className="w-3 h-3 text-rose-400" />
+                                        <span>Cancel</span>
                                       </button>
                                     </div>
                                   )}
@@ -1162,10 +1384,28 @@ const SADashboard: React.FC = () => {
                           animate={{ opacity: 1, y: 0 }}
                           whileHover={{ scale: 1.01, y: -2 }}
                           transition={{ duration: 0.25, delay: Math.min(index * 0.04, 0.2) }}
-                          className="bg-slate-850 p-4 rounded-xl border border-slate-800 space-y-3 shadow-md hover:border-slate-700 transition-all"
+                          className={`p-4 rounded-xl border space-y-3 shadow-md transition-all ${
+                            wo.isArchived
+                              ? 'bg-slate-900/60 border-dashed border-amber-900/60 opacity-85 hover:opacity-100'
+                              : 'bg-slate-850 border-slate-800 hover:border-slate-700'
+                          }`}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <span className="font-mono text-xs text-blue-400 font-bold">{wo.id}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-xs text-blue-400 font-bold">{wo.id}</span>
+                              {wo.status === 'CANCELLED' && (
+                                <span className="px-1.5 py-0.5 bg-rose-950 text-rose-300 text-[8.5px] font-black rounded border border-rose-800 flex items-center gap-1 shadow-xs tracking-wider">
+                                  <Ban className="w-2.5 h-2.5 text-rose-400" />
+                                  CANCEL
+                                </span>
+                              )}
+                              {wo.isArchived && (
+                                <span className="px-1.5 py-0.5 bg-amber-950/90 text-amber-300 text-[8.5px] font-black rounded border border-amber-800/80 flex items-center gap-1 shadow-xs tracking-wider">
+                                  <Archive className="w-2.5 h-2.5 text-amber-400" />
+                                  DIARSIPKAN
+                                </span>
+                              )}
+                            </div>
                             <div className="shrink-0 whitespace-nowrap">
                               {wo.priority === 1 && <span className="px-1.5 py-0.5 bg-red-900/40 text-red-300 text-[9px] font-black rounded border border-red-800 whitespace-nowrap inline-block">🔴 Urgent</span>}
                               {wo.priority === 2 && <span className="px-1.5 py-0.5 bg-yellow-900/40 text-yellow-300 text-[9px] font-black rounded border border-yellow-800 whitespace-nowrap inline-block">🟡 Booking</span>}
@@ -1222,12 +1462,20 @@ const SADashboard: React.FC = () => {
                               <span className="text-[9px] text-slate-500 uppercase font-bold block mb-0.5">Status Kerja</span>
                               <select
                                 value={wo.status}
-                                onChange={(e) => updateWorkOrder(wo.id, { status: e.target.value as any })}
+                                onChange={(e) => {
+                                  const nextStatus = e.target.value as any;
+                                  if (nextStatus === 'CANCELLED') {
+                                    handleOpenCancelModal(wo);
+                                  } else {
+                                    updateWorkOrder(wo.id, { status: nextStatus });
+                                  }
+                                }}
                                 className={`w-full px-1.5 py-0.5 text-[10px] font-black rounded-lg border uppercase tracking-wider outline-none cursor-pointer transition-all shadow-xs ${
                                   wo.status === 'QUEUE' ? 'bg-slate-800 text-slate-300 border-slate-700' :
                                   wo.status === 'IN_PROGRESS' ? 'bg-blue-950 text-blue-300 border-blue-800/80' :
                                   wo.status === 'PENDING_APPROVAL' ? 'bg-red-950 text-red-300 border-red-800/80' :
                                   wo.status === 'PENDING_PARTS' ? 'bg-amber-950 text-amber-300 border-amber-850' :
+                                  wo.status === 'CANCELLED' ? 'bg-rose-950 text-rose-300 border-rose-850' :
                                   'bg-emerald-950 text-emerald-300 border-emerald-800/80'
                                 }`}
                               >
@@ -1236,11 +1484,88 @@ const SADashboard: React.FC = () => {
                                 <option value="PENDING_APPROVAL" className="bg-slate-900 text-slate-200">Approval</option>
                                 <option value="PENDING_PARTS" className="bg-slate-900 text-slate-200">Tertunda Parts</option>
                                 <option value="COMPLETED" className="bg-slate-900 text-slate-200">Selesai / Siap QC</option>
+                                <option value="CANCELLED" className="bg-slate-900 text-slate-200">Dibatalkan (Cancel)</option>
                               </select>
                             </div>
                           </div>
 
-                          {wo.status === 'COMPLETED' && !wo.isHandoverConfirmed && (
+                          {wo.isArchived ? (
+                            <div className="flex gap-2 pt-2 border-t border-slate-800/80">
+                              <button
+                                type="button"
+                                onClick={() => handleRestoreWithToast(wo)}
+                                className="flex-1 py-2 bg-emerald-950 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-700 text-[10px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
+                                <span>Pulihkan SPK</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPrintType('SPK');
+                                  setPrintWO(wo);
+                                }}
+                                className="py-2 px-3 bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                                <span>SPK</span>
+                              </button>
+
+                              {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingWO(wo);
+                                    setIsEditModalOpen(true);
+                                  }}
+                                  className="py-2 px-3 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-slate-700 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer"
+                                  title="Edit SPK"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                  <span>Edit</span>
+                                </button>
+                              )}
+                            </div>
+                          ) : wo.status === 'CANCELLED' ? (
+                            <div className="flex gap-2 pt-2 border-t border-slate-800/80">
+                              <button
+                                type="button"
+                                onClick={() => handleArchiveWithToast(wo)}
+                                className="flex-1 py-2 bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 text-[10px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                              >
+                                <Archive className="w-3.5 h-3.5 text-slate-400" />
+                                <span>Arsipkan</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPrintType('SPK');
+                                  setPrintWO(wo);
+                                }}
+                                className="py-2 px-3 bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                                <span>SPK</span>
+                              </button>
+
+                              {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingWO(wo);
+                                    setIsEditModalOpen(true);
+                                  }}
+                                  className="py-2 px-3 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-slate-700 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer"
+                                  title="Edit SPK"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                  <span>Edit</span>
+                                </button>
+                              )}
+                            </div>
+                          ) : wo.status === 'COMPLETED' && !wo.isHandoverConfirmed ? (
                             <button
                               type="button"
                               onClick={() => handleConfirmHandover(wo)}
@@ -1249,9 +1574,7 @@ const SADashboard: React.FC = () => {
                               <Check className="w-4 h-4" />
                               <span>Konfirmasi Serah Terima Unit</span>
                             </button>
-                          )}
-
-                          {wo.status === 'COMPLETED' && wo.isHandoverConfirmed ? (
+                          ) : wo.status === 'COMPLETED' && wo.isHandoverConfirmed ? (
                             <div className="space-y-1.5 pt-2 border-t border-slate-800/80">
                               <div className="grid grid-cols-2 gap-1.5">
                                 <button
@@ -1325,7 +1648,7 @@ const SADashboard: React.FC = () => {
                                     setEditingWO(wo);
                                     setIsEditModalOpen(true);
                                   }}
-                                  className="px-3 py-2 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-slate-700 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer"
+                                  className="flex-1 py-2 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-slate-700 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer"
                                   title="Edit SPK"
                                 >
                                   <Pencil className="w-3.5 h-3.5" />
@@ -1335,16 +1658,12 @@ const SADashboard: React.FC = () => {
 
                               <button
                                 type="button"
-                                disabled={wo.status === 'COMPLETED' && !wo.isHandoverConfirmed}
-                                onClick={() => handleArchiveWithToast(wo)}
-                                className={`flex-1 py-2 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer border ${
-                                  wo.status === 'COMPLETED' && !wo.isHandoverConfirmed
-                                    ? 'bg-slate-800/40 text-slate-500 border-slate-800 cursor-not-allowed opacity-50'
-                                    : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-blue-600 hover:text-white'
-                                }`}
+                                onClick={() => handleOpenCancelModal(wo)}
+                                className="px-3 py-2 bg-rose-950/80 border border-rose-800 text-rose-300 hover:bg-rose-900 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer"
+                                title="Batalkan SPK"
                               >
-                                <Archive className="w-3.5 h-3.5" />
-                                <span>Arsipkan</span>
+                                <Ban className="w-3.5 h-3.5 text-rose-400" />
+                                <span>Cancel</span>
                               </button>
                             </div>
                           )}
@@ -2762,6 +3081,161 @@ const SADashboard: React.FC = () => {
                   className="text-[11px] text-slate-400 hover:text-slate-200 underline cursor-pointer"
                 >
                   Tutup jendela (Biarkan tetap di daftar SPK Aktif)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CANCEL SPK CONFIRMATION MODAL */}
+      {cancellingWO && (
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-750 text-slate-100 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
+            <div className="bg-gradient-to-r from-rose-950/90 to-rose-900/60 p-5 border-b border-rose-800/40 flex items-start gap-4">
+              <div className="p-2.5 bg-rose-500 text-white rounded-xl shadow-lg shadow-rose-500/30 shrink-0">
+                <Ban className="w-6 h-6" />
+              </div>
+              <div className="flex-1">
+                <span className="text-[11px] font-mono font-black text-rose-400 uppercase tracking-widest block mb-1">
+                  Pembatalan SPK / Customer Decline
+                </span>
+                <h3 className="text-lg font-black text-white tracking-tight">
+                  Konfirmasi Pembatalan SPK
+                </h3>
+                <p className="text-xs text-slate-300 mt-0.5">
+                  Membatalkan pengerjaan untuk SPK <span className="font-mono font-bold text-white">{cancellingWO.id}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={isProcessingCancel}
+                onClick={() => setCancellingWO(null)}
+                className="text-slate-400 hover:text-white text-lg font-bold p-1 cursor-pointer disabled:opacity-50"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Unit Info Box */}
+              <div className="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 space-y-2 text-xs">
+                <div className="flex items-center justify-between border-b border-slate-850 pb-2">
+                  <span className="text-slate-400 font-medium">Pelanggan:</span>
+                  <span className="font-bold text-slate-200">{cancellingWO.customerName} ({cancellingWO.customerPhone})</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 font-medium">Kendaraan / Unit:</span>
+                  <span className="font-bold text-blue-400">{cancellingWO.vehicleBrand} - {cancellingWO.plateNumber}</span>
+                </div>
+              </div>
+
+              {/* Error Banner */}
+              {cancelError && (
+                <div className="p-3 bg-rose-950/90 border border-rose-700 text-rose-200 text-xs rounded-xl flex items-start gap-2.5 animate-in fade-in">
+                  <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                  <div className="flex-1 font-medium">{cancelError}</div>
+                </div>
+              )}
+
+              {/* Cancellation Reason Dropdown Selection */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-300 block">
+                    Alasan Pembatalan SPK <span className="text-rose-400">*</span>
+                  </label>
+                  {!cancelReason && (
+                    <span className="text-[10px] text-rose-400 font-mono font-bold animate-pulse">
+                      Wajib Dipilih
+                    </span>
+                  )}
+                </div>
+                <select
+                  value={cancelReason}
+                  onChange={(e) => {
+                    setCancelReason(e.target.value);
+                    if (cancelError) setCancelError(null);
+                  }}
+                  disabled={isProcessingCancel}
+                  className={`w-full bg-slate-950 border text-xs text-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none font-medium transition-all ${
+                    !cancelReason ? 'border-rose-800/80 bg-rose-950/10' : 'border-slate-700'
+                  }`}
+                >
+                  <option value="" disabled className="text-slate-500">
+                    -- Pilih Alasan Pembatalan dari Dropdown (Wajib) --
+                  </option>
+                  <option value="Pelanggan Menolak Estimasi Biaya (Decline / Biaya Terlalu Tinggi)">
+                    Pelanggan Menolak Estimasi Biaya (Decline / Biaya Terlalu Tinggi)
+                  </option>
+                  <option value="Pelanggan Membatalkan Servis / Mengambil Kembali Unit">
+                    Pelanggan Membatalkan Servis / Mengambil Kembali Unit
+                  </option>
+                  <option value="Spare Part Tidak Tersedia & Pelanggan Menolak Menunggu Inden">
+                    Spare Part Tidak Tersedia & Pelanggan Menolak Menunggu Inden
+                  </option>
+                  <option value="Kerusakan Tidak Dapat Diperbaiki / Di Luar Kapasitas Bengkel">
+                    Kerusakan Tidak Dapat Diperbaiki / Di Luar Kapasitas Bengkel
+                  </option>
+                  <option value="Salah Registrasi SPK / Duplikasi Dokumen">
+                    Salah Registrasi SPK / Duplikasi Dokumen
+                  </option>
+                  <option value="Lainnya (Wajib Tuliskan Keterangan Tambahan)">
+                    Lainnya (Wajib Tuliskan Keterangan Tambahan)
+                  </option>
+                </select>
+              </div>
+
+              {/* Additional notes */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Catatan Tambahan {cancelReason.startsWith('Lainnya') ? <span className="text-rose-400">* (Wajib Diisi)</span> : '(Opsional)'}:
+                  </label>
+                </div>
+                <textarea
+                  value={cancelCustomNotes}
+                  onChange={(e) => {
+                    setCancelCustomNotes(e.target.value);
+                    if (cancelError) setCancelError(null);
+                  }}
+                  disabled={isProcessingCancel}
+                  placeholder={cancelReason.startsWith('Lainnya') ? "Harap tuliskan detail alasan pembatalan di sini..." : "Tuliskan catatan rinci pembatalan jika ada..."}
+                  rows={2}
+                  className="w-full bg-slate-950 border border-slate-700 text-xs text-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none placeholder:text-slate-600 resize-none font-medium"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  disabled={isProcessingCancel}
+                  onClick={() => setCancellingWO(null)}
+                  className="flex-1 py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50"
+                >
+                  Kembali
+                </button>
+                <button
+                  type="button"
+                  disabled={isProcessingCancel || !cancelReason}
+                  onClick={handleConfirmCancelWO}
+                  className={`flex-1 py-2.5 px-4 text-white text-xs font-black rounded-xl uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg ${
+                    isProcessingCancel || !cancelReason
+                      ? 'bg-slate-700 opacity-60 cursor-not-allowed text-slate-400'
+                      : 'bg-rose-600 hover:bg-rose-700 shadow-rose-900/40 cursor-pointer'
+                  }`}
+                >
+                  {isProcessingCancel ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                      <span>Menyimpan ke Firestore...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Ban className="w-4 h-4" />
+                      <span>Konfirmasi Batal SPK</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>

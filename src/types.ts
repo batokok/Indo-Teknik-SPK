@@ -18,7 +18,7 @@ export interface User {
 }
 
 export type Priority = 1 | 2 | 3;
-export type WOStatus = 'QUEUE' | 'IN_PROGRESS' | 'PENDING_APPROVAL' | 'COMPLETED' | 'PENDING_PARTS';
+export type WOStatus = 'QUEUE' | 'IN_PROGRESS' | 'PENDING_APPROVAL' | 'COMPLETED' | 'PENDING_PARTS' | 'CANCELLED';
 
 export interface PartDetails {
   id: string;
@@ -173,6 +173,9 @@ export interface WorkOrder {
   isHandoverConfirmed?: boolean;
   handoverDate?: string;
   handoverConfirmedBy?: string;
+  cancelledAt?: string;
+  cancelledBy?: string;
+  cancelReason?: string;
 }
 
 export interface AppNotification {

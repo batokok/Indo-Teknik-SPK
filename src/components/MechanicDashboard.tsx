@@ -1057,24 +1057,24 @@ const MechanicDashboard: React.FC = () => {
                       <p className="text-xs text-slate-500 italic text-center py-2">Tidak ada data manifes komponen yang diinput SA.</p>
                     ) : (
                       <div className="overflow-x-auto border border-slate-200 rounded-lg shadow-sm">
-                        <table className="w-full text-xs text-left">
-                          <thead className="text-[10px] text-slate-700 uppercase bg-slate-100 border-b border-slate-200 font-bold">
+                        <table className="w-full text-sm text-left">
+                          <thead className="text-xs text-slate-700 uppercase bg-slate-100 border-b border-slate-200 font-bold">
                             <tr>
-                              <th className="px-3 py-2 font-black">Keterangan</th>
-                              <th className="px-3 py-2 font-black">Part Number (P/N)</th>
-                              <th className="px-3 py-2 font-black">Kondisi Fisik Luar</th>
+                              <th className="px-4 py-3 font-black">Keterangan</th>
+                              <th className="px-4 py-3 font-black">Part Number (P/N)</th>
+                              <th className="px-4 py-3 font-black">Kondisi Fisik Luar</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-200 bg-white">
+                          <tbody className="divide-y divide-slate-200">
                             {activeWO.looseParts.map((p, idx) => (
-                              <tr key={p.id || idx} className="hover:bg-slate-50">
-                                <td className="px-3 py-2.5 font-bold text-slate-800">{p.description || '-'}</td>
-                                <td className="px-3 py-2.5 font-mono text-slate-800">{p.partNumber || '-'}</td>
-                                <td className="px-3 py-2.5 text-slate-800">
-                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              <tr key={p.id || idx} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-blue-50/50 transition-colors`}>
+                                <td className="px-4 py-4 font-bold text-slate-900">{p.description || '-'}</td>
+                                <td className="px-4 py-4 font-mono font-bold text-slate-800">{p.partNumber || '-'}</td>
+                                <td className="px-4 py-4 text-slate-800">
+                                  <span className={`px-2.5 py-1 rounded text-xs font-bold ${
                                     p.physicalCondition?.toLowerCase() === 'ok' 
-                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                                      : 'bg-amber-50 text-amber-700 border border-amber-200'
+                                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
+                                      : 'bg-amber-100 text-amber-800 border border-amber-300'
                                   }`}>
                                     {p.physicalCondition || 'OK'}
                                   </span>
@@ -1193,22 +1193,22 @@ const MechanicDashboard: React.FC = () => {
                     {/* Module 4 Grid Table History */}
                     {activeWO.partLogs && activeWO.partLogs.length > 0 && (
                       <div className="border border-slate-200 rounded-lg overflow-hidden shadow-sm">
-                        <table className="min-w-full divide-y divide-slate-200 text-xs">
-                          <thead className="bg-slate-100 text-slate-700">
+                        <table className="min-w-full divide-y divide-slate-200 text-sm">
+                          <thead className="bg-slate-100 text-slate-700 text-xs">
                             <tr>
-                              <th className="px-4 py-2.5 text-left font-black uppercase tracking-wider w-1/4">JAM / TANGGAL</th>
-                              <th className="px-4 py-2.5 text-left font-black uppercase tracking-wider w-1/2">TEMUAN / SUKU CADANG</th>
-                              <th className="px-4 py-2.5 text-left font-black uppercase tracking-wider w-1/4">CATATAN (NOTES)</th>
+                              <th className="px-4 py-3 text-left font-black uppercase tracking-wider w-1/4">JAM / TANGGAL</th>
+                              <th className="px-4 py-3 text-left font-black uppercase tracking-wider w-1/2">TEMUAN / SUKU CADANG</th>
+                              <th className="px-4 py-3 text-left font-black uppercase tracking-wider w-1/4">CATATAN (NOTES)</th>
                             </tr>
                           </thead>
-                          <tbody className="bg-white divide-y divide-slate-200">
+                          <tbody className="divide-y divide-slate-200">
                             {activeWO.partLogs.map((log, index) => (
-                              <tr key={log.id || index} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                                <td className="px-4 py-2.5 whitespace-nowrap text-slate-500 font-mono font-bold">
+                              <tr key={log.id || index} className={`${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-blue-50/50 transition-colors`}>
+                                <td className="px-4 py-4 whitespace-nowrap text-slate-600 font-mono font-bold">
                                   {new Date(log.date).toLocaleString('id-ID', { hour12: false })}
                                 </td>
-                                <td className="px-4 py-2.5 text-slate-800 font-bold leading-normal">{log.findings || 'Tidak ada temuan'}</td>
-                                <td className="px-4 py-2.5 text-slate-600 leading-normal">{log.notes || '-'}</td>
+                                <td className="px-4 py-4 text-slate-900 font-bold leading-normal">{log.findings || 'Tidak ada temuan'}</td>
+                                <td className="px-4 py-4 text-slate-700 leading-normal">{log.notes || '-'}</td>
                               </tr>
                             ))}
                           </tbody>

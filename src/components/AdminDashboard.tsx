@@ -635,23 +635,23 @@ export const AdminDashboard: React.FC = () => {
               <div className="space-y-3 pt-1">
                 <h4 className="text-[9px] uppercase font-black text-slate-400 tracking-wider">Jumlah Klaim & Komplain per Personil</h4>
                 <div className="border border-slate-200 rounded overflow-hidden">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 border-b border-slate-200 text-[9px] font-extrabold uppercase tracking-wider text-slate-400">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-100 border-b border-slate-200 text-xs font-extrabold uppercase tracking-wider text-slate-600">
                       <tr>
-                        <th className="px-3 py-2">Nama Personil</th>
-                        <th className="px-3 py-2 text-right">Total Klaim Kelalaian</th>
+                        <th className="px-4 py-3">Nama Personil</th>
+                        <th className="px-4 py-3 text-right">Total Klaim Kelalaian</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-150">
+                    <tbody className="divide-y divide-slate-200">
                       {Object.keys(claimsByMech).length === 0 ? (
                         <tr>
-                          <td colSpan={2} className="p-4 text-center text-slate-400 italic">Belum ada porsi klaim yang dicatat.</td>
+                          <td colSpan={2} className="py-4 px-4 text-center text-slate-400 italic">Belum ada porsi klaim yang dicatat.</td>
                         </tr>
                       ) : (
-                        Object.keys(claimsByMech).map(name => (
-                          <tr key={name} className="hover:bg-slate-50/50">
-                            <td className="px-3 py-2.5 font-bold text-slate-700">{name}</td>
-                            <td className="px-3 py-2.5 text-right font-black font-mono text-red-600 bg-red-50/20">{claimsByMech[name]} Kasus</td>
+                        Object.keys(claimsByMech).map((name, idx) => (
+                          <tr key={name} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-blue-50/50 transition-colors`}>
+                            <td className="px-4 py-4 font-bold text-slate-800">{name}</td>
+                            <td className="px-4 py-4 text-right font-black font-mono text-red-600 bg-red-50/20">{claimsByMech[name]} Kasus</td>
                           </tr>
                         ))
                       )}
@@ -670,33 +670,33 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             <div className="border border-slate-200 rounded-lg overflow-hidden">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-[9px] font-extrabold uppercase tracking-wider text-slate-400">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-100 border-b border-slate-200 text-xs font-extrabold uppercase tracking-wider text-slate-600">
                   <tr>
-                    <th className="px-4 py-2.5">Nama Teknisi / Foreman</th>
-                    <th className="px-4 py-2.5">Divisi / Peran Bengkel</th>
-                    <th className="px-4 py-2.5 text-center">SPK Selesai</th>
-                    <th className="px-4 py-2.5 text-center">Sedang Dikerjakan</th>
-                    <th className="px-4 py-2.5 text-center">Rerata Durasi Kerja</th>
-                    <th className="px-4 py-2.5 text-right">Skor KPI Indeks</th>
+                    <th className="px-4 py-3">Nama Teknisi / Foreman</th>
+                    <th className="px-4 py-3">Divisi / Peran Bengkel</th>
+                    <th className="px-4 py-3 text-center">SPK Selesai</th>
+                    <th className="px-4 py-3 text-center">Sedang Dikerjakan</th>
+                    <th className="px-4 py-3 text-center">Rerata Durasi Kerja</th>
+                    <th className="px-4 py-3 text-right">Skor KPI Indeks</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-150">
+                <tbody className="divide-y divide-slate-200">
                   {users
                     .filter(u => u.role === 'MECHANIC' || u.role === 'COMMON_RAIL' || u.role === 'TURBO' || u.role === 'FOREMAN')
-                    .map(user => {
+                    .map((user, idx) => {
                       const completedCount = workOrders.filter(w => w.mechanicId === user.id && w.status === 'COMPLETED').length;
                       const activeCount = workOrders.filter(w => w.mechanicId === user.id && w.status === 'IN_PROGRESS').length;
                       const avgDuration = calculateUserAverageDuration(user.id);
                       const kpiScore = calculateUserKpi(user.id);
 
                       return (
-                        <tr key={user.id} className="hover:bg-slate-50/50">
-                          <td className="px-4 py-3">
+                        <tr key={user.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-blue-50/50 transition-colors`}>
+                          <td className="px-4 py-4">
                             <span className="font-bold text-slate-800 block leading-tight">{user.name}</span>
                             <span className="text-[10px] text-slate-400 font-mono">@{user.username}</span>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-4">
                             {user.role === 'FOREMAN' ? (
                               <span className="px-2 py-0.5 bg-orange-100 text-orange-800 rounded-md font-bold text-[9px] border border-orange-200 uppercase tracking-wider">🔧 Foreman (Pekerjaan Mandiri)</span>
                             ) : user.role === 'COMMON_RAIL' ? (
@@ -707,16 +707,16 @@ export const AdminDashboard: React.FC = () => {
                               <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-md font-bold text-[9px] border border-emerald-200 uppercase tracking-wider">⚙️ Fuel Pump</span>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-center font-bold font-mono">{completedCount} Unit</td>
-                          <td className="px-4 py-3 text-center">
+                          <td className="px-4 py-4 text-center font-bold font-mono">{completedCount} Unit</td>
+                          <td className="px-4 py-4 text-center">
                             {activeCount > 0 ? (
                               <span className="px-2 py-0.5 rounded-full bg-blue-150 text-blue-800 font-bold font-mono text-[10px] animate-pulse">{activeCount} Unit</span>
                             ) : (
                               <span className="text-slate-400 text-[10px]">-</span>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-center font-bold font-mono text-slate-700">{avgDuration}</td>
-                          <td className="px-4 py-3 text-right">
+                          <td className="px-4 py-4 text-center font-bold font-mono text-slate-700">{avgDuration}</td>
+                          <td className="px-4 py-4 text-right">
                             <span className={`px-2 py-1 font-mono font-black text-xs rounded border ${
                               kpiScore >= 85 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                               kpiScore >= 70 ? 'bg-blue-50 text-blue-700 border-blue-200' :

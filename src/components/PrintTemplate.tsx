@@ -1,9 +1,10 @@
 import React from 'react';
 import { useApp } from '../store/AppContext';
-import { Printer, Download, ArrowLeft, MapPin, ShieldCheck, Wrench, CheckCircle } from 'lucide-react';
+import { Printer, Download, ArrowLeft, MapPin, ShieldCheck, Wrench, CheckCircle, Award } from 'lucide-react';
 import { SmartLogo } from './SmartLogo';
 import { QRCodeSVG } from 'qrcode.react';
 import { FuelGauge } from './FuelGauge';
+import { CarInspectionMap } from './CarInspectionMap';
 
 const formatRupiah = (value: string | number | undefined | null): string => {
   if (value === undefined || value === null) return '';
@@ -151,14 +152,14 @@ export const PrintTemplate: React.FC = () => {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-1 pl-0.5">
+                  <div className="flex items-center gap-2.5 mt-1.5 pl-0.5">
                     <SmartLogo 
                       baseName="logo-itech" 
                       alt="ITech" 
-                      className="h-5 w-auto object-contain flex-shrink-0" 
-                      style={{ height: '20px', maxWidth: '70px' }}
+                      className="h-8 w-auto object-contain flex-shrink-0 bg-white px-2 py-0.5 rounded border border-slate-200" 
+                      style={{ height: '30px', maxWidth: '110px' }}
                     />
-                    <p className="text-[9.5px] font-black tracking-wider text-[#0F2D59] whitespace-nowrap bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                    <p className="text-[10.5px] font-black tracking-wider text-[#0F2D59] whitespace-nowrap bg-blue-50 px-2.5 py-1 rounded border border-blue-200">
                       ITECH AUTHORIZED DEALER & WORKSHOP
                     </p>
                   </div>
@@ -453,14 +454,14 @@ export const PrintTemplate: React.FC = () => {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-1 pl-0.5">
+                  <div className="flex items-center gap-2.5 mt-1.5 pl-0.5">
                     <SmartLogo 
                       baseName="logo-itech" 
                       alt="ITech" 
-                      className="h-5 w-auto object-contain flex-shrink-0" 
-                      style={{ height: '18px', maxWidth: '65px' }}
+                      className="h-8 w-auto object-contain flex-shrink-0 bg-white px-2 py-0.5 rounded border border-slate-200" 
+                      style={{ height: '28px', maxWidth: '100px' }}
                     />
-                    <p className="text-[9px] font-black tracking-wider text-[#0F2D59] whitespace-nowrap bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                    <p className="text-[10px] font-black tracking-wider text-[#0F2D59] whitespace-nowrap bg-blue-50 px-2.5 py-0.5 rounded border border-blue-200">
                       ITECH AUTHORIZED DEALER & WORKSHOP
                     </p>
                   </div>
@@ -626,98 +627,48 @@ export const PrintTemplate: React.FC = () => {
             {/* SECTION 3: VISUAL BODY DAMAGE INSPECTION MAP & INVENTORY */}
             {printWO.dropMethod === 'WHOLE' ? (
               <div className="grid grid-cols-12 gap-2 mb-2">
-                {/* Visual Body Parts Grid (Left 7 Cols) */}
+                {/* Visual Body Parts Silhouette Map 2.0 (Left 7 Cols) */}
                 <div className="col-span-7 border border-slate-300 rounded-lg overflow-hidden flex flex-col justify-between shadow-xs">
-                  <div className="bg-slate-100 px-2.5 py-1 border-b border-slate-300 flex items-center justify-between">
-                    <h3 className="text-[10px] font-black text-[#0F2D59] uppercase tracking-wider flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-blue-600" /> PEMERIKSAAN KONDISI FISIK / BODI
-                    </h3>
-                    <span className="text-[8px] font-bold text-slate-500">9 Titik Inspeksi</span>
-                  </div>
-
-                  <div className="p-2 flex-1 flex flex-col justify-between bg-white">
-                    {/* 9 Inspection Points Grid */}
-                    <div className="grid grid-cols-3 gap-1 mb-1.5">
-                      {ALL_CAR_INSPECTION_PARTS.map((part) => {
-                        const defect = damagesList.find(d => d.partId === part.id);
-                        const isDefective = Boolean(defect);
-                        return (
-                          <div 
-                            key={part.id} 
-                            className={`p-1 rounded border text-center flex flex-col items-center justify-center min-h-[30px] ${
-                              isDefective 
-                                ? 'bg-rose-50 border-rose-400 text-rose-950 font-bold' 
-                                : 'bg-emerald-50/70 border-emerald-300 text-emerald-950'
-                            }`}
-                          >
-                            <span className="text-[9px] font-bold leading-tight truncate w-full">{part.label}</span>
-                            <span className={`text-[7.5px] font-black mt-0.5 px-1.5 py-0.2 rounded ${
-                              isDefective ? 'bg-rose-600 text-white' : 'bg-emerald-600 text-white'
-                            }`}>
-                              {isDefective ? '⚠️ DEFECT' : '✓ OK'}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Defect Description Box */}
-                    <div className="border border-slate-200 bg-slate-50 rounded p-1.5 text-[9px]">
-                      <span className="font-black text-slate-700 block mb-0.5 text-[8.5px] uppercase">
-                        Catatan Baret / Kerusakan Fisik Saat Masuk:
-                      </span>
-                      {damagesList.length === 0 ? (
-                        <p className="text-emerald-800 italic font-semibold text-[9px]">
-                          ✓ Kondisi bodi luar dan interior dalam keadaan mulus/OK saat serah terima.
-                        </p>
-                      ) : (
-                        <div className="space-y-0.5">
-                          {damagesList.map((d) => {
-                            const partObj = ALL_CAR_INSPECTION_PARTS.find(p => p.id === d.partId);
-                            return (
-                              <div key={d.partId} className="flex items-center gap-1.5 text-slate-950 text-[9px]">
-                                <span className="font-black text-rose-900 text-[8px] bg-rose-100 px-1 py-0.2 rounded border border-rose-200">
-                                  {partObj ? partObj.label : d.partId}:
-                                </span>
-                                <span className="text-slate-900 font-medium truncate">{d.description || 'Ada baret / retak fisik'}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <CarInspectionMap 
+                    damages={damagesList}
+                    interactive={false}
+                    isPrintMode={true}
+                    className="border-none shadow-none rounded-none"
+                  />
                 </div>
 
                 {/* Inventory Checklist (Right 5 Cols) */}
-                <div className="col-span-5 border border-slate-300 rounded-lg overflow-hidden flex flex-col justify-between shadow-xs">
-                  <div className="bg-slate-100 px-2.5 py-1 border-b border-slate-300 flex items-center justify-between">
-                    <h3 className="text-[10px] font-black text-[#0F2D59] uppercase tracking-wider flex items-center gap-1.5">
-                      <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> INVENTORY CHECKLIST
+                <div className="col-span-5 border border-slate-300 rounded-lg overflow-hidden flex flex-col justify-between shadow-xs bg-white">
+                  <div className="bg-[#0B132B] text-white px-2.5 py-1.5 flex items-center justify-between">
+                    <h3 className="text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
+                      <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> INVENTORY CHECKLIST
                     </h3>
-                    <span className="text-[8px] font-bold text-slate-500">Kelengkapan</span>
+                    <span className="text-[8px] font-bold text-blue-200">12 Item Kelengkapan</span>
                   </div>
 
-                  <div className="p-2 flex-1 bg-white">
+                  <div className="p-2 flex-1 flex flex-col justify-between bg-white">
                     <div className="grid grid-cols-2 gap-x-1.5 gap-y-1 text-[8.5px]">
                       {DEFAULT_INVENTORY_ITEMS.map((item) => {
                         const checked = isInventoryChecked(item);
                         return (
                           <div 
                             key={item} 
-                            className={`flex items-center py-0.5 px-1 rounded ${
-                              checked ? 'bg-blue-50/90 font-bold text-slate-950' : 'text-slate-500'
+                            className={`flex items-center py-1 px-1.5 rounded transition-colors ${
+                              checked ? 'bg-blue-50/90 font-bold text-slate-950 border border-blue-200/60' : 'text-slate-500 border border-slate-100'
                             }`}
                           >
-                            <span className={`w-3 h-3 rounded-xs border flex items-center justify-center mr-1 text-[8px] font-black shrink-0 ${
-                              checked ? 'bg-[#0F2D59] border-[#0F2D59] text-white' : 'border-slate-400 bg-white text-transparent'
+                            <span className={`w-3.5 h-3.5 rounded-xs border flex items-center justify-center mr-1.5 text-[8px] font-black shrink-0 ${
+                              checked ? 'bg-[#0B132B] border-[#0B132B] text-white' : 'border-slate-300 bg-white text-transparent'
                             }`}>
                               ✓
                             </span>
-                            <span className="truncate font-semibold">{item}</span>
+                            <span className="truncate font-semibold text-[9px]">{item}</span>
                           </div>
                         );
                       })}
+                    </div>
+                    <div className="mt-2 pt-1 border-t border-slate-200 text-[8px] text-slate-500 text-center italic">
+                      *Telah diverifikasi fisik saat kendaraan masuk workshop
                     </div>
                   </div>
                 </div>
@@ -856,14 +807,14 @@ export const PrintTemplate: React.FC = () => {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-1 pl-0.5">
+                  <div className="flex items-center gap-2.5 mt-1.5 pl-0.5">
                     <SmartLogo 
                       baseName="logo-itech" 
                       alt="ITech" 
-                      className="h-5 w-auto object-contain flex-shrink-0" 
-                      style={{ height: '18px', maxWidth: '65px' }}
+                      className="h-8 w-auto object-contain flex-shrink-0 bg-white px-2 py-0.5 rounded border border-slate-200" 
+                      style={{ height: '28px', maxWidth: '100px' }}
                     />
-                    <p className="text-[9px] font-black tracking-wider text-[#0F2D59] whitespace-nowrap bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                    <p className="text-[10px] font-black tracking-wider text-[#0F2D59] whitespace-nowrap bg-blue-50 px-2.5 py-0.5 rounded border border-blue-200">
                       ITECH AUTHORIZED DEALER & WORKSHOP
                     </p>
                   </div>
@@ -1051,7 +1002,20 @@ export const PrintTemplate: React.FC = () => {
           </div>
 
           {/* PAGE 2 SIGNATURES & QR TRACKING FOOTER */}
-          <div className="print-signature-group border-t-2 border-slate-300 pt-2 mt-auto shrink-0">
+          <div className="print-signature-group border-t-2 border-slate-300 pt-2 mt-auto shrink-0 relative">
+            {/* Watermark / Digital Verified Seal for Completed SPK */}
+            {(printWO.status === 'COMPLETED' || printWO.isHandoverConfirmed) && (
+              <div className="absolute right-52 top-0 -translate-y-2 pointer-events-none opacity-85">
+                <div className="border-2 border-emerald-600 text-emerald-700 bg-emerald-50/90 rounded-lg px-2.5 py-1 flex items-center gap-1.5 shadow-sm transform -rotate-3">
+                  <Award className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <div className="text-left leading-none">
+                    <span className="text-[9px] font-black uppercase tracking-wider block text-emerald-800">QC & HANDOVER VERIFIED</span>
+                    <span className="text-[7.5px] font-mono text-emerald-600 block mt-0.5">INDO TEKNIK WORKSHOP AUTHENTICATED</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center justify-between gap-3">
               {/* 4 Signatures Grid */}
               <div className="flex-1 grid grid-cols-4 gap-2 text-center text-xs">

@@ -555,7 +555,7 @@ const PublicTrackingView: React.FC<{ initialWoId?: string; onBackToLogin: () => 
         </div>
 
         <div className="flex items-center gap-3">
-          <SmartLogo baseName="logo-tech" alt="Indo Teknik" className="h-5 sm:h-6 object-contain bg-white/95 px-2 py-0.5 rounded shadow-md saturate-110" />
+          <SmartLogo baseName="logo-tech" alt="Indo Teknik" className="h-8 sm:h-9 object-contain bg-white/95 px-3 py-1 rounded-lg shadow-md saturate-110" />
           <button 
             onClick={onBackToLogin}
             className="px-3 py-1.5 text-[8px] sm:text-[10px] bg-white/[0.03] hover:bg-white/[0.08] text-slate-200 hover:text-white border border-white/10 hover:border-white/20 rounded-lg font-black uppercase tracking-wider transition-all cursor-pointer active:scale-95 font-mono"

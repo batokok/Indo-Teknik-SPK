@@ -853,7 +853,7 @@ const MechanicDashboard: React.FC = () => {
                   </span>
                 </div>
                 
-                <div className="flex gap-2 w-full justify-end flex-wrap">
+                <div className="flex gap-2.5 w-full justify-end flex-wrap">
                   {activeWO.status === 'IN_PROGRESS' && activeWO.divisionFlow && activeWO.divisionFlow.length > 1 && (
                     <button 
                       onClick={() => {
@@ -863,24 +863,24 @@ const MechanicDashboard: React.FC = () => {
                         }
                         setTransferModalOpen(true);
                       }}
-                      className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-xs font-bold shadow-md uppercase tracking-wider flex items-center gap-1.5 transition-all"
+                      className="min-h-[44px] sm:min-h-[48px] px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black shadow-md uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer"
                     >
-                      <Send className="w-3.5 h-3.5" /> TRANSFER DIVISI
+                      <Send className="w-4 h-4" /> TRANSFER DIVISI
                     </button>
                   )}
                   {activeWO.status === 'IN_PROGRESS' && (
                     <button 
                       onClick={handlePauseClick} 
-                      className="px-4 py-1.5 border border-slate-600 hover:bg-slate-800 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all"
+                      className="min-h-[44px] sm:min-h-[48px] px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer"
                     >
-                      <Pause className="w-3.5 h-3.5" /> JEDA / PAUSE
+                      <Pause className="w-4 h-4 text-amber-400" /> JEDA / PAUSE
                     </button>
                   )}
                   <button 
                     onClick={() => handleComplete(activeWO.id)} 
-                    className="px-4 py-1.5 bg-emerald-600 text-white rounded text-xs font-bold shadow-md hover:bg-emerald-500 uppercase tracking-wider flex items-center gap-1.5 transition-all"
+                    className="min-h-[44px] sm:min-h-[48px] px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black shadow-md hover:shadow-emerald-900/30 uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer"
                   >
-                    <CheckCircle className="w-3.5 h-3.5" /> SELESAI / KE SA
+                    <CheckCircle className="w-4 h-4" /> SELESAI / KE SA
                   </button>
                 </div>
               </div>

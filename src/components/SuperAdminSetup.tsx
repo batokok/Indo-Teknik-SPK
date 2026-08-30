@@ -83,9 +83,9 @@ const SuperAdminSetup: React.FC = () => {
         <div className="flex flex-col items-center justify-center mb-6 text-center gap-4">
           <SmartLogo baseName="logo-indo-teknik" alt="IT INDO TEKNIK" className="h-10 object-contain bg-white px-3 py-1.5 rounded shadow-sm" />
           <div className="flex flex-col items-center">
-            <div className="flex items-center gap-1.5 bg-slate-800 border border-slate-700/60 py-1 px-2.5 rounded shadow-sm">
-              <SmartLogo baseName="logo-itech" alt="ITech" className="h-4 object-contain bg-white px-1.5 py-0.5 rounded" />
-              <span className="text-[10px] font-semibold text-slate-300 uppercase tracking-widest whitespace-nowrap">Authorized Dealer</span>
+            <div className="flex items-center gap-2 bg-slate-800 border border-slate-700/60 py-1.5 px-3 rounded-lg shadow-sm">
+              <SmartLogo baseName="logo-itech" alt="ITech" className="h-7 object-contain bg-white px-2 py-0.5 rounded" />
+              <span className="text-[11px] font-bold text-slate-300 uppercase tracking-widest whitespace-nowrap">Authorized Dealer</span>
             </div>
           </div>
           <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wider mt-2">Initialize System</h2>

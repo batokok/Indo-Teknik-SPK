@@ -212,9 +212,9 @@ const MainLayout: React.FC = () => {
                 <span className="text-blue-400">INDO</span>
                 <span className="text-[#EF4444]">TEKNIK</span>
               </h1>
-              <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 py-1 px-2.5 rounded-lg mt-1.5 self-start shadow-inner">
-                <SmartLogo baseName="logo-itech" alt="ITech" className="h-3.5 object-contain bg-white px-1 py-0.5 rounded shadow-2xs" />
-                <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest whitespace-nowrap">Authorized Dealer</span>
+              <div className="flex items-center gap-2 bg-slate-900/90 border border-slate-800 py-1.5 px-3 rounded-lg mt-1.5 self-start shadow-inner">
+                <SmartLogo baseName="logo-itech" alt="ITech" className="h-6 sm:h-7 object-contain bg-white px-2 py-0.5 rounded shadow-xs" />
+                <span className="text-[10px] font-black text-slate-200 uppercase tracking-widest whitespace-nowrap">Authorized Dealer</span>
               </div>
             </div>
             {/* Close Button on mobile */}
@@ -583,21 +583,27 @@ const MainLayout: React.FC = () => {
           </div>
 
           {/* Right Header Widgets */}
-          <div className="hidden sm:flex items-center gap-3">
-            {/* Live Sync Status Pill */}
-            <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl text-emerald-700 shadow-2xs">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <span className="text-[9.5px] font-black tracking-widest uppercase">Live Synchronized</span>
+          <div className="hidden sm:flex items-center gap-2.5">
+            {/* Shift & Operational Status */}
+            <div className="flex items-center gap-2 bg-blue-50/80 border border-blue-200/80 px-3 py-1.5 rounded-xl text-blue-900 shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+              <span className="text-[10px] font-black tracking-wider uppercase">Shift Workshop Aktif</span>
             </div>
 
-            {/* Date Pill */}
-            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1 rounded-xl text-slate-700 shadow-2xs">
-              <Calendar className="w-3.5 h-3.5 text-blue-600" />
-              <span className="text-xs font-bold font-mono">
-                {new Date().toLocaleDateString('id-ID', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+            {/* Live Sync Status Pill */}
+            <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl text-emerald-800 shadow-2xs">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
+              </span>
+              <span className="text-[10px] font-black tracking-wider uppercase">Cloud Synced</span>
+            </div>
+
+            {/* Date & Time Pill */}
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-slate-800 shadow-2xs">
+              <Calendar className="w-3.5 h-3.5 text-slate-500" />
+              <span className="text-[11px] font-bold font-mono">
+                {new Date().toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
               </span>
             </div>
           </div>
@@ -616,9 +622,9 @@ const MainLayout: React.FC = () => {
                 <p className="text-[10px] text-slate-500 font-medium">Authorized Diesel Fuel Injection Specialist • ITech & Denso Partner</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1 rounded-xl border border-slate-200 self-start sm:self-auto shadow-2xs">
-              <SmartLogo baseName="logo-itech" alt="ITech" className="h-3.5 object-contain bg-white px-1.5 py-0.5 rounded shadow-2xs border border-slate-200" />
-              <span className="text-[9.5px] font-black text-[#EF4444] tracking-widest uppercase">ITech Authorized Dealer</span>
+            <div className="flex items-center gap-2.5 bg-slate-50 px-3.5 py-1.5 rounded-xl border border-slate-200 self-start sm:self-auto shadow-2xs">
+              <SmartLogo baseName="logo-itech" alt="ITech" className="h-6 sm:h-7 object-contain bg-white px-2 py-0.5 rounded shadow-2xs border border-slate-200" />
+              <span className="text-[10.5px] font-black text-[#EF4444] tracking-widest uppercase">ITech Authorized Dealer</span>
             </div>
           </div>
 

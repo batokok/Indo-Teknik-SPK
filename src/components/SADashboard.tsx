@@ -5,6 +5,7 @@ import { Printer, Car, ShieldAlert, Plus, Trash2, Camera, User, ClipboardList, C
 import { Reorder, motion } from 'motion/react';
 import { FuelGauge } from './FuelGauge';
 import { EditWorkOrderModal } from './EditWorkOrderModal';
+import { CarInspectionMap } from './CarInspectionMap';
 import { copyWADraftToClipboard } from '../utils/whatsappDraft';
 
 const formatRupiah = (value: string | number | undefined | null): string => {
@@ -2488,67 +2489,51 @@ const SADashboard: React.FC = () => {
                 <div className="border-b border-slate-100 pb-3 mb-4 flex items-center justify-between">
                   <h3 className="text-sm font-black text-[#1e3a8a] uppercase tracking-wider flex items-center">
                     <ShieldAlert className="w-5 h-5 mr-2 text-blue-600" />
-                    Peta Kerusakan Fisik Mobil (Visual Body Damage Map)
+                    Peta Kerusakan Fisik Mobil (Visual Body Damage Map 2.0)
                   </h3>
+                  <span className="text-[9px] bg-blue-50 text-blue-800 font-bold px-2 py-0.5 rounded">Interactive Blueprint</span>
                 </div>
                 
                 <p className="text-[10px] text-slate-500 italic mb-4">
-                  👉 <strong>Cara Mengisi:</strong> Klik tombol bagian mobil di bawah ini jika terdapat baret, penyok, atau pecah saat mobil diterima. Tombol akan berubah warna menjadi merah, lalu isi catatan detailnya.
+                  👉 <strong>Cara Mengisi:</strong> Klik pin nomor pada diagram mobil atau tombol di bawah jika terdapat baret, penyok, atau retak saat mobil diterima. Pin akan berubah warna menjadi merah, lalu tuliskan catatan detailnya.
                 </p>
 
-                <div className="mb-4 space-y-4">
-                  {/* Vehicle Body Outlines */}
-                  <div>
-                    <p className="text-[10px] font-black text-slate-700 uppercase tracking-wider mb-2">Bagian Eksterior (Luar Mobil)</p>
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                      {['front-view', 'rear-view', 'left-side', 'right-side', 'top-view'].map(id => {
-                        const part = CAR_PARTS.find(p => p.id === id)!;
-                        const isDefective = damages.some((d) => d.partId === part.id);
-                        return (
-                          <button
-                            key={id} 
-                            type="button" 
-                            onClick={() => toggleDamage(part.id)}
-                            className={`h-16 rounded-xl border-2 flex flex-col items-center justify-center text-[10px] p-2 text-center uppercase cursor-pointer transition-all ${
-                              isDefective 
-                                ? 'bg-rose-50 border-rose-500 text-rose-700 font-bold shadow-sm' 
-                                : 'bg-emerald-50/50 border-emerald-400 text-emerald-800 hover:bg-emerald-50'
-                            }`}
-                          >
-                            <span className="font-semibold block truncate w-full">{part.label}</span>
-                            <span className="text-[8px] font-bold mt-1.5 px-1.5 py-0.5 rounded-full bg-white border border-current">
-                              {isDefective ? '⚠️ DEFECT / BARET' : '✅ OK'}
-                            </span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
+                {/* Car Inspection Interactive Silhouette Map */}
+                <div className="mb-4">
+                  <CarInspectionMap
+                    damages={damages}
+                    interactive={true}
+                    onTogglePoint={(pointId) => toggleDamage(pointId)}
+                    className="shadow-sm"
+                  />
+                </div>
 
-                  {/* Interior Elements */}
+                <div className="mb-4 space-y-4">
+                  {/* Vehicle Body Outlines Quick Buttons */}
                   <div>
-                    <p className="text-[10px] font-black text-slate-700 uppercase tracking-wider mb-2">Bagian Interior (Dalam Mobil)</p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                      {['dashboard-panel', 'spion-dalam', 'soket-kelistrikan', 'plafon'].map(id => {
-                        const part = CAR_PARTS.find(p => p.id === id)!;
+                    <p className="text-[10px] font-black text-slate-700 uppercase tracking-wider mb-2">Tombol Cepat Titik Eksterior & Interior</p>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                      {CAR_PARTS.map(part => {
                         const isDefective = damages.some((d) => d.partId === part.id);
                         return (
                           <button
-                            key={id} 
+                            key={part.id} 
                             type="button" 
                             onClick={() => toggleDamage(part.id)}
-                            className={`h-16 rounded-xl border-2 flex flex-col items-center justify-center text-[10px] p-2 text-center uppercase cursor-pointer transition-all ${
+                            className={`h-14 rounded-xl border-2 flex flex-col items-center justify-center text-[10px] p-2 text-center uppercase cursor-pointer transition-all ${
                               isDefective 
                                 ? 'bg-rose-50 border-rose-500 text-rose-700 font-bold shadow-sm' 
-                                : 'bg-emerald-50/50 border-emerald-400 text-emerald-800 hover:bg-emerald-50'
+                                : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-blue-50 hover:border-blue-300'
                             }`}
                           >
-                            <span className="font-semibold block truncate w-full">{part.label}</span>
-                            <span className="text-[8px] font-bold mt-1.5 px-1.5 py-0.5 rounded-full bg-white border border-current">
-                              {isDefective ? '⚠️ DEFECT' : '✅ OK'}
+                            <span className="font-bold block truncate w-full">{part.label}</span>
+                            <span className={`text-[8px] font-black mt-1 px-1.5 py-0.2 rounded-full ${
+                              isDefective ? 'bg-rose-600 text-white' : 'bg-emerald-100 text-emerald-800'
+                            }`}>
+                              {isDefective ? '⚠️ DEFECT' : '✓ OK'}
                             </span>
                           </button>
-                        )
+                        );
                       })}
                     </div>
                   </div>
@@ -2561,12 +2546,12 @@ const SADashboard: React.FC = () => {
                           const part = CAR_PARTS.find(p => p.id === d.partId)!;
                           return (
                             <div key={d.partId} className="flex items-center gap-2 bg-white p-2 rounded-lg border border-rose-100 shadow-xs">
-                              <span className="text-[9px] font-bold bg-rose-100 text-rose-800 px-2 py-1 rounded uppercase tracking-wider">{part.label}</span>
+                              <span className="text-[9px] font-bold bg-rose-100 text-rose-800 px-2 py-1 rounded uppercase tracking-wider">{part?.label || d.partId}</span>
                               <input
                                 type="text"
                                 required={wizardStep === 3}
                                 className="flex-1 text-[10px] rounded-md border border-slate-200 px-2.5 py-1.5 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 outline-none bg-slate-50/50 text-slate-800 font-medium"
-                                placeholder={`Tulis baret sebelah mana pada ${part.label} (e.g. Baret halus di bawah lampu kiri)`}
+                                placeholder={`Tulis baret sebelah mana pada ${part?.label || d.partId} (e.g. Baret halus di bawah lampu kiri)`}
                                 value={d.description}
                                 onChange={(e) => updateDamageDescription(d.partId, e.target.value)}
                               />

@@ -40,9 +40,9 @@ const Login: React.FC<LoginProps> = ({ onTrackClick }) => {
             <SmartLogo baseName="logo-indo-teknik" alt="INDO TEKNIK" className="h-9 object-contain" />
           </div>
           <div className="flex flex-col items-center">
-            <div className="flex items-center gap-1.5 bg-slate-850 border border-slate-700/65 py-1 px-3 rounded-lg shadow-inner">
-              <SmartLogo baseName="logo-itech" alt="ITech" className="h-4 object-contain bg-white px-1.5 py-0.5 rounded" />
-              <span className="text-[10px] font-extrabold text-slate-300 uppercase tracking-widest whitespace-nowrap">AUTHORIZED DEALER & WORKSHOP</span>
+            <div className="flex items-center gap-2.5 bg-slate-850 border border-slate-700/80 py-1.5 px-3.5 rounded-xl shadow-inner">
+              <SmartLogo baseName="logo-itech" alt="ITech" className="h-7 sm:h-8 object-contain bg-white px-2 py-0.5 rounded shadow-xs" />
+              <span className="text-[11px] font-black text-slate-200 uppercase tracking-widest whitespace-nowrap">AUTHORIZED DEALER & WORKSHOP</span>
             </div>
           </div>
         </div>

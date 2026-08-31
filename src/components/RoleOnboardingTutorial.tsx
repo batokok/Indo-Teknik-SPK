@@ -359,8 +359,8 @@ export const RoleOnboardingTutorial: React.FC = () => {
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          width: isMobile ? 'calc(100% - 24px)' : '340px',
-          maxWidth: '360px',
+          width: isMobile ? 'calc(100% - 24px)' : '380px',
+          maxWidth: 'calc(100vw - 32px)',
           zIndex: 50,
         },
         arrowDirection: null,
@@ -369,8 +369,8 @@ export const RoleOnboardingTutorial: React.FC = () => {
 
     // Desktop positioning
     const margin = 20;
-    const popoverWidth = 320;
-    const popoverHeight = 220; // safe assumption
+    const popoverWidth = Math.min(380, window.innerWidth - 40);
+    const popoverHeight = 250; // safe assumption
 
     let left = targetRect.right + margin;
     let top = targetRect.top + (targetRect.height - popoverHeight) / 2;
@@ -399,6 +399,7 @@ export const RoleOnboardingTutorial: React.FC = () => {
         left: `${left}px`,
         top: `${top}px`,
         width: `${popoverWidth}px`,
+        maxWidth: 'calc(100vw - 32px)',
         zIndex: 50,
       },
       arrowDirection: arrowDir,
@@ -484,31 +485,31 @@ export const RoleOnboardingTutorial: React.FC = () => {
           </button>
 
           {/* Card Content Header */}
-          <div className="flex items-center gap-3 mb-3.5">
-            <div className="p-2 rounded-xl bg-slate-800/80 border border-slate-700/40 text-blue-400 shadow-inner">
+          <div className="flex items-start gap-3 mb-3.5 pr-6">
+            <div className="p-2 rounded-xl bg-slate-800/80 border border-slate-700/40 text-blue-400 shadow-inner shrink-0 mt-0.5">
               {currentStepData.icon}
             </div>
-            <div>
-              <span className="text-[9px] font-black uppercase tracking-wider text-blue-400 bg-blue-950/50 border border-blue-500/20 px-2 py-0.5 rounded">
+            <div className="flex-1 min-w-0">
+              <span className="inline-block text-[9px] font-black uppercase tracking-wider text-blue-400 bg-blue-950/60 border border-blue-500/20 px-2 py-0.5 rounded max-w-full truncate">
                 {currentStepData.highlightText}
               </span>
-              <h2 className="text-[13px] md:text-sm font-black text-white mt-1 uppercase tracking-wide leading-none">
+              <h2 className="text-[13px] md:text-sm font-black text-white mt-1 uppercase tracking-wide leading-snug break-words">
                 {currentStepData.title}
               </h2>
             </div>
           </div>
 
           {/* Step Description */}
-          <div className="flex-1">
-            <p className="text-xs text-slate-300 leading-relaxed font-medium">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-slate-300 leading-relaxed font-medium break-words">
               {currentStepData.description}
             </p>
 
             {/* Smart Tip for hidden elements or Mobile views */}
             {!targetRect && (
-              <div className="mt-3 bg-blue-950/30 border border-blue-500/10 p-2.5 rounded-xl text-[10px] text-blue-300 flex items-start gap-1.5 leading-normal">
+              <div className="mt-3 bg-blue-950/30 border border-blue-500/10 p-2.5 rounded-xl text-[10px] text-blue-300 flex items-start gap-1.5 leading-normal break-words">
                 <span className="shrink-0">💡</span>
-                <p>
+                <p className="flex-1 min-w-0">
                   {currentStepData.mobileTip || "Gunakan menu navigasi atau gulir ke bawah untuk memunculkan fitur ini."}
                 </p>
               </div>

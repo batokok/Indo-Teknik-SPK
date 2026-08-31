@@ -1064,7 +1064,7 @@ const SADashboard: React.FC = () => {
                           <th className="p-2 font-bold">Kendaraan & Plat</th>
                           <th className="p-2 font-bold">Mekanik Terpilih</th>
                           <th className="p-2 font-bold text-center w-36">Status Kerja</th>
-                          <th className="p-2 font-bold text-center w-36">Aksi</th>
+                          <th className="p-2 font-bold text-center w-48">Aksi</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-800">
@@ -1258,71 +1258,54 @@ const SADashboard: React.FC = () => {
                                       )}
                                     </div>
                                   ) : wo.status === 'COMPLETED' && !wo.isHandoverConfirmed ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleConfirmHandover(wo)}
-                                      className="w-full px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[9.5px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1 shadow-md cursor-pointer animate-pulse"
-                                    >
-                                      <Check className="w-3.5 h-3.5" />
-                                      <span>Konfirmasi Serah</span>
-                                    </button>
+                                    <div className="flex items-center gap-1.5 w-full justify-center">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleConfirmHandover(wo)}
+                                        className="flex-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1 shadow-sm cursor-pointer active:scale-95"
+                                        title="Konfirmasi serah terima ke pelanggan & buka lembar konfirmasi"
+                                      >
+                                        <Check className="w-3.5 h-3.5" />
+                                        <span>Serah Terima</span>
+                                      </button>
+                                      {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setEditingWO(wo);
+                                            setIsEditModalOpen(true);
+                                          }}
+                                          className="px-2 py-1.5 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-amber-600 hover:text-white text-[9px] font-bold rounded-lg uppercase transition-all flex items-center justify-center gap-0.5 cursor-pointer"
+                                          title="Edit SPK"
+                                        >
+                                          <Pencil className="w-3 h-3" />
+                                        </button>
+                                      )}
+                                    </div>
                                   ) : wo.status === 'COMPLETED' && wo.isHandoverConfirmed ? (
-                                    <div className="w-full flex flex-col gap-1">
-                                      <div className="flex items-center gap-1 w-full">
+                                    <div className="flex items-center gap-1.5 w-full justify-center">
+                                      <button
+                                        type="button"
+                                        onClick={() => setHandoverSuccessWO(wo)}
+                                        className="flex-1 px-2.5 py-1.5 bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-600 hover:to-teal-600 text-white text-[10px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-95"
+                                        title="Buka lembar konfirmasi & cetak dokumen penyerahan"
+                                      >
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
+                                        <span>Konfirmasi & Dokumen</span>
+                                      </button>
+                                      {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
                                         <button
                                           type="button"
                                           onClick={() => {
-                                            setPrintType('HANDOVER');
-                                            setPrintWO(wo);
+                                            setEditingWO(wo);
+                                            setIsEditModalOpen(true);
                                           }}
-                                          className="flex-1 px-1.5 py-1 bg-blue-950/80 border border-blue-800/70 text-blue-300 hover:bg-blue-600 hover:text-white text-[8.5px] font-bold rounded uppercase transition-all flex items-center justify-center gap-1 cursor-pointer"
-                                          title="Simpan & Preview Dokumen Penyerahan PDF"
+                                          className="px-2 py-1.5 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-amber-600 hover:text-white text-[9px] font-bold rounded-lg uppercase transition-all flex items-center justify-center gap-0.5 cursor-pointer"
+                                          title="Edit SPK"
                                         >
-                                          <Download className="w-2.5 h-2.5" />
-                                          <span>Simpan PDF</span>
+                                          <Pencil className="w-3 h-3" />
                                         </button>
-
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setPrintType('HANDOVER');
-                                            setPrintWO(wo);
-                                            setTimeout(() => window.print(), 300);
-                                          }}
-                                          className="flex-1 px-1.5 py-1 bg-purple-950/80 border border-purple-800/70 text-purple-300 hover:bg-purple-600 hover:text-white text-[8.5px] font-bold rounded uppercase transition-all flex items-center justify-center gap-1 cursor-pointer"
-                                          title="Cetak Fisik Surat Bukti Serah Terima Resmi"
-                                        >
-                                          <Printer className="w-2.5 h-2.5" />
-                                          <span>Cetak Serah</span>
-                                        </button>
-                                      </div>
-
-                                      <div className="flex items-center gap-1 w-full">
-                                        <button
-                                          type="button"
-                                          onClick={() => handleArchiveWithToast(wo)}
-                                          className="flex-1 px-2 py-1 bg-emerald-950/90 border border-emerald-700/80 text-emerald-300 hover:bg-emerald-600 hover:text-white text-[8.5px] font-black rounded uppercase transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs"
-                                          title="Selesai pengerjaan dan pindahkan ke Buku Servis Lifetime & Arsip"
-                                        >
-                                          <Archive className="w-2.5 h-2.5" />
-                                          <span>Selesai & Archive</span>
-                                        </button>
-
-                                        {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              setEditingWO(wo);
-                                              setIsEditModalOpen(true);
-                                            }}
-                                            className="px-2 py-1 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-amber-600 hover:text-white text-[8.5px] font-bold rounded uppercase transition-all flex items-center justify-center gap-0.5 cursor-pointer"
-                                            title="Edit SPK / Koreksi Data Human Error"
-                                          >
-                                            <Pencil className="w-2.5 h-2.5" />
-                                            <span>Edit</span>
-                                          </button>
-                                        )}
-                                      </div>
+                                      )}
                                     </div>
                                   ) : (
                                     <div className="flex items-center gap-1.5">
@@ -1567,66 +1550,52 @@ const SADashboard: React.FC = () => {
                               )}
                             </div>
                           ) : wo.status === 'COMPLETED' && !wo.isHandoverConfirmed ? (
-                            <button
-                              type="button"
-                              onClick={() => handleConfirmHandover(wo)}
-                              className="w-full py-2.5 mb-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[10.5px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer animate-pulse"
-                            >
-                              <Check className="w-4 h-4" />
-                              <span>Konfirmasi Serah Terima Unit</span>
-                            </button>
+                            <div className="flex items-center gap-2 pt-2 border-t border-slate-800/80">
+                              <button
+                                type="button"
+                                onClick={() => handleConfirmHandover(wo)}
+                                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer active:scale-95"
+                              >
+                                <Check className="w-4 h-4" />
+                                <span>Konfirmasi Serah Terima</span>
+                              </button>
+                              {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingWO(wo);
+                                    setIsEditModalOpen(true);
+                                  }}
+                                  className="px-3 py-2.5 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-slate-700 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer"
+                                  title="Edit SPK"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
                           ) : wo.status === 'COMPLETED' && wo.isHandoverConfirmed ? (
-                            <div className="space-y-1.5 pt-2 border-t border-slate-800/80">
-                              <div className="grid grid-cols-2 gap-1.5">
+                            <div className="flex items-center gap-2 pt-2 border-t border-slate-800/80">
+                              <button
+                                type="button"
+                                onClick={() => setHandoverSuccessWO(wo)}
+                                className="flex-1 py-2.5 bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-600 hover:to-teal-600 text-white text-[11px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-95"
+                              >
+                                <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                                <span>Konfirmasi & Dokumen Serah</span>
+                              </button>
+                              {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setPrintType('HANDOVER');
-                                    setPrintWO(wo);
+                                    setEditingWO(wo);
+                                    setIsEditModalOpen(true);
                                   }}
-                                  className="py-2 bg-blue-950 border border-blue-800 text-blue-300 hover:bg-blue-900 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                  className="px-3 py-2.5 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-slate-700 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer"
+                                  title="Edit SPK"
                                 >
-                                  <Download className="w-3.5 h-3.5" />
-                                  <span>Simpan PDF</span>
+                                  <Pencil className="w-3.5 h-3.5" />
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setPrintType('HANDOVER');
-                                    setPrintWO(wo);
-                                    setTimeout(() => window.print(), 300);
-                                  }}
-                                  className="py-2 bg-purple-950 border border-purple-800 text-purple-300 hover:bg-purple-900 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                                >
-                                  <Printer className="w-3.5 h-3.5 text-purple-400" />
-                                  <span>Cetak Serah</span>
-                                </button>
-                              </div>
-
-                              <div className="flex gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => handleArchiveWithToast(wo)}
-                                  className="flex-1 py-2 bg-emerald-950 border border-emerald-800 text-emerald-300 hover:bg-emerald-900 text-[10px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                                >
-                                  <Archive className="w-3.5 h-3.5" />
-                                  <span>Selesai & Archive</span>
-                                </button>
-
-                                {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setEditingWO(wo);
-                                      setIsEditModalOpen(true);
-                                    }}
-                                    className="px-3 py-2 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-slate-700 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer"
-                                  >
-                                    <Pencil className="w-3.5 h-3.5" />
-                                    <span>Edit</span>
-                                  </button>
-                                )}
-                              </div>
+                              )}
                             </div>
                           ) : (
                             <div className="flex gap-2 pt-2 border-t border-slate-800/80">

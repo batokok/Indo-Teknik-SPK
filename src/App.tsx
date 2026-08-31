@@ -20,7 +20,7 @@ import { CustomerManagement } from './components/CustomerManagement';
 import PublicTrackingView from './components/PublicTrackingView';
 import ClaimManagement from './components/ClaimManagement';
 import { InternalMessaging } from './components/InternalMessaging';
-import { LogOut, BarChart3, ClipboardList, Bell, BellOff, X, Menu, Archive, Users, RefreshCw, HelpCircle, ShieldAlert, ChevronDown, ChevronRight, Briefcase, Wrench, Calendar, Clock } from 'lucide-react';
+import { LogOut, BarChart3, ClipboardList, Bell, X, Menu, Archive, Users, RefreshCw, HelpCircle, ShieldAlert, ChevronDown, ChevronRight, Briefcase, Wrench, Calendar, Clock } from 'lucide-react';
 import { RoleOnboardingTutorial } from './components/RoleOnboardingTutorial';
 import { motion } from 'motion/react';
 import { LocationGuard } from './components/LocationGuard';
@@ -31,19 +31,15 @@ const MainLayout: React.FC = () => {
     logout, 
     printWO, 
     notifications, 
-    toasts, 
     clearNotifications, 
     markAllAsRead, 
-    removeToast,
     users,
     workOrders,
     updateWorkOrder,
     setPrintWO,
     isLoading,
     addNotification,
-    updateUser,
-    areToastsMuted,
-    setAreToastsMuted
+    updateUser
   } = useApp();
   const [currentView, setCurrentView] = useState<'DEFAULT' | 'ANALYTICS' | 'ARCHIVE_HISTORY' | 'CUSTOMERS' | 'CLAIMS'>('DEFAULT');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -519,15 +515,6 @@ const MainLayout: React.FC = () => {
               <p className="text-[10px] text-slate-400 truncate">{currentUser.role}</p>
             </div>
             <button
-              onClick={() => setAreToastsMuted(!areToastsMuted)}
-              className={`p-1.5 rounded-lg transition-colors flex-shrink-0 cursor-pointer ${
-                areToastsMuted ? 'text-red-400 hover:text-red-300 hover:bg-slate-800' : 'text-slate-400 hover:text-emerald-400 hover:bg-slate-800'
-              }`}
-              title={areToastsMuted ? "Aktifkan Notifikasi Layar (Muted)" : "Senyapkan Notifikasi Layar"}
-            >
-              {areToastsMuted ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
-            </button>
-            <button
               onClick={async () => {
                 if (currentUser) {
                   try {
@@ -754,41 +741,6 @@ const MainLayout: React.FC = () => {
 
       {/* Role-Specific Onboarding Tutorial Overlay */}
       <RoleOnboardingTutorial />
-
-      {/* Floating Toast Notification Container */}
-      <div className="fixed bottom-24 md:bottom-12 right-6 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none print:hidden">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`p-4 rounded-lg shadow-2xl border flex items-start gap-3 pointer-events-auto transition-all duration-300 transform translate-y-0 ${
-              toast.type === 'success' ? 'bg-emerald-950/95 border-emerald-800 text-emerald-200' :
-              toast.type === 'warning' ? 'bg-amber-950/95 border-amber-800 text-amber-200' :
-              toast.type === 'error' ? 'bg-red-950/95 border-red-800 text-red-200' :
-              'bg-slate-900/95 border-slate-700 text-slate-100'
-            }`}
-          >
-            <div className="flex-1">
-              <h4 className="text-xs font-bold uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full ${
-                  toast.type === 'success' ? 'bg-emerald-400 animate-pulse' :
-                  toast.type === 'warning' ? 'bg-amber-400 animate-pulse' :
-                  toast.type === 'error' ? 'bg-red-400 animate-pulse' :
-                  'bg-blue-400 animate-pulse'
-                }`} />
-                {toast.title}
-              </h4>
-              <p className="text-xs leading-relaxed">{toast.message}</p>
-              <span className="text-[10px] text-slate-400 font-mono mt-1 block">{toast.timestamp}</span>
-            </div>
-            <button
-              onClick={() => removeToast(toast.id)}
-              className="text-slate-400 hover:text-white p-0.5 rounded hover:bg-slate-800/50 transition-colors"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        ))}
-      </div>
 
       {/* Global Real-Time Internal Workshop Messaging System */}
       <InternalMessaging />

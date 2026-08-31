@@ -104,3 +104,158 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
+/* 📐 Obsidian Industrial Bento Grid Classes */
+.bento-card-obsidian {
+  background: linear-gradient(145deg, #0f172a 0%, #0b1120 100%);
+  border: 1px solid rgba(51, 65, 85, 0.6);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bento-card-obsidian:hover {
+  border-color: rgba(6, 182, 212, 0.45);
+  box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.65), 0 0 15px -2px rgba(6, 182, 212, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Specular Corner Rim Lighting */
+.specular-rim-top-right {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 90px;
+  height: 90px;
+  background: radial-gradient(circle at top right, rgba(6, 182, 212, 0.15), transparent 70%);
+  pointer-events: none;
+  border-top-right-radius: inherit;
+}
+
+.specular-rim-amber {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 90px;
+  height: 90px;
+  background: radial-gradient(circle at top right, rgba(245, 158, 11, 0.15), transparent 70%);
+  pointer-events: none;
+  border-top-right-radius: inherit;
+}
+
+.specular-rim-crimson {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 90px;
+  height: 90px;
+  background: radial-gradient(circle at top right, rgba(239, 68, 68, 0.18), transparent 70%);
+  pointer-events: none;
+  border-top-right-radius: inherit;
+}
+
+.specular-rim-emerald {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 90px;
+  height: 90px;
+  background: radial-gradient(circle at top right, rgba(16, 185, 129, 0.18), transparent 70%);
+  pointer-events: none;
+  border-top-right-radius: inherit;
+}
+
+/* ⚡ Live Telemetry Micro-Radar Rings */
+@keyframes radar-pulse-cyan {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@keyframes radar-pulse-amber {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.85;
+  }
+  70% {
+    transform: scale(2.1);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.3);
+    opacity: 0;
+  }
+}
+
+@keyframes radar-pulse-crimson {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.95;
+  }
+  60% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+.telemetry-node-cyan::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 1.5px solid #06b6d4;
+  animation: radar-pulse-cyan 2s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+}
+
+.telemetry-node-amber::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 1.5px solid #f59e0b;
+  animation: radar-pulse-amber 2.2s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+}
+
+.telemetry-node-crimson::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 1.5px solid #ef4444;
+  animation: radar-pulse-crimson 1.4s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+}
+
+.telemetry-node-emerald::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 1.5px solid #10b981;
+  animation: radar-pulse-cyan 2s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+}
+
+/* Flow Trace Wave Line Animation */
+@keyframes flow-trace-dash {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+.flow-trace-active {
+  stroke-dasharray: 6, 6;
+  animation: flow-trace-dash 1.2s linear infinite;
+}
+
+

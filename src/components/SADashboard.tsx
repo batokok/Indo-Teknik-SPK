@@ -7,6 +7,9 @@ import { FuelGauge } from './FuelGauge';
 import { EditWorkOrderModal } from './EditWorkOrderModal';
 import { CarInspectionMap } from './CarInspectionMap';
 import { copyWADraftToClipboard } from '../utils/whatsappDraft';
+import { PulsingHealthNode } from './telemetry/PulsingHealthNode';
+import { LiveTimelineHUD } from './telemetry/LiveTimelineHUD';
+import { ObsidianBentoCard } from './telemetry/ObsidianBentoCard';
 
 const formatRupiah = (value: string | number | undefined | null): string => {
   if (value === undefined || value === null) return '';
@@ -117,6 +120,9 @@ const SADashboard: React.FC = () => {
 
   // Post-Handover 3-Action Dialog State
   const [handoverSuccessWO, setHandoverSuccessWO] = useState<any | null>(null);
+
+  // Live Telemetry Flow expanded drawer state
+  const [expandedTelemetryWOId, setExpandedTelemetryWOId] = useState<string | null>(null);
 
   // Cancel Work Order state (Customer declined / cancelled)
   const [cancellingWO, setCancellingWO] = useState<any | null>(null);
@@ -700,109 +706,129 @@ const SADashboard: React.FC = () => {
         </div>
 
         <>
-          {/* INTERACTIVE WORKSHOP KPI CARDS BAR */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-4 select-none">
+          {/* INTERACTIVE OBSIDIAN BENTO KPI TELEMETRY BAR */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5 mb-4 select-none">
             {/* All Active Card */}
             <button
               type="button"
               onClick={() => setStatusFilter('ALL')}
-              className={`p-2.5 rounded-lg border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between h-16 ${
+              className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between h-20 group ${
                 statusFilter === 'ALL'
-                  ? 'bg-blue-950/40 border-blue-500/80 shadow-md shadow-blue-900/10'
-                  : 'bg-slate-850 border-slate-800/60 hover:border-slate-700 hover:bg-slate-800/80'
+                  ? 'bento-card-obsidian border-cyan-500/80 shadow-[0_0_15px_rgba(6,182,212,0.25)] ring-1 ring-cyan-400/40'
+                  : 'bento-card-obsidian border-slate-800/80 hover:border-slate-700 hover:shadow-md'
               }`}
             >
-              <div className="flex items-center justify-between w-full gap-2">
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 truncate">Semua SPK</span>
-                <Car className={`w-3.5 h-3.5 shrink-0 ${statusFilter === 'ALL' ? 'text-blue-400 animate-pulse' : 'text-slate-500'}`} />
+              <div className="specular-rim-top-right"></div>
+              <div className="flex items-center justify-between w-full gap-2 relative z-10">
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 truncate font-mono">Total Unit</span>
+                <PulsingHealthNode status="IN_PROGRESS" size="xs" />
               </div>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-base font-black text-white">{workOrders.filter(w => w.status !== 'COMPLETED' || !w.isHandoverConfirmed).length}</span>
-                <span className="text-[8px] text-slate-500 font-bold uppercase">Unit</span>
+              <div className="flex items-baseline justify-between mt-1 relative z-10">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xl font-black text-white font-mono">{workOrders.filter(w => w.status !== 'COMPLETED' || !w.isHandoverConfirmed).length}</span>
+                  <span className="text-[8.5px] text-cyan-400 font-bold font-mono uppercase">SPK</span>
+                </div>
+                <Car className={`w-3.5 h-3.5 shrink-0 ${statusFilter === 'ALL' ? 'text-cyan-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
               </div>
-              <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 transition-opacity ${statusFilter === 'ALL' ? 'opacity-100' : 'opacity-0'}`}></div>
+              <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400 transition-opacity ${statusFilter === 'ALL' ? 'opacity-100' : 'opacity-0'}`}></div>
             </button>
 
             {/* Queue Card */}
             <button
               type="button"
               onClick={() => setStatusFilter('QUEUE')}
-              className={`p-2.5 rounded-lg border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between h-16 ${
+              className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between h-20 group ${
                 statusFilter === 'QUEUE'
-                  ? 'bg-slate-800/80 border-slate-400/80 shadow-md'
-                  : 'bg-slate-850 border-slate-800/60 hover:border-slate-700 hover:bg-slate-800/80'
+                  ? 'bento-card-obsidian border-slate-400/80 shadow-[0_0_15px_rgba(148,163,184,0.25)] ring-1 ring-slate-300/40'
+                  : 'bento-card-obsidian border-slate-800/80 hover:border-slate-700 hover:shadow-md'
               }`}
             >
-              <div className="flex items-center justify-between w-full gap-2">
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 truncate">⏳ Antrean</span>
-                <Clock className={`w-3.5 h-3.5 shrink-0 ${statusFilter === 'QUEUE' ? 'text-slate-300 animate-pulse' : 'text-slate-500'}`} />
+              <div className="specular-rim-top-right"></div>
+              <div className="flex items-center justify-between w-full gap-2 relative z-10">
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 truncate font-mono">Antrean</span>
+                <PulsingHealthNode status="QUEUE" size="xs" />
               </div>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-base font-black text-white">{workOrders.filter(w => w.status === 'QUEUE').length}</span>
-                <span className="text-[8px] text-slate-500 font-bold uppercase">Unit</span>
+              <div className="flex items-baseline justify-between mt-1 relative z-10">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xl font-black text-white font-mono">{workOrders.filter(w => w.status === 'QUEUE').length}</span>
+                  <span className="text-[8.5px] text-slate-400 font-bold font-mono uppercase">Unit</span>
+                </div>
+                <Clock className={`w-3.5 h-3.5 shrink-0 ${statusFilter === 'QUEUE' ? 'text-slate-300 animate-pulse' : 'text-slate-500 group-hover:text-slate-300'}`} />
               </div>
-              <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-slate-450 transition-opacity ${statusFilter === 'QUEUE' ? 'opacity-100' : 'opacity-0'}`}></div>
+              <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-slate-400 transition-opacity ${statusFilter === 'QUEUE' ? 'opacity-100' : 'opacity-0'}`}></div>
             </button>
 
             {/* In Progress Card */}
             <button
               type="button"
               onClick={() => setStatusFilter('IN_PROGRESS')}
-              className={`p-2.5 rounded-lg border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between h-16 ${
+              className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between h-20 group ${
                 statusFilter === 'IN_PROGRESS'
-                  ? 'bg-blue-950/40 border-blue-400/80 shadow-md shadow-blue-900/10'
-                  : 'bg-slate-850 border-slate-800/60 hover:border-slate-700 hover:bg-slate-800/80'
+                  ? 'bento-card-obsidian border-cyan-400/80 shadow-[0_0_15px_rgba(6,182,212,0.3)] ring-1 ring-cyan-300/40'
+                  : 'bento-card-obsidian border-slate-800/80 hover:border-slate-700 hover:shadow-md'
               }`}
             >
-              <div className="flex items-center justify-between w-full gap-2">
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 truncate">⚡ Kerja</span>
-                <Wrench className={`w-3.5 h-3.5 shrink-0 ${statusFilter === 'IN_PROGRESS' ? 'text-blue-400 animate-pulse' : 'text-slate-500'}`} />
+              <div className="specular-rim-top-right"></div>
+              <div className="flex items-center justify-between w-full gap-2 relative z-10">
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 truncate font-mono">Kalibrasi / Kerja</span>
+                <PulsingHealthNode status="IN_PROGRESS" size="xs" />
               </div>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-base font-black text-white">{workOrders.filter(w => w.status === 'IN_PROGRESS').length}</span>
-                <span className="text-[8px] text-slate-500 font-bold uppercase">Unit</span>
+              <div className="flex items-baseline justify-between mt-1 relative z-10">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xl font-black text-cyan-300 font-mono">{workOrders.filter(w => w.status === 'IN_PROGRESS').length}</span>
+                  <span className="text-[8.5px] text-cyan-400 font-bold font-mono uppercase">Unit</span>
+                </div>
+                <Wrench className={`w-3.5 h-3.5 shrink-0 ${statusFilter === 'IN_PROGRESS' ? 'text-cyan-400 animate-pulse' : 'text-slate-500 group-hover:text-cyan-400'}`} />
               </div>
-              <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-blue-400 transition-opacity ${statusFilter === 'IN_PROGRESS' ? 'opacity-100' : 'opacity-0'}`}></div>
+              <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400 transition-opacity ${statusFilter === 'IN_PROGRESS' ? 'opacity-100' : 'opacity-0'}`}></div>
             </button>
 
             {/* Pending Approval Card */}
             <button
               type="button"
               onClick={() => setStatusFilter('PENDING_APPROVAL')}
-              className={`p-2.5 rounded-lg border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between h-16 ${
+              className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between h-20 group ${
                 statusFilter === 'PENDING_APPROVAL'
-                  ? 'bg-red-950/40 border-red-500/80 shadow-md shadow-red-900/10'
-                  : 'bg-slate-850 border-slate-800/60 hover:border-slate-700 hover:bg-slate-800/80'
+                  ? 'bento-card-obsidian border-rose-500/80 shadow-[0_0_15px_rgba(244,63,94,0.3)] ring-1 ring-rose-400/40'
+                  : 'bento-card-obsidian border-slate-800/80 hover:border-slate-700 hover:shadow-md'
               }`}
             >
-              <div className="flex items-center justify-between w-full gap-2">
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 truncate">⚠️ Approval</span>
-                <ShieldAlert className={`w-3.5 h-3.5 shrink-0 ${statusFilter === 'PENDING_APPROVAL' ? 'text-red-400 animate-bounce' : 'text-slate-500'}`} />
+              <div className="specular-rim-crimson"></div>
+              <div className="flex items-center justify-between w-full gap-2 relative z-10">
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 truncate font-mono">Approval SPK</span>
+                <PulsingHealthNode status="PENDING_APPROVAL" priority={1} size="xs" />
               </div>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-base font-black text-white">{workOrders.filter(w => w.status === 'PENDING_APPROVAL').length}</span>
-                <span className="text-[8px] text-slate-500 font-bold uppercase">Unit</span>
+              <div className="flex items-baseline justify-between mt-1 relative z-10">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xl font-black text-rose-300 font-mono">{workOrders.filter(w => w.status === 'PENDING_APPROVAL').length}</span>
+                  <span className="text-[8.5px] text-rose-400 font-bold font-mono uppercase">Unit</span>
+                </div>
+                <ShieldAlert className={`w-3.5 h-3.5 shrink-0 ${statusFilter === 'PENDING_APPROVAL' ? 'text-rose-400 animate-bounce' : 'text-slate-500 group-hover:text-rose-400'}`} />
               </div>
-              <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-red-500 transition-opacity ${statusFilter === 'PENDING_APPROVAL' ? 'opacity-100' : 'opacity-0'}`}></div>
+              <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-rose-500 transition-opacity ${statusFilter === 'PENDING_APPROVAL' ? 'opacity-100' : 'opacity-0'}`}></div>
             </button>
 
             {/* Pending Parts Card */}
             <button
               type="button"
               onClick={() => setStatusFilter('PENDING_PARTS')}
-              className={`p-2.5 rounded-lg border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between h-16 ${
+              className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between h-20 group ${
                 statusFilter === 'PENDING_PARTS'
-                  ? 'bg-amber-950/40 border-amber-500/80 shadow-md shadow-amber-900/10'
-                  : 'bg-slate-850 border-slate-800/60 hover:border-slate-700 hover:bg-slate-800/80'
+                  ? 'bento-card-obsidian border-amber-500/80 shadow-[0_0_15px_rgba(245,158,11,0.3)] ring-1 ring-amber-400/40'
+                  : 'bento-card-obsidian border-slate-800/80 hover:border-slate-700 hover:shadow-md'
               }`}
             >
-              <div className="flex items-center justify-between w-full gap-2">
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 truncate">🔧 Part Tunda</span>
-                <Archive className={`w-3.5 h-3.5 shrink-0 ${statusFilter === 'PENDING_PARTS' ? 'text-amber-400 animate-pulse' : 'text-slate-500'}`} />
+              <div className="specular-rim-amber"></div>
+              <div className="flex items-center justify-between w-full gap-2 relative z-10">
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 truncate font-mono">Parts Tunda</span>
+                <PulsingHealthNode status="PENDING_PARTS" size="xs" />
               </div>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-base font-black text-white">{workOrders.filter(w => w.status === 'PENDING_PARTS').length}</span>
-                <span className="text-[8px] text-slate-500 font-bold uppercase">Unit</span>
+              <div className="flex items-baseline justify-between mt-1 relative z-10">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xl font-black text-amber-300 font-mono">{workOrders.filter(w => w.status === 'PENDING_PARTS').length}</span>
+                  <span className="text-[8.5px] text-amber-400 font-bold font-mono uppercase">Unit</span>
+                </div>
+                <Archive className={`w-3.5 h-3.5 shrink-0 ${statusFilter === 'PENDING_PARTS' ? 'text-amber-400 animate-pulse' : 'text-slate-500 group-hover:text-amber-400'}`} />
               </div>
               <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-amber-500 transition-opacity ${statusFilter === 'PENDING_PARTS' ? 'opacity-100' : 'opacity-0'}`}></div>
             </button>
@@ -811,153 +837,110 @@ const SADashboard: React.FC = () => {
             <button
               type="button"
               onClick={() => setStatusFilter('COMPLETED')}
-              className={`p-2.5 rounded-lg border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between h-16 ${
+              className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between h-20 group ${
                 statusFilter === 'COMPLETED'
-                  ? 'bg-emerald-950/40 border-emerald-500/80 shadow-md shadow-emerald-900/10'
-                  : 'bg-slate-850 border-slate-800/60 hover:border-slate-700 hover:bg-slate-800/80'
+                  ? 'bento-card-obsidian border-emerald-500/80 shadow-[0_0_15px_rgba(16,185,129,0.3)] ring-1 ring-emerald-400/40'
+                  : 'bento-card-obsidian border-slate-800/80 hover:border-slate-700 hover:shadow-md'
               }`}
             >
-              <div className="flex items-center justify-between w-full gap-2">
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 truncate">✅ Siap QC</span>
-                <Check className={`w-3.5 h-3.5 shrink-0 ${statusFilter === 'COMPLETED' ? 'text-emerald-400 font-black' : 'text-slate-500'}`} />
+              <div className="specular-rim-emerald"></div>
+              <div className="flex items-center justify-between w-full gap-2 relative z-10">
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 truncate font-mono">Siap QC / Serah</span>
+                <PulsingHealthNode status="COMPLETED" size="xs" />
               </div>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-base font-black text-white">{workOrders.filter(w => w.status === 'COMPLETED' && !w.isHandoverConfirmed).length}</span>
-                <span className="text-[8px] text-slate-500 font-bold uppercase">Unit</span>
+              <div className="flex items-baseline justify-between mt-1 relative z-10">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xl font-black text-emerald-300 font-mono">{workOrders.filter(w => w.status === 'COMPLETED' && !w.isHandoverConfirmed).length}</span>
+                  <span className="text-[8.5px] text-emerald-400 font-bold font-mono uppercase">Unit</span>
+                </div>
+                <Check className={`w-3.5 h-3.5 shrink-0 ${statusFilter === 'COMPLETED' ? 'text-emerald-400 font-black' : 'text-slate-500 group-hover:text-emerald-400'}`} />
               </div>
               <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500 transition-opacity ${statusFilter === 'COMPLETED' ? 'opacity-100' : 'opacity-0'}`}></div>
             </button>
           </div>
 
-          {/* Search & Filter Panel */}
-            <div className="bg-slate-850 p-3 rounded-lg border border-slate-800 mb-4 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between shadow-inner">
-              {/* Search Input */}
-              <div className="relative flex-1 max-w-md">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
-                  <Search className="w-4 h-4" />
-                </span>
-                <input
-                  id="wo-search-input"
-                  type="text"
-                  placeholder="Cari nama, plat nomor, atau ID SPK..."
-                  value={queueSearch}
-                  onChange={(e) => setQueueSearch(e.target.value)}
-                  className="w-full pl-9 pr-8 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all font-medium"
-                />
-                {queueSearch && (
-                  <button
-                    type="button"
-                    onClick={() => setQueueSearch('')}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-450 hover:text-white text-xs font-bold"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-
-              {/* Quick Filters */}
-              <div className="flex flex-wrap items-center gap-4">
-                {/* Priority Filter */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Prioritas:</span>
-                  <div className="flex flex-wrap bg-slate-950 p-1 rounded-xl border border-slate-800 shadow-inner gap-1 max-w-full">
-                    {(['ALL', '1', '2', '3'] as const).map((p) => {
-                      let label = 'Semua';
-                      let activeClass = 'bg-slate-800 text-white border-slate-700';
-                      let hoverClass = 'hover:bg-blue-600/20 hover:text-blue-400';
-                      
-                      if (p === '1') {
-                        label = '🔴 Urgent';
-                        activeClass = 'bg-red-500 text-white shadow-md shadow-red-900/40 border-transparent';
-                        hoverClass = 'hover:bg-red-500/10 hover:text-red-400';
-                      } else if (p === '2') {
-                        label = '🟡 Booking';
-                        activeClass = 'bg-amber-500 text-slate-950 shadow-md shadow-amber-900/40 border-transparent';
-                        hoverClass = 'hover:bg-amber-500/10 hover:text-amber-400';
-                      } else if (p === '3') {
-                        label = '🔵 Regular';
-                        activeClass = 'bg-blue-500 text-white shadow-md shadow-blue-900/40 border-transparent';
-                        hoverClass = 'hover:bg-blue-500/10 hover:text-blue-400';
-                      } else {
-                        activeClass = 'bg-blue-600 text-white shadow-md shadow-blue-900/40 border-transparent';
-                      }
-
-                      const isActive = priorityFilter === p;
-                      return (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => setPriorityFilter(p)}
-                          className={`px-2 sm:px-3 py-1.5 sm:py-1 text-[10px] sm:text-[11px] font-black rounded-lg transition-all border border-transparent whitespace-nowrap ${
-                            isActive 
-                              ? `${activeClass}` 
-                              : `text-slate-400 ${hoverClass} hover:border-slate-800`
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Status Filter */}
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Status:</span>
-                  <div className="relative">
-                    <select
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value as any)}
-                      className="bg-slate-950 border border-slate-800 hover:border-blue-500 focus:border-blue-500 text-xs font-black text-slate-200 py-1.5 pl-3 pr-8 rounded-xl focus:ring-2 focus:ring-blue-500/20 outline-none transition-all cursor-pointer shadow-sm appearance-none"
-                    >
-                      <option value="ALL">📋 Semua Aktif</option>
-                      <option value="QUEUE">⏳ Antrean</option>
-                      <option value="IN_PROGRESS">⚡ Sedang Kerja</option>
-                      <option value="PENDING_APPROVAL">⚠️ Butuh Persetujuan</option>
-                      <option value="PENDING_PARTS">🔧 Tertunda Parts</option>
-                      <option value="COMPLETED">✅ Selesai / Siap QC</option>
-                      <option value="CANCELLED">❌ Dibatalkan (Cancel)</option>
-                      <option value="ARCHIVED">📦 Hanya Diarsipkan</option>
-                    </select>
-                    <span className="absolute inset-y-0 right-0 flex items-center pr-2.5 pointer-events-none text-slate-400 text-[10px]">
-                      ▼
-                    </span>
-                  </div>
-                </div>
-
-                {/* Show Archived Quick Toggle */}
+          {/* Search & Status Filter Panel - Clean, Compact & Unified */}
+          <div className="bg-slate-900/90 p-3 rounded-xl border border-slate-800 mb-3.5 flex flex-col md:flex-row gap-2.5 items-stretch md:items-center justify-between shadow-sm">
+            {/* Search Input */}
+            <div className="relative flex-1 max-w-lg">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                <Search className="w-3.5 h-3.5" />
+              </span>
+              <input
+                id="wo-search-input"
+                type="text"
+                placeholder="Cari nama pelanggan, plat nomor, atau ID SPK..."
+                value={queueSearch}
+                onChange={(e) => setQueueSearch(e.target.value)}
+                className="w-full pl-9 pr-8 py-2 bg-slate-950/80 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all font-medium"
+              />
+              {queueSearch && (
                 <button
                   type="button"
-                  onClick={() => setShowArchived(!showArchived)}
-                  className={`px-2.5 py-1.5 text-[10px] sm:text-[11px] font-black rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer ${
-                    showArchived 
-                      ? 'bg-amber-950/80 border-amber-600 text-amber-300 shadow-sm' 
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-                  }`}
-                  title="Tampilkan juga SPK yang sudah diarsipkan agar dapat dipulihkan atau ditinjau"
+                  onClick={() => setQueueSearch('')}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-white text-xs font-bold cursor-pointer"
                 >
-                  <Archive className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Termasuk Arsip</span>
-                  {showArchived && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>}
+                  ✕
                 </button>
+              )}
+            </div>
+
+            {/* Quick Actions & Status Filters */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Status Filter Dropdown */}
+              <div className="relative">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as any)}
+                  className="bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-cyan-500 text-xs font-bold text-slate-200 py-2 pl-3 pr-8 rounded-lg focus:ring-1 focus:ring-cyan-500/30 outline-none transition-all cursor-pointer shadow-xs appearance-none"
+                >
+                  <option value="ALL">📋 Semua Status</option>
+                  <option value="QUEUE">⏳ Antrean</option>
+                  <option value="IN_PROGRESS">⚡ Sedang Kerja</option>
+                  <option value="PENDING_APPROVAL">⚠️ Butuh Approval</option>
+                  <option value="PENDING_PARTS">🔧 Tertunda Parts</option>
+                  <option value="COMPLETED">✅ Selesai / Siap QC</option>
+                  <option value="CANCELLED">❌ Dibatalkan</option>
+                  <option value="ARCHIVED">📦 Hanya Arsip</option>
+                </select>
+                <span className="absolute inset-y-0 right-0 flex items-center pr-2.5 pointer-events-none text-slate-400 text-[10px]">
+                  ▼
+                </span>
               </div>
 
-              {/* Clear Filters Button if any is active */}
-              {(queueSearch || priorityFilter !== 'ALL' || statusFilter !== 'ALL' || showArchived) && (
+              {/* Show Archived Quick Toggle */}
+              <button
+                type="button"
+                onClick={() => setShowArchived(!showArchived)}
+                className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer select-none ${
+                  showArchived 
+                    ? 'bg-amber-950/70 border-amber-600/80 text-amber-300 shadow-xs' 
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                }`}
+                title="Tampilkan juga SPK yang sudah diarsipkan"
+              >
+                <Archive className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>Termasuk Arsip</span>
+                {showArchived && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>}
+              </button>
+
+              {/* Reset Filters Button if any is active */}
+              {(queueSearch || statusFilter !== 'ALL' || showArchived) && (
                 <button
                   type="button"
                   onClick={() => {
                     setQueueSearch('');
-                    setPriorityFilter('ALL');
                     setStatusFilter('ALL');
                     setShowArchived(false);
                   }}
-                  className="text-[10px] text-blue-400 hover:text-blue-300 underline font-bold cursor-pointer"
+                  className="px-2.5 py-2 text-xs text-slate-400 hover:text-cyan-300 font-bold bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-lg transition-all cursor-pointer flex items-center gap-1"
                 >
-                  Reset Filter
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Reset</span>
                 </button>
               )}
             </div>
+          </div>
 
             {(() => {
               const filteredWOs = workOrders.filter(wo => {
@@ -1007,11 +990,6 @@ const SADashboard: React.FC = () => {
                   if (!matchesId && !matchesCustomer && !matchesPlate) return false;
                 }
 
-                // Filter by priority
-                if (priorityFilter !== 'ALL') {
-                  if (wo.priority !== parseInt(priorityFilter, 10)) return false;
-                }
-
                 return true;
               }).sort((a, b) => {
                 const tA = new Date(a.createdAt || a.intakeDate || 0).getTime();
@@ -1020,13 +998,13 @@ const SADashboard: React.FC = () => {
               });
               
               if (filteredWOs.length === 0) {
-                const hasFilters = queueSearch || priorityFilter !== 'ALL' || statusFilter !== 'ALL';
+                const hasFilters = queueSearch || statusFilter !== 'ALL';
                 return (
-                  <div className="text-center p-8 text-slate-400 text-xs bg-slate-900 rounded-lg border border-slate-800 flex flex-col items-center justify-center gap-2">
+                  <div className="text-center p-8 text-slate-400 text-xs bg-slate-900 rounded-xl border border-slate-800 flex flex-col items-center justify-center gap-2">
                     <p>
                       {hasFilters 
                         ? "Tidak ada SPK yang cocok dengan kata kunci pencarian atau filter yang aktif."
-                        : "Belum ada SPK aktif terdaftar dalam antrean laboratorium. Silakan buat SPK baru menggunakan formulir di bawah."
+                        : "Belum ada SPK aktif terdaftar dalam antrean laboratorium. Silakan buat SPK baru menggunakan formulir di tab 'Registrasi SPK Baru'."
                       }
                     </p>
                     {hasFilters && (
@@ -1034,10 +1012,10 @@ const SADashboard: React.FC = () => {
                         type="button"
                         onClick={() => {
                           setQueueSearch('');
-                          setPriorityFilter('ALL');
                           setStatusFilter('ALL');
+                          setShowArchived(false);
                         }}
-                        className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded text-[10px] mt-1 transition-all"
+                        className="px-3.5 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg text-xs mt-1 transition-all cursor-pointer shadow-sm"
                       >
                         Reset Filter & Pencarian
                       </button>
@@ -1053,314 +1031,284 @@ const SADashboard: React.FC = () => {
 
               return (
                 <div id="wo-list-container">
-                  {/* Desktop Table View */}
-                  <div className="hidden md:block overflow-x-auto custom-scrollbar">
-                    <table className="w-full border-collapse text-left text-xs text-slate-300">
+                  {/* Desktop Table View in Obsidian Industrial Container */}
+                  <div className="hidden md:block overflow-x-auto custom-scrollbar bento-card-obsidian rounded-xl border border-slate-800/80 p-0 relative">
+                    <div className="specular-rim-top-right"></div>
+                    <table className="w-full border-collapse text-left text-xs text-slate-300 relative z-10">
                       <thead>
-                        <tr className="bg-slate-800 text-slate-400 border-b border-slate-700">
-                          <th className="p-2 font-bold w-24">WO ID</th>
-                          <th className="p-2 font-bold w-24">Priority</th>
-                          <th className="p-2 font-bold">Pelanggan</th>
-                          <th className="p-2 font-bold">Kendaraan & Plat</th>
-                          <th className="p-2 font-bold">Mekanik Terpilih</th>
-                          <th className="p-2 font-bold text-center w-36">Status Kerja</th>
-                          <th className="p-2 font-bold text-center w-48">Aksi</th>
+                        <tr className="bg-slate-950 text-slate-400 border-b border-slate-800 text-[10.5px] font-mono uppercase tracking-wider">
+                          <th className="py-3 px-3.5 font-bold w-36">WO ID & Status</th>
+                          <th className="py-3 px-3.5 font-bold">Pelanggan & Kontak</th>
+                          <th className="py-3 px-3.5 font-bold">Kendaraan & Plat</th>
+                          <th className="py-3 px-3.5 font-bold">Mekanik Terpilih</th>
+                          <th className="py-3 px-3.5 font-bold text-center w-36">Status Kerja</th>
+                          <th className="py-3 px-3.5 font-bold text-center w-52">Aksi Cepat</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-800">
+                      <tbody className="divide-y divide-slate-800/70">
                         {paginatedWOs.map((wo) => {
                           const assignedMech = users.find(u => u.id === wo.mechanicId)?.name || 'Queue Antrean';
+                          const isHUDExpanded = expandedTelemetryWOId === wo.id;
+
                           return (
-                            <tr 
-                              key={wo.id} 
-                              className={`transition-colors ${
-                                wo.isArchived 
-                                  ? 'bg-slate-900/60 opacity-80 hover:opacity-100 border-b border-dashed border-amber-900/40' 
-                                  : 'hover:bg-slate-800/50'
-                              }`}
-                            >
-                              <td className="p-2 font-mono text-[11px] text-blue-400 font-bold">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span>{wo.id}</span>
-                                  {wo.status === 'CANCELLED' && (
-                                    <span 
-                                      className="px-1.5 py-0.5 bg-rose-950 text-rose-300 text-[8px] font-black rounded border border-rose-800 flex items-center gap-0.5 shadow-xs tracking-wider"
-                                      title={wo.cancelReason ? `Dibatalkan: ${wo.cancelReason}` : 'SPK Dibatalkan (Decline)'}
-                                    >
-                                      <Ban className="w-2.5 h-2.5 text-rose-400" />
-                                      CANCEL
-                                    </span>
-                                  )}
-                                  {wo.isArchived && (
-                                    <span 
-                                      className="px-1.5 py-0.5 bg-amber-950/90 text-amber-300 text-[8px] font-black rounded border border-amber-800/80 flex items-center gap-0.5 shadow-xs tracking-wider"
-                                      title="Dokumen berstatus DIARSIPKAN. Klik Pulihkan untuk mengembalikan ke antrean aktif."
-                                    >
-                                      <Archive className="w-2.5 h-2.5 text-amber-400" />
-                                      ARSIP
-                                    </span>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="p-2 whitespace-nowrap">
-                                {wo.priority === 1 && <span className="px-1.5 py-0.5 bg-red-900/40 text-red-300 text-[9px] font-black rounded border border-red-800 whitespace-nowrap inline-block">🔴 P1 Urgent</span>}
-                                {wo.priority === 2 && <span className="px-1.5 py-0.5 bg-yellow-900/40 text-yellow-300 text-[9px] font-black rounded border border-yellow-800 whitespace-nowrap inline-block">🟡 P2 Booking</span>}
-                                {wo.priority === 3 && <span className="px-1.5 py-0.5 bg-blue-900/40 text-blue-300 text-[9px] font-black rounded border border-blue-800 whitespace-nowrap inline-block">🔵 P3 Regular</span>}
-                              </td>
-                              <td className="p-2 truncate max-w-[140px] whitespace-nowrap text-ellipsis overflow-hidden" title={wo.customerName}>
-                                <div className="font-bold text-slate-200 truncate whitespace-nowrap">{wo.customerName}</div>
-                                <div className="flex items-center gap-1.5 mt-0.5">
-                                  <span className="text-[9px] text-slate-500 font-mono truncate whitespace-nowrap">{wo.customerPhone}</span>
-                                  <div className="flex items-center gap-1 shrink-0">
-                                    <button
-                                      onClick={() => handleCopyTrackingLink(wo)}
-                                      className="p-0.5 hover:bg-slate-700 hover:text-blue-400 rounded transition-colors text-slate-400 cursor-pointer"
-                                      title="Salin Link Pelacakan Live"
-                                    >
-                                      <Copy className="w-2.5 h-2.5" />
-                                    </button>
-                                    <button
-                                      onClick={() => handleShareWhatsApp(wo)}
-                                      className="p-0.5 hover:bg-slate-700 hover:text-emerald-400 rounded transition-colors text-slate-400 cursor-pointer"
-                                      title="Kirim Pelacakan via WhatsApp"
-                                    >
-                                      <Share2 className="w-2.5 h-2.5" />
-                                    </button>
-                                    <button
-                                      onClick={() => handleCopyWADraft(wo)}
-                                      className="px-1.5 py-0.5 bg-emerald-950/80 hover:bg-emerald-700 hover:text-white text-emerald-300 border border-emerald-800/80 rounded text-[8.5px] font-bold transition-all flex items-center gap-1 cursor-pointer shadow-xs"
-                                      title="Salin Draft Template Pesan WhatsApp Status Pengerjaan (Siap Kirim)"
-                                    >
-                                      <MessageSquare className="w-2.5 h-2.5 text-emerald-400" />
-                                      <span>Draft WA</span>
-                                    </button>
+                            <React.Fragment key={wo.id}>
+                              <tr 
+                                className={`transition-colors ${
+                                  isHUDExpanded
+                                    ? 'bg-slate-900/95 border-b border-cyan-500/40 shadow-inner'
+                                    : wo.isArchived 
+                                      ? 'bg-slate-950/60 opacity-80 hover:opacity-100 border-b border-dashed border-amber-900/40' 
+                                      : 'hover:bg-slate-900/60'
+                                }`}
+                              >
+                                <td className="py-2.5 px-3.5 align-middle font-mono text-[11px]">
+                                  <div className="flex items-center gap-2">
+                                    <PulsingHealthNode status={wo.status} priority={wo.priority} size="xs" />
+                                    <span className="font-bold text-cyan-300 tracking-tight font-mono">{wo.id}</span>
+                                    {wo.status === 'CANCELLED' && (
+                                      <span 
+                                        className="px-1.5 py-0.5 bg-rose-950 text-rose-300 text-[8px] font-black rounded border border-rose-800 flex items-center gap-0.5 shadow-xs tracking-wider"
+                                        title={wo.cancelReason ? `Dibatalkan: ${wo.cancelReason}` : 'SPK Dibatalkan (Decline)'}
+                                      >
+                                        <Ban className="w-2.5 h-2.5 text-rose-400" />
+                                        CANCEL
+                                      </span>
+                                    )}
+                                    {wo.isArchived && (
+                                      <span 
+                                        className="px-1.5 py-0.5 bg-amber-950/90 text-amber-300 text-[8px] font-black rounded border border-amber-800/80 flex items-center gap-0.5 shadow-xs tracking-wider"
+                                        title="Dokumen berstatus DIARSIPKAN. Klik Pulihkan untuk mengembalikan ke antrean aktif."
+                                      >
+                                        <Archive className="w-2.5 h-2.5 text-amber-400" />
+                                        ARSIP
+                                      </span>
+                                    )}
                                   </div>
-                                </div>
-                              </td>
-                              <td className="p-2 truncate max-w-[150px] whitespace-nowrap text-ellipsis overflow-hidden">
-                                <div className="font-medium text-slate-200 truncate whitespace-nowrap">{wo.vehicleBrand}</div>
-                                <div className="text-[10px] text-slate-400 font-mono font-bold truncate whitespace-nowrap">{wo.plateNumber}</div>
-                              </td>
-                              <td className="p-2 whitespace-nowrap">
-                                <div className="flex items-center gap-1.5 whitespace-nowrap">
-                                  <span className={`w-1.5 h-1.5 rounded-full ${wo.mechanicId ? 'bg-blue-400' : 'bg-slate-500'} shrink-0`}></span>
-                                  <span className="font-medium truncate max-w-[120px]">{assignedMech}</span>
-                                </div>
-                              </td>
-                              <td className="p-2 text-center">
-                                <select
-                                  value={wo.status}
-                                  onChange={(e) => {
-                                    const nextStatus = e.target.value as any;
-                                    if (nextStatus === 'CANCELLED') {
-                                      handleOpenCancelModal(wo);
-                                    } else {
-                                      updateWorkOrder(wo.id, { status: nextStatus });
-                                    }
-                                  }}
-                                  className={`px-2 py-1 text-[10px] font-black rounded-lg border uppercase tracking-wider outline-none cursor-pointer transition-all shadow-xs ${
-                                    wo.status === 'QUEUE' ? 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700' :
-                                    wo.status === 'IN_PROGRESS' ? 'bg-blue-950 text-blue-300 border-blue-800/80 hover:bg-blue-900/50' :
-                                    wo.status === 'PENDING_APPROVAL' ? 'bg-red-950 text-red-300 border-red-800/80 hover:bg-red-900/50' :
-                                    wo.status === 'PENDING_PARTS' ? 'bg-amber-950 text-amber-300 border-amber-850 hover:bg-amber-900/50' :
-                                    wo.status === 'CANCELLED' ? 'bg-rose-950 text-rose-300 border-rose-800/80 hover:bg-rose-900/50' :
-                                    'bg-emerald-950 text-emerald-300 border-emerald-800/80 hover:bg-emerald-900/50'
-                                  }`}
-                                >
-                                  <option value="QUEUE" className="bg-slate-900 text-slate-200 font-semibold">⏳ Antrean</option>
-                                  <option value="IN_PROGRESS" className="bg-slate-900 text-slate-200 font-semibold">⚡ Sedang Kerja</option>
-                                  <option value="PENDING_APPROVAL" className="bg-slate-900 text-slate-200 font-semibold">⚠️ Butuh Approval</option>
-                                  <option value="PENDING_PARTS" className="bg-slate-900 text-slate-200 font-semibold">🔧 Tertunda Parts</option>
-                                  <option value="COMPLETED" className="bg-slate-900 text-slate-200 font-semibold">✅ Selesai / Siap QC</option>
-                                  <option value="CANCELLED" className="bg-slate-900 text-slate-200 font-semibold">❌ Dibatalkan (Cancel)</option>
-                                </select>
-                              </td>
-                              <td className="p-2">
-                                <div className="flex flex-col gap-1.5 items-center justify-center">
-                                  {wo.isArchived ? (
-                                    <div className="flex items-center gap-1 w-full justify-center">
+                                </td>
+                                <td className="py-2.5 px-3.5 align-middle max-w-[170px]" title={wo.customerName}>
+                                  <div className="font-bold text-slate-100 truncate text-xs">{wo.customerName}</div>
+                                  <div className="flex items-center justify-between gap-2 mt-1">
+                                    <span className="text-[10px] text-slate-400 font-mono tracking-tight truncate">{wo.customerPhone}</span>
+                                    <div className="flex items-center gap-1 shrink-0">
                                       <button
                                         type="button"
-                                        onClick={() => handleRestoreWithToast(wo)}
-                                        className="px-2 py-1 bg-emerald-950/90 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-700/80 text-[8.5px] font-black rounded uppercase transition-all flex items-center gap-1 cursor-pointer shadow-xs"
-                                        title="Pulihkan SPK ini dari arsip kembali aktif ke antrean"
+                                        onClick={() => handleCopyTrackingLink(wo)}
+                                        className="h-5 w-5 rounded flex items-center justify-center bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-cyan-300 border border-slate-800 transition-colors cursor-pointer"
+                                        title="Salin Link Pelacakan Live"
                                       >
-                                        <RotateCcw className="w-2.5 h-2.5 text-emerald-400" />
-                                        <span>Pulihkan</span>
+                                        <Copy className="w-2.5 h-2.5" />
                                       </button>
-
                                       <button
                                         type="button"
-                                        onClick={() => {
-                                          setPrintType('SPK');
-                                          setPrintWO(wo);
-                                        }}
-                                        className="px-2 py-1 bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white text-[8.5px] font-bold rounded uppercase transition-all flex items-center gap-0.5 cursor-pointer"
-                                        title="Cetak Dokumen SPK"
+                                        onClick={() => handleShareWhatsApp(wo)}
+                                        className="h-5 w-5 rounded flex items-center justify-center bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-emerald-400 border border-slate-800 transition-colors cursor-pointer"
+                                        title="Kirim Pelacakan via WhatsApp"
                                       >
-                                        <Printer className="w-2.5 h-2.5" />
-                                        <span>SPK</span>
+                                        <Share2 className="w-2.5 h-2.5" />
                                       </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCopyWADraft(wo)}
+                                        className="h-5 px-1.5 rounded flex items-center justify-center gap-1 bg-emerald-950/70 hover:bg-emerald-800 text-emerald-300 border border-emerald-800/80 text-[8.5px] font-mono font-bold transition-colors cursor-pointer shadow-xs"
+                                        title="Salin Draft Template Pesan WhatsApp"
+                                      >
+                                        <MessageSquare className="w-2.5 h-2.5 text-emerald-400" />
+                                        <span>WA</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="py-2.5 px-3.5 align-middle truncate max-w-[150px]">
+                                  <div className="font-semibold text-slate-200 truncate text-xs">{wo.vehicleBrand}</div>
+                                  <div className="inline-block mt-0.5 px-1.5 py-0.5 rounded bg-slate-950 border border-slate-700/80 text-[10px] text-cyan-300 font-mono font-bold truncate">
+                                    {wo.plateNumber}
+                                  </div>
+                                </td>
+                                <td className="py-2.5 px-3.5 align-middle whitespace-nowrap">
+                                  <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                    <span className={`w-1.5 h-1.5 rounded-full ${wo.mechanicId ? 'bg-cyan-400 shadow-[0_0_6px_#06b6d4]' : 'bg-slate-500'} shrink-0`}></span>
+                                    <span className="font-medium text-slate-300 truncate max-w-[120px] font-mono text-[11px]">{assignedMech}</span>
+                                  </div>
+                                </td>
+                                <td className="py-2.5 px-3.5 align-middle text-center">
+                                  <select
+                                    value={wo.status}
+                                    onChange={(e) => {
+                                      const nextStatus = e.target.value as any;
+                                      if (nextStatus === 'CANCELLED') {
+                                        handleOpenCancelModal(wo);
+                                      } else {
+                                        updateWorkOrder(wo.id, { status: nextStatus });
+                                      }
+                                    }}
+                                    className={`h-7 px-2 text-[10px] font-black font-mono rounded-lg border uppercase tracking-wider outline-none cursor-pointer transition-all shadow-xs ${
+                                      wo.status === 'QUEUE' ? 'bg-slate-950 text-slate-300 border-slate-700 hover:bg-slate-900' :
+                                      wo.status === 'IN_PROGRESS' ? 'bg-cyan-950/80 text-cyan-300 border-cyan-700 hover:bg-cyan-900/60 shadow-[0_0_8px_rgba(6,182,212,0.2)]' :
+                                      wo.status === 'PENDING_APPROVAL' ? 'bg-rose-950/80 text-rose-300 border-rose-700 hover:bg-rose-900/60 shadow-[0_0_8px_rgba(244,63,94,0.2)]' :
+                                      wo.status === 'PENDING_PARTS' ? 'bg-amber-950/80 text-amber-300 border-amber-700 hover:bg-amber-900/60 shadow-[0_0_8px_rgba(245,158,11,0.2)]' :
+                                      wo.status === 'CANCELLED' ? 'bg-rose-950/80 text-rose-300 border-rose-800 hover:bg-rose-900/50' :
+                                      'bg-emerald-950/80 text-emerald-300 border-emerald-700 hover:bg-emerald-900/60 shadow-[0_0_8px_rgba(16,185,129,0.2)]'
+                                    }`}
+                                  >
+                                    <option value="QUEUE" className="bg-slate-950 text-slate-200 font-semibold">⏳ Antrean</option>
+                                    <option value="IN_PROGRESS" className="bg-slate-950 text-slate-200 font-semibold">⚡ Sedang Kerja</option>
+                                    <option value="PENDING_APPROVAL" className="bg-slate-950 text-slate-200 font-semibold">⚠️ Approval</option>
+                                    <option value="PENDING_PARTS" className="bg-slate-950 text-slate-200 font-semibold">🔧 Tertunda Parts</option>
+                                    <option value="COMPLETED" className="bg-slate-950 text-slate-200 font-semibold">✅ Selesai / Siap QC</option>
+                                    <option value="CANCELLED" className="bg-slate-950 text-slate-200 font-semibold">❌ Dibatalkan</option>
+                                  </select>
+                                </td>
+                                <td className="py-2.5 px-3.5 align-middle text-center">
+                                  <div className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap">
+                                    {/* Interactive Telemetry HUD Trigger */}
+                                    <button
+                                      type="button"
+                                      onClick={() => setExpandedTelemetryWOId(isHUDExpanded ? null : wo.id)}
+                                      className={`h-7 px-2.5 text-[10px] font-mono font-bold rounded-lg uppercase tracking-tight transition-all inline-flex items-center justify-center gap-1 cursor-pointer border select-none ${
+                                        isHUDExpanded
+                                          ? 'bg-cyan-500 text-slate-950 border-cyan-400 shadow-[0_0_10px_#06b6d4]'
+                                          : 'bg-slate-950 hover:bg-slate-800 text-cyan-300 border-cyan-800/60 hover:border-cyan-500'
+                                      }`}
+                                      title="Buka / Tutup Live Telemetry HUD Alur Presisi"
+                                    >
+                                      <Sparkles className="w-3 h-3 text-cyan-400 shrink-0" />
+                                      <span>{isHUDExpanded ? 'Tutup' : 'HUD'}</span>
+                                    </button>
 
-                                      {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
+                                    {wo.isArchived ? (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRestoreWithToast(wo)}
+                                          className="h-7 px-2.5 bg-emerald-950/80 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-700/80 text-[10px] font-mono font-bold rounded-lg uppercase transition-all inline-flex items-center justify-center gap-1 cursor-pointer shadow-xs select-none"
+                                          title="Pulihkan SPK ini dari arsip kembali aktif ke antrean"
+                                        >
+                                          <RotateCcw className="w-3 h-3 text-emerald-400 shrink-0" />
+                                          <span>Pulihkan</span>
+                                        </button>
+
                                         <button
                                           type="button"
                                           onClick={() => {
-                                            setEditingWO(wo);
-                                            setIsEditModalOpen(true);
+                                            setPrintType('SPK');
+                                            setPrintWO(wo);
                                           }}
-                                          className="px-2 py-1 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-amber-600 hover:text-white text-[8.5px] font-bold rounded uppercase transition-all flex items-center gap-0.5 cursor-pointer"
-                                          title="Edit SPK / Koreksi Human Error"
+                                          className="h-7 px-2.5 bg-slate-950 border border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white text-[10px] font-mono font-bold rounded-lg uppercase transition-all inline-flex items-center justify-center gap-1 cursor-pointer select-none"
+                                          title="Cetak Dokumen SPK"
                                         >
-                                          <Pencil className="w-2.5 h-2.5" />
-                                          <span>Edit</span>
+                                          <Printer className="w-3 h-3 text-slate-400 shrink-0" />
+                                          <span>SPK</span>
                                         </button>
-                                      )}
-                                    </div>
-                                  ) : wo.status === 'CANCELLED' ? (
-                                    <div className="flex items-center gap-1 w-full justify-center">
-                                      <button
-                                        type="button"
-                                        onClick={() => handleArchiveWithToast(wo)}
-                                        className="px-2 py-1 bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white text-[8.5px] font-black rounded uppercase transition-all flex items-center gap-1 cursor-pointer"
-                                        title="Arsipkan SPK Dibatalkan"
-                                      >
-                                        <Archive className="w-2.5 h-2.5 text-slate-400" />
-                                        <span>Arsipkan</span>
-                                      </button>
+                                      </>
+                                    ) : wo.status === 'CANCELLED' ? (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleArchiveWithToast(wo)}
+                                          className="h-7 px-2.5 bg-slate-950 border border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white text-[10px] font-mono font-bold rounded-lg uppercase transition-all inline-flex items-center justify-center gap-1 cursor-pointer select-none"
+                                          title="Arsipkan SPK Dibatalkan"
+                                        >
+                                          <Archive className="w-3 h-3 text-slate-400 shrink-0" />
+                                          <span>Arsip</span>
+                                        </button>
 
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setPrintType('SPK');
-                                          setPrintWO(wo);
-                                        }}
-                                        className="px-2 py-1 bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white text-[8.5px] font-bold rounded uppercase transition-all flex items-center gap-0.5 cursor-pointer"
-                                        title="Cetak Dokumen SPK"
-                                      >
-                                        <Printer className="w-2.5 h-2.5" />
-                                        <span>SPK</span>
-                                      </button>
-
-                                      {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
                                         <button
                                           type="button"
                                           onClick={() => {
-                                            setEditingWO(wo);
-                                            setIsEditModalOpen(true);
+                                            setPrintType('SPK');
+                                            setPrintWO(wo);
                                           }}
-                                          className="px-2 py-1 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-amber-600 hover:text-white text-[8.5px] font-bold rounded uppercase transition-all flex items-center gap-0.5 cursor-pointer"
-                                          title="Edit SPK / Koreksi Status"
+                                          className="h-7 px-2.5 bg-slate-950 border border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white text-[10px] font-mono font-bold rounded-lg uppercase transition-all inline-flex items-center justify-center gap-1 cursor-pointer select-none"
+                                          title="Cetak Dokumen SPK"
                                         >
-                                          <Pencil className="w-2.5 h-2.5" />
-                                          <span>Edit</span>
+                                          <Printer className="w-3 h-3 text-slate-400 shrink-0" />
+                                          <span>SPK</span>
                                         </button>
-                                      )}
-                                    </div>
-                                  ) : wo.status === 'COMPLETED' && !wo.isHandoverConfirmed ? (
-                                    <div className="flex items-center gap-1.5 w-full justify-center">
+                                      </>
+                                    ) : wo.status === 'COMPLETED' && !wo.isHandoverConfirmed ? (
                                       <button
                                         type="button"
                                         onClick={() => handleConfirmHandover(wo)}
-                                        className="flex-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1 shadow-sm cursor-pointer active:scale-95"
+                                        className="h-7 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-mono font-bold rounded-lg uppercase tracking-tight transition-all inline-flex items-center justify-center gap-1 shadow-xs cursor-pointer active:scale-95 select-none"
                                         title="Konfirmasi serah terima ke pelanggan & buka lembar konfirmasi"
                                       >
-                                        <Check className="w-3.5 h-3.5" />
-                                        <span>Serah Terima</span>
+                                        <Check className="w-3.5 h-3.5 shrink-0" />
+                                        <span>Serah</span>
                                       </button>
-                                      {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setEditingWO(wo);
-                                            setIsEditModalOpen(true);
-                                          }}
-                                          className="px-2 py-1.5 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-amber-600 hover:text-white text-[9px] font-bold rounded-lg uppercase transition-all flex items-center justify-center gap-0.5 cursor-pointer"
-                                          title="Edit SPK"
-                                        >
-                                          <Pencil className="w-3 h-3" />
-                                        </button>
-                                      )}
-                                    </div>
-                                  ) : wo.status === 'COMPLETED' && wo.isHandoverConfirmed ? (
-                                    <div className="flex items-center gap-1.5 w-full justify-center">
+                                    ) : wo.status === 'COMPLETED' && wo.isHandoverConfirmed ? (
                                       <button
                                         type="button"
                                         onClick={() => setHandoverSuccessWO(wo)}
-                                        className="flex-1 px-2.5 py-1.5 bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-600 hover:to-teal-600 text-white text-[10px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-95"
+                                        className="h-7 px-2.5 bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-600 hover:to-teal-600 text-white text-[10px] font-mono font-bold rounded-lg uppercase tracking-tight transition-all inline-flex items-center justify-center gap-1 shadow-xs cursor-pointer active:scale-95 select-none"
                                         title="Buka lembar konfirmasi & cetak dokumen penyerahan"
                                       >
-                                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
-                                        <span>Konfirmasi & Dokumen</span>
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
+                                        <span>Dokumen</span>
                                       </button>
-                                      {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
+                                    ) : (
+                                      <>
                                         <button
                                           type="button"
                                           onClick={() => {
-                                            setEditingWO(wo);
-                                            setIsEditModalOpen(true);
+                                            setPrintType('SPK');
+                                            setPrintWO(wo);
                                           }}
-                                          className="px-2 py-1.5 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-amber-600 hover:text-white text-[9px] font-bold rounded-lg uppercase transition-all flex items-center justify-center gap-0.5 cursor-pointer"
-                                          title="Edit SPK"
+                                          className="h-7 px-2.5 bg-slate-950 border border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white text-[10px] font-mono font-bold rounded-lg uppercase transition-all inline-flex items-center justify-center gap-1 cursor-pointer select-none"
+                                          title="Cetak SPK Standard"
                                         >
-                                          <Pencil className="w-3 h-3" />
+                                          <Printer className="w-3 h-3 text-slate-400 shrink-0" />
+                                          <span>SPK</span>
                                         </button>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center gap-1.5">
+
+                                        <button
+                                          type="button"
+                                          onClick={() => handleOpenCancelModal(wo)}
+                                          className="h-7 w-7 bg-slate-950 border border-slate-700 hover:border-rose-700 text-rose-400 hover:bg-rose-950/60 hover:text-rose-200 rounded-lg transition-all inline-flex items-center justify-center cursor-pointer select-none"
+                                          title="Batalkan SPK"
+                                        >
+                                          <Ban className="w-3 h-3 shrink-0" />
+                                        </button>
+                                      </>
+                                    )}
+
+                                    {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
                                       <button
                                         type="button"
                                         onClick={() => {
-                                          setPrintType('SPK');
-                                          setPrintWO(wo);
+                                          setEditingWO(wo);
+                                          setIsEditModalOpen(true);
                                         }}
-                                        className="px-2 py-1 bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white text-[9px] font-bold rounded-md font-mono uppercase transition-all flex items-center gap-0.5 cursor-pointer"
-                                        title="Cetak SPK Standard / Bukti Invoice Kerja"
+                                        className="h-7 w-7 bg-slate-950 border border-slate-700 hover:border-amber-600 text-amber-300 hover:bg-amber-950/60 hover:text-amber-200 rounded-lg transition-all inline-flex items-center justify-center cursor-pointer select-none"
+                                        title="Edit SPK / Koreksi Data Human Error"
                                       >
-                                        <Printer className="w-3 h-3" />
-                                        <span>SPK</span>
+                                        <Pencil className="w-3 h-3 shrink-0" />
                                       </button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
 
-                                      {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setEditingWO(wo);
-                                            setIsEditModalOpen(true);
-                                          }}
-                                          className="px-2 py-1 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-amber-600 hover:text-white text-[9px] font-bold rounded-md font-mono uppercase transition-all flex items-center gap-0.5 cursor-pointer"
-                                          title="Edit SPK / Koreksi Data Human Error"
-                                        >
-                                          <Pencil className="w-3 h-3" />
-                                          <span>Edit</span>
-                                        </button>
-                                      )}
-
-                                      <button
-                                        type="button"
-                                        onClick={() => handleOpenCancelModal(wo)}
-                                        className="px-2 py-1 bg-rose-950/60 border border-rose-800/70 text-rose-300 hover:bg-rose-600 hover:text-white text-[9px] font-bold rounded-md font-mono uppercase transition-all flex items-center gap-0.5 cursor-pointer"
-                                        title="Batalkan SPK ini jika pelanggan decline / menolak estimasi pengerjaan"
-                                      >
-                                        <Ban className="w-3 h-3 text-rose-400" />
-                                        <span>Cancel</span>
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
+                              {/* Expanded Live Telemetry HUD Row */}
+                              {isHUDExpanded && (
+                                <tr className="bg-slate-950">
+                                  <td colSpan={6} className="p-3 border-b border-cyan-500/40">
+                                    <LiveTimelineHUD workOrder={wo} />
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
                           );
                         })}
                       </tbody>
                     </table>
                   </div>
 
-                  {/* Mobile Responsive Cards View */}
+                  {/* Mobile Responsive Bento Cards View */}
                   <div className="block md:hidden space-y-3">
                     {paginatedWOs.map((wo, index) => {
                       const assignedMech = users.find(u => u.id === wo.mechanicId)?.name || 'Queue Antrean';
+                      const isHUDExpanded = expandedTelemetryWOId === wo.id;
+
                       return (
                         <motion.div
                           key={wo.id}
@@ -1368,82 +1316,97 @@ const SADashboard: React.FC = () => {
                           animate={{ opacity: 1, y: 0 }}
                           whileHover={{ scale: 1.01, y: -2 }}
                           transition={{ duration: 0.25, delay: Math.min(index * 0.04, 0.2) }}
-                          className={`p-4 rounded-xl border space-y-3 shadow-md transition-all ${
+                          className={`bento-card-obsidian rounded-xl p-3.5 border space-y-2.5 relative overflow-hidden transition-all ${
                             wo.isArchived
-                              ? 'bg-slate-900/60 border-dashed border-amber-900/60 opacity-85 hover:opacity-100'
-                              : 'bg-slate-850 border-slate-800 hover:border-slate-700'
+                              ? 'border-dashed border-amber-900/60 opacity-85 hover:opacity-100'
+                              : isHUDExpanded
+                                ? 'border-cyan-500/80 shadow-[0_0_20px_rgba(6,182,212,0.25)]'
+                                : 'border-slate-800/80 hover:border-slate-700'
                           }`}
                         >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-xs text-blue-400 font-bold">{wo.id}</span>
+                          <div className="specular-rim-top-right"></div>
+
+                          {/* Card Header: WO ID, Telemetry Node */}
+                          <div className="flex items-center justify-between gap-2 relative z-10">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <PulsingHealthNode status={wo.status} priority={wo.priority} size="xs" />
+                              <span className="font-mono text-xs text-cyan-300 font-black">{wo.id}</span>
                               {wo.status === 'CANCELLED' && (
-                                <span className="px-1.5 py-0.5 bg-rose-950 text-rose-300 text-[8.5px] font-black rounded border border-rose-800 flex items-center gap-1 shadow-xs tracking-wider">
+                                <span className="px-1.5 py-0.5 bg-rose-950 text-rose-300 text-[8px] font-black rounded border border-rose-800 flex items-center gap-1 shadow-xs tracking-wider">
                                   <Ban className="w-2.5 h-2.5 text-rose-400" />
                                   CANCEL
                                 </span>
                               )}
                               {wo.isArchived && (
-                                <span className="px-1.5 py-0.5 bg-amber-950/90 text-amber-300 text-[8.5px] font-black rounded border border-amber-800/80 flex items-center gap-1 shadow-xs tracking-wider">
+                                <span className="px-1.5 py-0.5 bg-amber-950/90 text-amber-300 text-[8px] font-black rounded border border-amber-800/80 flex items-center gap-1 shadow-xs tracking-wider">
                                   <Archive className="w-2.5 h-2.5 text-amber-400" />
                                   DIARSIPKAN
                                 </span>
                               )}
                             </div>
-                            <div className="shrink-0 whitespace-nowrap">
-                              {wo.priority === 1 && <span className="px-1.5 py-0.5 bg-red-900/40 text-red-300 text-[9px] font-black rounded border border-red-800 whitespace-nowrap inline-block">🔴 Urgent</span>}
-                              {wo.priority === 2 && <span className="px-1.5 py-0.5 bg-yellow-900/40 text-yellow-300 text-[9px] font-black rounded border border-yellow-800 whitespace-nowrap inline-block">🟡 Booking</span>}
-                              {wo.priority === 3 && <span className="px-1.5 py-0.5 bg-blue-900/40 text-blue-300 text-[9px] font-black rounded border border-blue-800 whitespace-nowrap inline-block">🔵 Regular</span>}
-                            </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2 text-xs border-t border-slate-800/80 pt-2.5">
+                          {/* Customer & Vehicle Info */}
+                          <div className="grid grid-cols-2 gap-2 text-xs border-t border-slate-800/80 pt-2.5 relative z-10">
                             <div>
-                              <span className="text-[9px] text-slate-500 uppercase font-bold block">Pelanggan</span>
-                              <span className="font-bold text-slate-200 block truncate">{wo.customerName}</span>
-                              <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className="text-[9px] text-slate-400 font-mono truncate max-w-[80px] block">{wo.customerPhone}</span>
-                                <button
-                                  onClick={() => handleCopyTrackingLink(wo)}
-                                  className="p-1 bg-slate-800 hover:bg-slate-700 text-blue-400 rounded transition-colors cursor-pointer"
-                                  title="Salin Link Pelacakan"
-                                >
-                                  <Copy className="w-2.5 h-2.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleShareWhatsApp(wo)}
-                                  className="p-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded transition-colors cursor-pointer"
-                                  title="Kirim via WhatsApp"
-                                >
-                                  <Share2 className="w-2.5 h-2.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleCopyWADraft(wo)}
-                                  className="p-1 px-1.5 bg-emerald-950/80 hover:bg-emerald-700 text-emerald-300 border border-emerald-800/80 rounded text-[9px] font-bold transition-colors flex items-center gap-0.5 cursor-pointer shadow-xs"
-                                  title="Salin Template Pesan WhatsApp Siap Kirim"
-                                >
-                                  <MessageSquare className="w-2.5 h-2.5" />
-                                  <span>Draft WA</span>
-                                </button>
+                              <span className="text-[8.5px] text-slate-400 uppercase font-mono font-bold block">Pelanggan</span>
+                              <span className="font-bold text-slate-100 block truncate">{wo.customerName}</span>
+                              <div className="flex items-center justify-between gap-1 mt-1">
+                                <span className="text-[10px] text-slate-400 font-mono truncate">{wo.customerPhone}</span>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyTrackingLink(wo)}
+                                    className="h-6 w-6 rounded flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-cyan-400 transition-colors cursor-pointer border border-slate-800"
+                                    title="Salin Link Pelacakan"
+                                  >
+                                    <Copy className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleShareWhatsApp(wo)}
+                                    className="h-6 w-6 rounded flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-emerald-400 transition-colors cursor-pointer border border-slate-800"
+                                    title="Kirim via WhatsApp"
+                                  >
+                                    <Share2 className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyWADraft(wo)}
+                                    className="h-6 px-1.5 bg-emerald-950/80 hover:bg-emerald-700 text-emerald-300 border border-emerald-800/80 rounded text-[9px] font-mono font-bold transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-xs"
+                                    title="Salin Template Pesan WhatsApp Siap Kirim"
+                                  >
+                                    <MessageSquare className="w-3 h-3 text-emerald-400" />
+                                    <span>WA</span>
+                                  </button>
+                                </div>
                               </div>
                             </div>
                             <div>
-                              <span className="text-[9px] text-slate-500 uppercase font-bold block">Kendaraan</span>
-                              <span className="font-bold text-slate-200 block truncate">{wo.vehicleBrand}</span>
-                              <span className="text-[10px] text-blue-300 font-mono font-bold block">{wo.plateNumber}</span>
+                              <span className="text-[8.5px] text-slate-400 uppercase font-mono font-bold block">Kendaraan & Plat</span>
+                              <span className="font-bold text-slate-100 block truncate">{wo.vehicleBrand}</span>
+                              <span className="inline-block mt-1 px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700/80 text-[10px] text-cyan-300 font-mono font-bold">
+                                {wo.plateNumber}
+                              </span>
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2 text-xs border-t border-slate-800/80 pt-2.5">
+                          {/* Compact Inline Telemetry Status */}
+                          <div className="relative z-10">
+                            <LiveTimelineHUD workOrder={wo} compact={true} />
+                          </div>
+
+                          {/* Mechanic & Status Selection */}
+                          <div className="grid grid-cols-2 gap-2 text-xs border-t border-slate-800/80 pt-2.5 relative z-10">
                             <div>
-                              <span className="text-[9px] text-slate-500 uppercase font-bold block">Mekanik</span>
-                              <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className={`w-1.5 h-1.5 rounded-full ${wo.mechanicId ? 'bg-blue-400' : 'bg-slate-500'}`}></span>
-                                <span className="font-medium text-slate-300 truncate max-w-[100px]">{assignedMech}</span>
+                              <span className="text-[8.5px] text-slate-400 uppercase font-mono font-bold block">Mekanik</span>
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <span className={`w-1.5 h-1.5 rounded-full ${wo.mechanicId ? 'bg-cyan-400 shadow-[0_0_6px_#06b6d4]' : 'bg-slate-500'}`}></span>
+                                <span className="font-mono text-[11px] text-slate-200 truncate max-w-[100px]">{assignedMech}</span>
                               </div>
                             </div>
                             <div>
-                              <span className="text-[9px] text-slate-500 uppercase font-bold block mb-0.5">Status Kerja</span>
+                              <span className="text-[8.5px] text-slate-400 uppercase font-mono font-bold block mb-1">Status Kerja</span>
                               <select
                                 value={wo.status}
                                 onChange={(e) => {
@@ -1454,13 +1417,13 @@ const SADashboard: React.FC = () => {
                                     updateWorkOrder(wo.id, { status: nextStatus });
                                   }
                                 }}
-                                className={`w-full px-1.5 py-0.5 text-[10px] font-black rounded-lg border uppercase tracking-wider outline-none cursor-pointer transition-all shadow-xs ${
-                                  wo.status === 'QUEUE' ? 'bg-slate-800 text-slate-300 border-slate-700' :
-                                  wo.status === 'IN_PROGRESS' ? 'bg-blue-950 text-blue-300 border-blue-800/80' :
-                                  wo.status === 'PENDING_APPROVAL' ? 'bg-red-950 text-red-300 border-red-800/80' :
-                                  wo.status === 'PENDING_PARTS' ? 'bg-amber-950 text-amber-300 border-amber-850' :
-                                  wo.status === 'CANCELLED' ? 'bg-rose-950 text-rose-300 border-rose-850' :
-                                  'bg-emerald-950 text-emerald-300 border-emerald-800/80'
+                                className={`w-full h-7 px-2 text-[10px] font-black font-mono rounded-lg border uppercase tracking-wider outline-none cursor-pointer transition-all shadow-xs ${
+                                  wo.status === 'QUEUE' ? 'bg-slate-900 text-slate-300 border-slate-700' :
+                                  wo.status === 'IN_PROGRESS' ? 'bg-cyan-950 text-cyan-300 border-cyan-700' :
+                                  wo.status === 'PENDING_APPROVAL' ? 'bg-rose-950 text-rose-300 border-rose-700' :
+                                  wo.status === 'PENDING_PARTS' ? 'bg-amber-950 text-amber-300 border-amber-700' :
+                                  wo.status === 'CANCELLED' ? 'bg-rose-950 text-rose-300 border-rose-800' :
+                                  'bg-emerald-950 text-emerald-300 border-emerald-700'
                                 }`}
                               >
                                 <option value="QUEUE" className="bg-slate-900 text-slate-200">Antrean</option>
@@ -1473,170 +1436,193 @@ const SADashboard: React.FC = () => {
                             </div>
                           </div>
 
-                          {wo.isArchived ? (
-                            <div className="flex gap-2 pt-2 border-t border-slate-800/80">
-                              <button
-                                type="button"
-                                onClick={() => handleRestoreWithToast(wo)}
-                                className="flex-1 py-2 bg-emerald-950 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-700 text-[10px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
-                              >
-                                <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
-                                <span>Pulihkan SPK</span>
-                              </button>
+                          {/* Interactive Telemetry HUD Expansion */}
+                          <div className="pt-1 relative z-10">
+                            <button
+                              type="button"
+                              onClick={() => setExpandedTelemetryWOId(isHUDExpanded ? null : wo.id)}
+                              className={`w-full h-8 px-3 text-[10px] font-mono font-bold rounded-lg uppercase tracking-wider transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer border select-none ${
+                                isHUDExpanded
+                                  ? 'bg-cyan-500 text-slate-950 border-cyan-400 shadow-[0_0_12px_#06b6d4]'
+                                  : 'bg-slate-900/90 hover:bg-slate-800 text-cyan-300 border-cyan-800/60'
+                              }`}
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>{isHUDExpanded ? 'Tutup Live Telemetry HUD' : 'Buka Live Telemetry HUD'}</span>
+                            </button>
 
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setPrintType('SPK');
-                                  setPrintWO(wo);
-                                }}
-                                className="py-2 px-3 bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                              >
-                                <Printer className="w-3.5 h-3.5" />
-                                <span>SPK</span>
-                              </button>
+                            {isHUDExpanded && (
+                              <div className="mt-3">
+                                <LiveTimelineHUD workOrder={wo} />
+                              </div>
+                            )}
+                          </div>
 
-                              {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
+                          {/* Mobile Action Buttons */}
+                          <div className="relative z-10">
+                            {wo.isArchived ? (
+                              <div className="flex gap-2 pt-2.5 border-t border-slate-800/80">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRestoreWithToast(wo)}
+                                  className="flex-1 h-8 bg-emerald-950 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-700 text-[10px] font-mono font-bold rounded-lg uppercase tracking-wider transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                  <span>Pulihkan SPK</span>
+                                </button>
+
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setEditingWO(wo);
-                                    setIsEditModalOpen(true);
+                                    setPrintType('SPK');
+                                    setPrintWO(wo);
                                   }}
-                                  className="py-2 px-3 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-slate-700 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer"
-                                  title="Edit SPK"
+                                  className="h-8 px-3.5 bg-slate-900 border border-slate-700 text-slate-200 hover:bg-slate-800 text-[10px] font-mono font-bold rounded-lg uppercase tracking-wider transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer"
                                 >
-                                  <Pencil className="w-3.5 h-3.5" />
-                                  <span>Edit</span>
+                                  <Printer className="w-3.5 h-3.5 shrink-0" />
+                                  <span>SPK</span>
                                 </button>
-                              )}
-                            </div>
-                          ) : wo.status === 'CANCELLED' ? (
-                            <div className="flex gap-2 pt-2 border-t border-slate-800/80">
-                              <button
-                                type="button"
-                                onClick={() => handleArchiveWithToast(wo)}
-                                className="flex-1 py-2 bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 text-[10px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                              >
-                                <Archive className="w-3.5 h-3.5 text-slate-400" />
-                                <span>Arsipkan</span>
-                              </button>
 
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setPrintType('SPK');
-                                  setPrintWO(wo);
-                                }}
-                                className="py-2 px-3 bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                              >
-                                <Printer className="w-3.5 h-3.5" />
-                                <span>SPK</span>
-                              </button>
+                                {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingWO(wo);
+                                      setIsEditModalOpen(true);
+                                    }}
+                                    className="h-8 w-8 bg-slate-900 border border-slate-700 text-amber-300 hover:bg-slate-800 text-[10px] font-bold rounded-lg uppercase transition-all inline-flex items-center justify-center cursor-pointer shrink-0"
+                                    title="Edit SPK"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            ) : wo.status === 'CANCELLED' ? (
+                              <div className="flex gap-2 pt-2.5 border-t border-slate-800/80">
+                                <button
+                                  type="button"
+                                  onClick={() => handleArchiveWithToast(wo)}
+                                  className="flex-1 h-8 bg-slate-900 border border-slate-700 text-slate-200 hover:bg-slate-800 text-[10px] font-mono font-bold rounded-lg uppercase tracking-wider transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                                >
+                                  <Archive className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                  <span>Arsipkan</span>
+                                </button>
 
-                              {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setEditingWO(wo);
-                                    setIsEditModalOpen(true);
+                                    setPrintType('SPK');
+                                    setPrintWO(wo);
                                   }}
-                                  className="py-2 px-3 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-slate-700 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer"
-                                  title="Edit SPK"
+                                  className="h-8 px-3.5 bg-slate-900 border border-slate-700 text-slate-200 hover:bg-slate-800 text-[10px] font-mono font-bold rounded-lg uppercase tracking-wider transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer"
                                 >
-                                  <Pencil className="w-3.5 h-3.5" />
-                                  <span>Edit</span>
+                                  <Printer className="w-3.5 h-3.5 shrink-0" />
+                                  <span>SPK</span>
                                 </button>
-                              )}
-                            </div>
-                          ) : wo.status === 'COMPLETED' && !wo.isHandoverConfirmed ? (
-                            <div className="flex items-center gap-2 pt-2 border-t border-slate-800/80">
-                              <button
-                                type="button"
-                                onClick={() => handleConfirmHandover(wo)}
-                                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer active:scale-95"
-                              >
-                                <Check className="w-4 h-4" />
-                                <span>Konfirmasi Serah Terima</span>
-                              </button>
-                              {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditingWO(wo);
-                                    setIsEditModalOpen(true);
-                                  }}
-                                  className="px-3 py-2.5 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-slate-700 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer"
-                                  title="Edit SPK"
-                                >
-                                  <Pencil className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          ) : wo.status === 'COMPLETED' && wo.isHandoverConfirmed ? (
-                            <div className="flex items-center gap-2 pt-2 border-t border-slate-800/80">
-                              <button
-                                type="button"
-                                onClick={() => setHandoverSuccessWO(wo)}
-                                className="flex-1 py-2.5 bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-600 hover:to-teal-600 text-white text-[11px] font-black rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-95"
-                              >
-                                <CheckCircle2 className="w-4 h-4 text-emerald-300" />
-                                <span>Konfirmasi & Dokumen Serah</span>
-                              </button>
-                              {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditingWO(wo);
-                                    setIsEditModalOpen(true);
-                                  }}
-                                  className="px-3 py-2.5 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-slate-700 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer"
-                                  title="Edit SPK"
-                                >
-                                  <Pencil className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="flex gap-2 pt-2 border-t border-slate-800/80">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setPrintType('SPK');
-                                  setPrintWO(wo);
-                                }}
-                                className="flex-1 py-2 bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                              >
-                                <Printer className="w-3.5 h-3.5" />
-                                <span>SPK</span>
-                              </button>
 
-                              {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
+                                {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingWO(wo);
+                                      setIsEditModalOpen(true);
+                                    }}
+                                    className="h-8 w-8 bg-slate-900 border border-slate-700 text-amber-300 hover:bg-slate-800 text-[10px] font-bold rounded-lg uppercase transition-all inline-flex items-center justify-center cursor-pointer shrink-0"
+                                    title="Edit SPK"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            ) : wo.status === 'COMPLETED' && !wo.isHandoverConfirmed ? (
+                              <div className="flex items-center gap-2 pt-2.5 border-t border-slate-800/80">
+                                <button
+                                  type="button"
+                                  onClick={() => handleConfirmHandover(wo)}
+                                  className="flex-1 h-8 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-mono font-bold rounded-lg uppercase tracking-wider transition-all inline-flex items-center justify-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                                >
+                                  <Check className="w-3.5 h-3.5 shrink-0" />
+                                  <span>Konfirmasi Serah Terima</span>
+                                </button>
+                                {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingWO(wo);
+                                      setIsEditModalOpen(true);
+                                    }}
+                                    className="h-8 w-8 bg-slate-900 border border-slate-700 text-amber-300 hover:bg-slate-800 text-[10px] font-bold rounded-lg uppercase transition-all inline-flex items-center justify-center cursor-pointer shrink-0"
+                                    title="Edit SPK"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            ) : wo.status === 'COMPLETED' && wo.isHandoverConfirmed ? (
+                              <div className="flex items-center gap-2 pt-2.5 border-t border-slate-800/80">
+                                <button
+                                  type="button"
+                                  onClick={() => setHandoverSuccessWO(wo)}
+                                  className="flex-1 h-8 bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-600 hover:to-teal-600 text-white text-[10px] font-mono font-bold rounded-lg uppercase tracking-wider transition-all inline-flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-95"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
+                                  <span>Dokumen Penyerahan</span>
+                                </button>
+                                {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingWO(wo);
+                                      setIsEditModalOpen(true);
+                                    }}
+                                    className="h-8 w-8 bg-slate-900 border border-slate-700 text-amber-300 hover:bg-slate-800 text-[10px] font-bold rounded-lg uppercase transition-all inline-flex items-center justify-center cursor-pointer shrink-0"
+                                    title="Edit SPK"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex gap-2 pt-2.5 border-t border-slate-800/80">
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setEditingWO(wo);
-                                    setIsEditModalOpen(true);
+                                    setPrintType('SPK');
+                                    setPrintWO(wo);
                                   }}
-                                  className="flex-1 py-2 bg-slate-800 border border-slate-700 text-amber-300 hover:bg-slate-700 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer"
-                                  title="Edit SPK"
+                                  className="flex-1 h-8 bg-slate-900 border border-slate-700 text-slate-200 hover:bg-slate-800 text-[10px] font-mono font-bold rounded-lg uppercase tracking-wider transition-all inline-flex items-center justify-center gap-1.5 cursor-pointer"
                                 >
-                                  <Pencil className="w-3.5 h-3.5" />
-                                  <span>Edit</span>
+                                  <Printer className="w-3.5 h-3.5 shrink-0" />
+                                  <span>SPK</span>
                                 </button>
-                              )}
 
-                              <button
-                                type="button"
-                                onClick={() => handleOpenCancelModal(wo)}
-                                className="px-3 py-2 bg-rose-950/80 border border-rose-800 text-rose-300 hover:bg-rose-900 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer"
-                                title="Batalkan SPK"
-                              >
-                                <Ban className="w-3.5 h-3.5 text-rose-400" />
-                                <span>Cancel</span>
-                              </button>
-                            </div>
-                          )}
+                                {(currentUser?.role === 'SA' || currentUser?.role === 'ADMIN') && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingWO(wo);
+                                      setIsEditModalOpen(true);
+                                    }}
+                                    className="flex-1 h-8 bg-slate-900 border border-slate-700 text-amber-300 hover:bg-slate-800 text-[10px] font-mono font-bold rounded-lg uppercase tracking-wider transition-all inline-flex items-center justify-center gap-1 cursor-pointer"
+                                    title="Edit SPK"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5 shrink-0" />
+                                    <span>Edit</span>
+                                  </button>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenCancelModal(wo)}
+                                  className="h-8 px-3 bg-slate-900 border border-slate-700 hover:border-rose-700 text-rose-400 hover:bg-rose-950/60 text-[10px] font-mono font-bold rounded-lg uppercase tracking-wider transition-all inline-flex items-center justify-center gap-1 cursor-pointer"
+                                  title="Batalkan SPK"
+                                >
+                                  <Ban className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                                  <span>Batal</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </motion.div>
                       );
                     })}

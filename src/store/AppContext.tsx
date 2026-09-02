@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { User, WorkOrder, WOStatus, PartLog, AppNotification, Customer, Vehicle, Claim } from '../types';
+import { User, WorkOrder, WOStatus, PartLog, AppNotification, Customer, Vehicle, Claim, GateEntry, GateExitDocument, HandoverDocument, GatePrintDocumentType } from '../types';
 import { db, auth } from '../firebase';
 import { collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, getDocs, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
@@ -132,6 +132,31 @@ export const parseTimestampToISO = (val: any): string => {
   return new Date().toISOString();
 };
 
+/**
+ * Recursively cleans objects before saving to Firestore, removing undefined fields
+ * which trigger 'Function setDoc() called with invalid data. Unsupported field value: undefined'.
+ */
+export function cleanFirestoreData<T>(obj: T): T {
+  if (obj === null || obj === undefined) {
+    return null as any;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(item => cleanFirestoreData(item)) as any;
+  }
+  if (typeof obj === 'object') {
+    // Preserve Date or Timestamp objects if any
+    if (obj instanceof Date) return obj as any;
+    const cleaned: Record<string, any> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== undefined) {
+        cleaned[key] = cleanFirestoreData(value);
+      }
+    }
+    return cleaned as T;
+  }
+  return obj;
+}
+
 interface AppContextType {
   currentUser: User | null;
   login: (username: string, password?: string) => Promise<string | null>;
@@ -175,6 +200,23 @@ interface AppContextType {
   deleteClaim: (id: string) => Promise<void>;
   trackingBaseUrl: string;
   updateTrackingBaseUrl: (url: string) => Promise<void>;
+  gateEntries: GateEntry[];
+  addGateEntry: (entry: Omit<GateEntry, 'id' | 'createdAt' | 'status'>) => Promise<GateEntry>;
+  cancelGateEntry: (id: string, reason: string) => Promise<void>;
+  gateExitDocuments: GateExitDocument[];
+  addGateExitDocument: (docData: Omit<GateExitDocument, 'id' | 'createdAt' | 'status'>) => Promise<GateExitDocument>;
+  updateGateExitDocument: (id: string, updates: Partial<GateExitDocument>) => Promise<void>;
+  cancelGateExitDocument: (id: string, reason: string) => Promise<void>;
+  handoverDocuments: HandoverDocument[];
+  addHandoverDocument: (docData: Omit<HandoverDocument, 'id' | 'createdAt' | 'status'>) => Promise<HandoverDocument>;
+  cancelHandoverDocument: (id: string, reason: string) => Promise<void>;
+  printGateDoc: GatePrintDocumentType | null;
+  setPrintGateDoc: (doc: GatePrintDocumentType | null) => void;
+  deleteWorkOrder: (id: string) => Promise<void>;
+  deleteGateEntry: (id: string) => Promise<void>;
+  deleteGateExitDocument: (id: string) => Promise<void>;
+  deleteHandoverDocument: (id: string) => Promise<void>;
+  runAutoArchiveAndPurge: (options?: { force?: boolean }) => Promise<{ archivedCount: number; purgedCount: number }>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -196,8 +238,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [claims, setClaims] = useState<Claim[]>([]);
+  const [gateEntries, setGateEntries] = useState<GateEntry[]>([]);
+  const [gateExitDocuments, setGateExitDocuments] = useState<GateExitDocument[]>([]);
+  const [handoverDocuments, setHandoverDocuments] = useState<HandoverDocument[]>([]);
   const [printWO, setPrintWO] = useState<WorkOrder | null>(null);
   const [printType, setPrintType] = useState<'SPK' | 'HANDOVER'>('SPK');
+  const [printGateDoc, setPrintGateDoc] = useState<GatePrintDocumentType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isFirebaseAuthed, setIsFirebaseAuthed] = useState(false);
   const [trackingBaseUrl, setTrackingBaseUrl] = useState<string>(() => {
@@ -308,6 +354,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let unsubWO: (() => void) | null = null;
     let unsubClaims: (() => void) | null = null;
     let unsubSettings: (() => void) | null = null;
+    let unsubGateEntries: (() => void) | null = null;
+    let unsubGateExits: (() => void) | null = null;
+    let unsubHandovers: (() => void) | null = null;
 
     let usersLoaded = false;
     let workOrdersLoaded = false;
@@ -498,6 +547,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       checkLoadingComplete();
     });
 
+    unsubGateEntries = onSnapshot(collection(db, 'gateEntries'), (snapshot) => {
+      const entries: GateEntry[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data() as any;
+        data.id = doc.id;
+        data.createdAt = parseTimestampToISO(data.createdAt);
+        entries.push(data as GateEntry);
+      });
+      entries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setGateEntries(entries);
+    }, (error) => {
+      console.error("Gate entries listen error:", error);
+    });
+
+    unsubGateExits = onSnapshot(collection(db, 'gateExitDocuments'), (snapshot) => {
+      const docs: GateExitDocument[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data() as any;
+        data.id = doc.id;
+        data.createdAt = parseTimestampToISO(data.createdAt);
+        docs.push(data as GateExitDocument);
+      });
+      docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setGateExitDocuments(docs);
+    }, (error) => {
+      console.error("Gate exit documents listen error:", error);
+    });
+
+    unsubHandovers = onSnapshot(collection(db, 'handoverDocuments'), (snapshot) => {
+      const hDocs: HandoverDocument[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data() as any;
+        data.id = doc.id;
+        data.createdAt = parseTimestampToISO(data.createdAt);
+        hDocs.push(data as HandoverDocument);
+      });
+      hDocs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setHandoverDocuments(hDocs);
+    }, (error) => {
+      console.error("Handover documents listen error:", error);
+    });
+
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         console.log("Firebase user authenticated anonymously:", firebaseUser.uid);
@@ -515,6 +606,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (unsubWO) (unsubWO as () => void)();
       if (unsubClaims) (unsubClaims as () => void)();
       if (unsubSettings) (unsubSettings as () => void)();
+      if (unsubGateEntries) (unsubGateEntries as () => void)();
+      if (unsubGateExits) (unsubGateExits as () => void)();
+      if (unsubHandovers) (unsubHandovers as () => void)();
     };
   }, []);
 
@@ -720,16 +814,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    await setDoc(doc(db, 'customers', id), newCustomer).catch(console.error);
+    await setDoc(doc(db, 'customers', id), cleanFirestoreData(newCustomer)).catch(console.error);
     return newCustomer;
   };
 
   const updateCustomer = async (id: string, updates: Partial<Customer>) => {
     try {
-      await updateDoc(doc(db, 'customers', id), {
+      await updateDoc(doc(db, 'customers', id), cleanFirestoreData({
         ...updates,
         updatedAt: new Date().toISOString()
-      });
+      }));
     } catch (err: any) {
       console.error("Error in updateCustomer:", err);
       throw new Error(`Failed to update customer: ${err.message || err}`);
@@ -757,7 +851,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    await setDoc(doc(db, 'vehicles', id), newVehicle).catch(console.error);
+    await setDoc(doc(db, 'vehicles', id), cleanFirestoreData(newVehicle)).catch(console.error);
     return newVehicle;
   };
 
@@ -788,7 +882,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updatedAt: new Date().toISOString(),
         createdBy: currentUser?.name || 'SA'
       };
-      setDoc(doc(db, 'customers', resolvedCustId), newCust).catch(console.error);
+      setDoc(doc(db, 'customers', resolvedCustId), cleanFirestoreData(newCust)).catch(console.error);
     }
 
     // Check if vehicle plate already exists
@@ -806,7 +900,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
-      setDoc(doc(db, 'vehicles', resolvedVehId), newVeh).catch(console.error);
+      setDoc(doc(db, 'vehicles', resolvedVehId), cleanFirestoreData(newVeh)).catch(console.error);
     }
 
     const newWO: any = {
@@ -828,10 +922,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (docSnap.exists()) {
         // Highly rare collision: resolve safely inside transaction by generating a new ID
         const secondaryId = `WO-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-        const resolvedWO = { ...newWO, id: secondaryId };
+        const resolvedWO = cleanFirestoreData({ ...newWO, id: secondaryId });
         transaction.set(doc(db, 'workOrders', secondaryId), resolvedWO);
       } else {
-        transaction.set(docRef, newWO);
+        transaction.set(docRef, cleanFirestoreData(newWO));
       }
     }).catch(console.error);
 
@@ -930,13 +1024,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id,
       createdAt: new Date().toISOString()
     };
-    await setDoc(doc(db, 'claims', id), newClaim).catch(console.error);
+    await setDoc(doc(db, 'claims', id), cleanFirestoreData(newClaim)).catch(console.error);
     return newClaim;
   };
 
   const updateClaim = async (id: string, updates: Partial<Claim>) => {
     try {
-      await updateDoc(doc(db, 'claims', id), updates);
+      await updateDoc(doc(db, 'claims', id), cleanFirestoreData(updates));
     } catch (err: any) {
       console.error("Error in updateClaim:", err);
       throw new Error(`Failed to update claim: ${err.message || err}`);
@@ -964,6 +1058,273 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // --- Gate Control Mutations ---
+  const generateGateId = (prefix: 'BM' | 'SJ' | 'ST'): string => {
+    const now = new Date();
+    const yy = String(now.getFullYear()).slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const rand = Math.floor(1000 + Math.random() * 9000);
+    return `${prefix}-${yy}${mm}${dd}-${rand}`;
+  };
+
+  const addGateEntry = async (entryData: Omit<GateEntry, 'id' | 'createdAt' | 'status'>): Promise<GateEntry> => {
+    const id = generateGateId('BM');
+    const newEntry: GateEntry = {
+      ...entryData,
+      id,
+      createdAt: new Date().toISOString(),
+      status: 'RECORDED'
+    };
+    await setDoc(doc(db, 'gateEntries', id), cleanFirestoreData(newEntry));
+    addNotification('Barang Masuk Dicatat', `Dokumen ${id} (${newEntry.itemsDescription}) berhasil disimpan.`, 'success');
+    return newEntry;
+  };
+
+  const cancelGateEntry = async (id: string, reason: string) => {
+    const entryRef = doc(db, 'gateEntries', id);
+    await updateDoc(entryRef, cleanFirestoreData({
+      status: 'CANCELLED',
+      cancelledAt: new Date().toISOString(),
+      cancelledBy: currentUser?.name || 'Authorized User',
+      cancelReason: reason
+    }));
+    addNotification('Barang Masuk Dibatalkan', `Dokumen ${id} telah dibatalkan: "${reason}"`, 'warning');
+  };
+
+  const addGateExitDocument = async (docData: Omit<GateExitDocument, 'id' | 'createdAt' | 'status'>): Promise<GateExitDocument> => {
+    const id = generateGateId('SJ');
+    const newDoc: GateExitDocument = {
+      ...docData,
+      id,
+      createdAt: new Date().toISOString(),
+      status: 'READY'
+    };
+    await setDoc(doc(db, 'gateExitDocuments', id), cleanFirestoreData(newDoc));
+    addNotification('Surat Jalan Diterbitkan', `Surat Jalan ${id} (${newDoc.bringerName}) siap diverifikasi gate/satpam.`, 'success');
+    return newDoc;
+  };
+
+  const updateGateExitDocument = async (id: string, updates: Partial<GateExitDocument>) => {
+    try {
+      await updateDoc(doc(db, 'gateExitDocuments', id), cleanFirestoreData(updates));
+    } catch (err: any) {
+      console.error("Error in updateGateExitDocument:", err);
+      throw new Error(`Failed to update Surat Jalan: ${err.message || err}`);
+    }
+  };
+
+  const cancelGateExitDocument = async (id: string, reason: string) => {
+    const docRef = doc(db, 'gateExitDocuments', id);
+    await updateDoc(docRef, cleanFirestoreData({
+      status: 'CANCELLED',
+      cancelledAt: new Date().toISOString(),
+      cancelledBy: currentUser?.name || 'Authorized User',
+      cancelReason: reason
+    }));
+    addNotification('Surat Jalan Dibatalkan', `Dokumen ${id} telah dibatalkan: "${reason}"`, 'warning');
+  };
+
+  const addHandoverDocument = async (docData: Omit<HandoverDocument, 'id' | 'createdAt' | 'status'>): Promise<HandoverDocument> => {
+    const id = generateGateId('ST');
+    const newDoc: HandoverDocument = {
+      ...docData,
+      id,
+      createdAt: new Date().toISOString(),
+      status: 'COMPLETED'
+    };
+    await setDoc(doc(db, 'handoverDocuments', id), cleanFirestoreData(newDoc));
+    addNotification('Serah Terima Diterbitkan', `Dokumen Berita Acara Serah Terima ${id} berhasil diterbitkan.`, 'success');
+    return newDoc;
+  };
+
+  const cancelHandoverDocument = async (id: string, reason: string) => {
+    const docRef = doc(db, 'handoverDocuments', id);
+    await updateDoc(docRef, cleanFirestoreData({
+      status: 'CANCELLED',
+      cancelledAt: new Date().toISOString(),
+      cancelledBy: currentUser?.name || 'Authorized User',
+      cancelReason: reason
+    }));
+    addNotification('Serah Terima Dibatalkan', `Dokumen ${id} telah dibatalkan: "${reason}"`, 'warning');
+  };
+
+  // --- Document Deletion & Lifecycle Management ---
+  const deleteWorkOrder = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'workOrders', id));
+      addNotification('Dokumen Dihapus', `Work Order ${id} telah dihapus dari sistem.`, 'info');
+    } catch (err: any) {
+      console.error('Error deleting WorkOrder:', err);
+      throw new Error(`Failed to delete WorkOrder: ${err.message || err}`);
+    }
+  };
+
+  const deleteGateEntry = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'gateEntries', id));
+      addNotification('Dokumen Dihapus', `Barang Masuk ${id} telah dihapus dari sistem.`, 'info');
+    } catch (err: any) {
+      console.error('Error deleting GateEntry:', err);
+      throw new Error(`Failed to delete GateEntry: ${err.message || err}`);
+    }
+  };
+
+  const deleteGateExitDocument = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'gateExitDocuments', id));
+      addNotification('Dokumen Dihapus', `Surat Jalan ${id} telah dihapus dari sistem.`, 'info');
+    } catch (err: any) {
+      console.error('Error deleting GateExitDocument:', err);
+      throw new Error(`Failed to delete Surat Jalan: ${err.message || err}`);
+    }
+  };
+
+  const deleteHandoverDocument = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'handoverDocuments', id));
+      addNotification('Dokumen Dihapus', `Serah Terima ${id} telah dihapus dari sistem.`, 'info');
+    } catch (err: any) {
+      console.error('Error deleting HandoverDocument:', err);
+      throw new Error(`Failed to delete Serah Terima: ${err.message || err}`);
+    }
+  };
+
+  // --- Automatic 1-Month Archive & 1-Month Deletion Cycle Engine ---
+  const runAutoArchiveAndPurge = async (options?: { force?: boolean }): Promise<{ archivedCount: number; purgedCount: number }> => {
+    const now = Date.now();
+    const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+    let archivedCount = 0;
+    let purgedCount = 0;
+
+    try {
+      // 1. Process Work Orders
+      for (const wo of workOrders) {
+        const docDate = new Date(wo.createdAt || wo.intakeDate || Date.now()).getTime();
+        const ageMs = now - docDate;
+        const isClosed = wo.status === 'COMPLETED' || wo.status === 'CANCELLED';
+
+        // Check for Auto-Purge (Archived > 1 month OR Closed > 2 months)
+        if (wo.isArchived) {
+          const archiveDate = wo.archivedAt ? new Date(wo.archivedAt).getTime() : docDate;
+          if (now - archiveDate >= ONE_MONTH_MS || options?.force) {
+            await deleteDoc(doc(db, 'workOrders', wo.id));
+            purgedCount++;
+            continue;
+          }
+        }
+
+        // Check for Auto-Archive (Closed & older than 1 month)
+        if (isClosed && !wo.isArchived && ageMs >= ONE_MONTH_MS) {
+          await updateDoc(doc(db, 'workOrders', wo.id), cleanFirestoreData({
+            isArchived: true,
+            archivedAt: new Date().toISOString()
+          }));
+          archivedCount++;
+        }
+      }
+
+      // 2. Process Gate Entries
+      for (const entry of gateEntries) {
+        const docDate = new Date(entry.createdAt || entry.date || Date.now()).getTime();
+        const ageMs = now - docDate;
+        const isClosed = entry.status === 'RECORDED' || entry.status === 'CANCELLED';
+
+        if (entry.isArchived) {
+          const archiveDate = entry.archivedAt ? new Date(entry.archivedAt).getTime() : docDate;
+          if (now - archiveDate >= ONE_MONTH_MS || options?.force) {
+            await deleteDoc(doc(db, 'gateEntries', entry.id));
+            purgedCount++;
+            continue;
+          }
+        }
+
+        if (isClosed && !entry.isArchived && ageMs >= ONE_MONTH_MS) {
+          await updateDoc(doc(db, 'gateEntries', entry.id), cleanFirestoreData({
+            isArchived: true,
+            archivedAt: new Date().toISOString()
+          }));
+          archivedCount++;
+        }
+      }
+
+      // 3. Process Gate Exit Documents
+      for (const exitDoc of gateExitDocuments) {
+        const docDate = new Date(exitDoc.createdAt || exitDoc.date || Date.now()).getTime();
+        const ageMs = now - docDate;
+        const isClosed = exitDoc.status === 'COMPLETED' || exitDoc.status === 'CANCELLED';
+
+        if (exitDoc.isArchived) {
+          const archiveDate = exitDoc.archivedAt ? new Date(exitDoc.archivedAt).getTime() : docDate;
+          if (now - archiveDate >= ONE_MONTH_MS || options?.force) {
+            await deleteDoc(doc(db, 'gateExitDocuments', exitDoc.id));
+            purgedCount++;
+            continue;
+          }
+        }
+
+        if (isClosed && !exitDoc.isArchived && ageMs >= ONE_MONTH_MS) {
+          await updateDoc(doc(db, 'gateExitDocuments', exitDoc.id), cleanFirestoreData({
+            isArchived: true,
+            archivedAt: new Date().toISOString()
+          }));
+          archivedCount++;
+        }
+      }
+
+      // 4. Process Handover Documents
+      for (const st of handoverDocuments) {
+        const docDate = new Date(st.createdAt || st.date || Date.now()).getTime();
+        const ageMs = now - docDate;
+        const isClosed = st.status === 'COMPLETED' || st.status === 'CANCELLED';
+
+        if (st.isArchived) {
+          const archiveDate = st.archivedAt ? new Date(st.archivedAt).getTime() : docDate;
+          if (now - archiveDate >= ONE_MONTH_MS || options?.force) {
+            await deleteDoc(doc(db, 'handoverDocuments', st.id));
+            purgedCount++;
+            continue;
+          }
+        }
+
+        if (isClosed && !st.isArchived && ageMs >= ONE_MONTH_MS) {
+          await updateDoc(doc(db, 'handoverDocuments', st.id), cleanFirestoreData({
+            isArchived: true,
+            archivedAt: new Date().toISOString()
+          }));
+          archivedCount++;
+        }
+      }
+
+      localStorage.setItem('itech_last_lifecycle_check', String(now));
+      
+      if (archivedCount > 0 || purgedCount > 0) {
+        addNotification(
+          'Siklus Arsip Otomatis Selesai',
+          `${archivedCount} dokumen telah diarsipkan (usia > 1 bulan) dan ${purgedCount} dokumen lama telah dibersihkan otomatis.`,
+          'info'
+        );
+      }
+
+      return { archivedCount, purgedCount };
+    } catch (err: any) {
+      console.error('Error running lifecycle archive & purge:', err);
+      return { archivedCount, purgedCount };
+    }
+  };
+
+  // Automated background run of 1-month archive and 1-month deletion cycle
+  useEffect(() => {
+    if (isLoading) return;
+    const lastCheckStr = localStorage.getItem('itech_last_lifecycle_check');
+    const lastCheck = lastCheckStr ? parseInt(lastCheckStr, 10) : 0;
+    const now = Date.now();
+    // Run once every 24 hours automatically
+    if (now - lastCheck > 24 * 60 * 60 * 1000) {
+      runAutoArchiveAndPurge();
+    }
+  }, [isLoading, workOrders.length, gateEntries.length, gateExitDocuments.length, handoverDocuments.length]);
+
   return (
     <AppContext.Provider
       value={{
@@ -977,6 +1338,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         triggerDailySummaryManual,
         claims, addClaim, updateClaim, deleteClaim,
         trackingBaseUrl, updateTrackingBaseUrl,
+        gateEntries, addGateEntry, cancelGateEntry,
+        gateExitDocuments, addGateExitDocument, updateGateExitDocument, cancelGateExitDocument,
+        handoverDocuments, addHandoverDocument, cancelHandoverDocument,
+        printGateDoc, setPrintGateDoc,
+        deleteWorkOrder, deleteGateEntry, deleteGateExitDocument, deleteHandoverDocument,
+        runAutoArchiveAndPurge,
       }}
     >
       {children}

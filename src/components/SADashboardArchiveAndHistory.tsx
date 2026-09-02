@@ -44,8 +44,9 @@ export const SADashboardArchiveAndHistory: React.FC<SADashboardArchiveAndHistory
   updateWorkOrder,
   setPrintWO
 }) => {
-  const { trackingBaseUrl, addNotification, currentUser } = useApp();
+  const { trackingBaseUrl, addNotification, currentUser, runAutoArchiveAndPurge } = useApp();
   const [archiveSubTab, setArchiveSubTab] = useState<'LIFETIME_HISTORY' | 'ADMIN_ARCHIVE'>('LIFETIME_HISTORY');
+  const [isRunningLifecycle, setIsRunningLifecycle] = useState(false);
 
   const [editingWO, setEditingWO] = useState<WorkOrder | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -304,6 +305,51 @@ export const SADashboardArchiveAndHistory: React.FC<SADashboardArchiveAndHistory
 
             return (
               <div className="space-y-4">
+                {/* 1-Month Auto-Archive & 1-Month Auto-Purge Lifecycle Status Banner */}
+                <div className="bg-gradient-to-r from-blue-950/70 via-slate-900 to-indigo-950/70 border border-blue-800/60 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-md">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2.5 bg-blue-900/50 rounded-lg border border-blue-700/50 text-blue-400 shrink-0 mt-0.5">
+                      <Archive className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black uppercase tracking-wider text-blue-300 flex items-center gap-2">
+                        Siklus Arsip & Pembersihan Otomatis (1 Bulan)
+                        <span className="text-[9px] bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-700/50 font-bold">
+                          Aktif Otomatis
+                        </span>
+                      </h4>
+                      <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
+                        • <strong>Arsip Otomatis:</strong> Dokumen yang selesai/dibatalkan &gt; 30 hari otomatis dipindahkan ke arsip.<br />
+                        • <strong>Pembersihan Otomatis:</strong> Dokumen arsip &gt; 30 hari otomatis dihapus permanen untuk menjaga performa sistem.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={isRunningLifecycle}
+                    onClick={async () => {
+                      setIsRunningLifecycle(true);
+                      try {
+                        const res = await runAutoArchiveAndPurge();
+                        addNotification?.(
+                          'Siklus Arsip Berjalan',
+                          `Hasil: ${res.archivedCount} dokumen diarsipkan, ${res.purgedCount} dokumen lama dibersihkan.`,
+                          'success'
+                        );
+                      } catch (e: any) {
+                        addNotification?.('Gagal Menjalankan Siklus', e.message || 'Terjadi kesalahan', 'error');
+                      } finally {
+                        setIsRunningLifecycle(false);
+                      }
+                    }}
+                    className="shrink-0 px-3.5 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white rounded-lg text-xs font-black flex items-center gap-2 transition-all shadow-md cursor-pointer whitespace-nowrap"
+                  >
+                    <TrendingUp className={`w-3.5 h-3.5 ${isRunningLifecycle ? 'animate-spin' : ''}`} />
+                    {isRunningLifecycle ? 'Memproses Arsip...' : 'Jalankan Siklus Arsip Sekarang'}
+                  </button>
+                </div>
+
                 {/* Administrative Dashboard Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <div className="bg-slate-850 p-3 rounded-lg border border-slate-800 flex flex-col justify-between">

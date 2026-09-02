@@ -1,4 +1,4 @@
-export type Role = 'SA' | 'MECHANIC' | 'COMMON_RAIL' | 'TURBO' | 'FOREMAN' | 'ADMIN' | 'CUSTOMER';
+export type Role = 'SA' | 'MECHANIC' | 'COMMON_RAIL' | 'TURBO' | 'FOREMAN' | 'ADMIN' | 'CUSTOMER' | 'BASIC';
 
 export interface User {
   id: string;
@@ -168,6 +168,7 @@ export interface WorkOrder {
   divisionFlow?: ('SUPPLY_PUMP' | 'COMMON_RAIL' | 'TURBO')[];
   divisionNotes?: { from: string, to: string, note: string, date: string }[];
   isArchived?: boolean;
+  archivedAt?: string;
   currentMilestone?: string;
   milestoneHistory?: { milestone: string; timestamp: string; updatedBy: string }[];
   isHandoverConfirmed?: boolean;
@@ -225,5 +226,153 @@ export interface InternalMessage {
   dateKey: string;
   readBy?: string[];
 }
+
+// ==========================================
+// GATE CONTROL (BARANG MASUK & KELUAR)
+// ==========================================
+
+export type GateEntryType = 'VEHICLE' | 'SPAREPART' | 'COMPONENT' | 'CUSTOMER_GOODS' | 'SUPPLIER_GOODS' | 'TOOLS' | 'OTHER';
+export type GateCondition = 'GOOD' | 'USED' | 'DAMAGED' | 'FOR_SERVICE' | 'FOR_INSPECTION' | 'UNKNOWN';
+
+export interface GateEntry {
+  id: string; // Format: BM-YYMMDD-XXXX
+  date: string; // YYYY-MM-DD
+  time: string; // HH:mm WIB
+  createdAt: string; // ISO String
+  createdBy: string; // Authenticated employee name
+  creatorUserId: string; // User ID
+  status: 'RECORDED' | 'CANCELLED';
+  
+  bringerName: string; // Nama Pembawa (Required)
+  bringerPhone?: string; // Optional phone
+  customerName?: string; // Privacy: Only Name
+  customerId?: string;
+  
+  entryType: GateEntryType;
+  entryTypeCustom?: string;
+  itemsDescription: string; // Apa yang dibawa
+  qty?: number;
+  unit?: string; // pcs, unit, set, dus, kendaraan, etc.
+  condition: GateCondition;
+  conditionNotes?: string;
+  
+  receivedBy: string; // Auto-filled employee name
+  
+  // Conditional for vehicle
+  vehiclePlateNumber?: string;
+  vehicleBrandModel?: string;
+  
+  notes?: string;
+  photoUrl?: string;
+  
+  // Cancellation Audit Trail
+  cancelledAt?: string;
+  cancelledBy?: string;
+  cancelReason?: string;
+  
+  // Archival Lifecycle
+  isArchived?: boolean;
+  archivedAt?: string;
+}
+
+export type GateExitType = 'NORMAL_SALES' | 'INTERNAL' | 'RETURN' | 'LOAN' | 'TRANSFER';
+export type GateExitRefType = 'INVOICE' | 'SALES_ORDER' | 'SERVICE_ORDER' | 'HANDOVER' | 'INTERNAL' | 'OTHER';
+
+export interface GateExitItem {
+  id: string;
+  name: string;
+  qty: number;
+  unit: string;
+  notes?: string;
+}
+
+export interface GateExitDocument {
+  id: string; // Format: SJ-YYMMDD-XXXX (Surat Jalan)
+  date: string; // YYYY-MM-DD
+  time: string; // HH:mm WIB
+  createdAt: string; // ISO String
+  createdBy: string; // Employee who issued the Surat Jalan
+  creatorUserId: string;
+  status: 'DRAFT' | 'READY' | 'COMPLETED' | 'CANCELLED';
+  
+  customerName?: string; // Privacy: Name only
+  customerId?: string;
+  bringerName: string; // Nama Pembawa / Sopir / Pengambil (Required)
+  driverPlateNumber?: string; // No. Polisi Kendaraan Pengangkut (Optional)
+  
+  exitType: GateExitType;
+  refType: GateExitRefType;
+  referenceNumber?: string; // Ref NO (Invoice / SO / WO-YYYY-XXXX / ST-YYMMDD-XXXX)
+  handoverId?: string; // Link to Serah Terima if created from it
+  
+  items: GateExitItem[];
+  destination?: string; // Alamat / Tujuan Kirim (Opsional/Umum)
+  notes?: string;
+  
+  // Physical Satpam check audit
+  satpamCheckedBy?: string;
+  satpamExitTime?: string;
+  satpamNotes?: string;
+  
+  // Cancellation Audit Trail
+  cancelledAt?: string;
+  cancelledBy?: string;
+  cancelReason?: string;
+
+  // Archival Lifecycle
+  isArchived?: boolean;
+  archivedAt?: string;
+}
+
+export interface HandoverItem {
+  id: string;
+  name: string;
+  qty: number;
+  unit: string;
+  condition?: string;
+  notes?: string;
+}
+
+export interface HandoverDocument {
+  id: string; // Format: ST-YYMMDD-XXXX
+  date: string; // YYYY-MM-DD
+  time: string; // HH:mm WIB
+  createdAt: string; // ISO String
+  createdBy: string; // Service Advisor or authorized issuer
+  creatorUserId: string;
+  status: 'COMPLETED' | 'CANCELLED';
+  
+  relatedWOId?: string; // Ref: WO-YYYY-XXXX
+  customerName: string; // Privacy safe
+  customerId?: string;
+  vehiclePlateNumber?: string;
+  vehicleBrandModel?: string;
+  
+  recipientName: string; // Nama Pembawa / Penerima (Required)
+  recipientPhone?: string; // Optional
+  
+  handoverType: 'SERVICE_UNIT' | 'SPAREPART' | 'WARRANTY' | 'OTHER';
+  items: HandoverItem[];
+  warrantyPeriod?: string;
+  notes?: string;
+  
+  isSuratJalanCreated?: boolean;
+  suratJalanId?: string;
+  
+  // Cancellation Audit Trail
+  cancelledAt?: string;
+  cancelledBy?: string;
+  cancelReason?: string;
+
+  // Archival Lifecycle
+  isArchived?: boolean;
+  archivedAt?: string;
+}
+
+export type GatePrintDocumentType = 
+  | { type: 'BARANG_MASUK'; data: GateEntry }
+  | { type: 'SURAT_JALAN'; data: GateExitDocument }
+  | { type: 'SERAH_TERIMA'; data: HandoverDocument };
+
 
 

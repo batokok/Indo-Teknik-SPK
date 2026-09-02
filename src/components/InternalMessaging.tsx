@@ -11,6 +11,7 @@ import {
 
 // Indo Teknik theme-compliant role metadata
 const roleMeta: Record<Role, { label: string; bg: string; text: string; iconBg: string; short: string }> = {
+  BASIC: { label: 'Pos Satpam & Logistik', bg: 'bg-emerald-600/15 text-emerald-400 border border-emerald-500/20', text: 'text-emerald-400', iconBg: 'bg-emerald-700', short: 'PS' },
   SA: { label: 'Service Advisor', bg: 'bg-blue-600/15 text-blue-400 border border-blue-500/20', text: 'text-blue-400', iconBg: 'bg-blue-600', short: 'SA' },
   MECHANIC: { label: 'Mekanik', bg: 'bg-amber-500/15 text-amber-400 border border-amber-500/20', text: 'text-amber-400', iconBg: 'bg-amber-600', short: 'MK' },
   COMMON_RAIL: { label: 'Lab Common Rail', bg: 'bg-purple-500/15 text-purple-400 border border-purple-500/20', text: 'text-purple-400', iconBg: 'bg-purple-600', short: 'CR' },

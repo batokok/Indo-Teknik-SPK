@@ -20,7 +20,9 @@ import { CustomerManagement } from './components/CustomerManagement';
 import PublicTrackingView from './components/PublicTrackingView';
 import ClaimManagement from './components/ClaimManagement';
 import { InternalMessaging } from './components/InternalMessaging';
-import { LogOut, BarChart3, ClipboardList, Bell, X, Menu, Archive, Users, RefreshCw, HelpCircle, ShieldAlert, ChevronDown, ChevronRight, Briefcase, Wrench, Calendar, Clock } from 'lucide-react';
+import { GateControlDashboard } from './components/gate-control/GateControlDashboard';
+import { PrintGateDocument } from './components/gate-control/PrintGateDocument';
+import { LogOut, BarChart3, ClipboardList, Bell, X, Menu, Archive, Users, RefreshCw, HelpCircle, ShieldAlert, ChevronDown, ChevronRight, Briefcase, Wrench, Calendar, Clock, ArrowDownLeft, ShieldCheck } from 'lucide-react';
 import { RoleOnboardingTutorial } from './components/RoleOnboardingTutorial';
 import { motion } from 'motion/react';
 import { LocationGuard } from './components/LocationGuard';
@@ -30,6 +32,7 @@ const MainLayout: React.FC = () => {
     currentUser, 
     logout, 
     printWO, 
+    printGateDoc,
     notifications, 
     clearNotifications, 
     markAllAsRead, 
@@ -41,7 +44,7 @@ const MainLayout: React.FC = () => {
     addNotification,
     updateUser
   } = useApp();
-  const [currentView, setCurrentView] = useState<'DEFAULT' | 'ANALYTICS' | 'ARCHIVE_HISTORY' | 'CUSTOMERS' | 'CLAIMS'>('DEFAULT');
+  const [currentView, setCurrentView] = useState<'DEFAULT' | 'ANALYTICS' | 'ARCHIVE_HISTORY' | 'CUSTOMERS' | 'CLAIMS' | 'GATE_CONTROL' | 'SA_INTAKE'>('DEFAULT');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isRefreshingFeed, setIsRefreshingFeed] = useState(false);
   const [isManagementOpen, setIsManagementOpen] = useState(true);
@@ -125,6 +128,7 @@ const MainLayout: React.FC = () => {
 
   const getDashboardTitle = () => {
     switch (currentUser.role) {
+      case 'BASIC': return 'Gate & Pos Logistik';
       case 'SA': return 'Intake Dashboard';
       case 'MECHANIC': return 'Produksi (Fuel Pump)';
       case 'COMMON_RAIL': return 'Produksi (Common Rail)';
@@ -135,21 +139,31 @@ const MainLayout: React.FC = () => {
   };
 
   const getHeaderTitle = () => {
+    if (currentUser.role === 'BASIC' || currentView === 'GATE_CONTROL') {
+      return 'Terminal Gate Control & Logistik Workshop';
+    }
+    if (currentView === 'SA_INTAKE') {
+      return 'Vehicle Intake & Pembuatan SPK (Admin Mode)';
+    }
     if (currentView === 'CLAIMS') {
       return 'Sistem Manajemen Klaim & Garansi';
     }
     if (currentView === 'ANALYTICS') {
       return 'Analitika Manajemen & Stok';
     }
+    if (currentView === 'CUSTOMERS') {
+      return 'Manajemen Konsumen & Database Kendaraan';
+    }
     if (currentView === 'ARCHIVE_HISTORY') {
       return 'Arsip & Buku Servis Kendaraan';
     }
     switch (currentUser.role) {
+      case 'BASIC': return 'Gate Control & Logistik Pos Satpam';
       case 'SA': return 'Vehicle Intake & Service Form';
       case 'MECHANIC': return 'Lab Diagnostics & Repair - Fuel Pump';
       case 'COMMON_RAIL': return 'Lab Diagnostics & Repair - Common Rail';
       case 'FOREMAN': return 'Foreman Fuel Pump Overview';
-      case 'ADMIN': return 'System Administration';
+      case 'ADMIN': return 'System Administration & Management';
       default: return 'Dashboard';
     }
   };
@@ -233,6 +247,7 @@ const MainLayout: React.FC = () => {
               {currentUser.role === 'ADMIN' ? 'Super Admin' :
                currentUser.role === 'FOREMAN' ? 'Foreman Fuel Pump' :
                currentUser.role === 'SA' ? 'Service Advisor' :
+               currentUser.role === 'BASIC' ? 'Pos Satpam & Logistik' :
                currentUser.role === 'MECHANIC' ? 'Mekanik Fuel Pump' :
                currentUser.role === 'COMMON_RAIL' ? 'Mekanik Common Rail' : currentUser.role}
             </span>
@@ -259,7 +274,25 @@ const MainLayout: React.FC = () => {
 
             {isLabOpsOpen && (
               <div className="space-y-1 pl-1">
-                {currentUser.role === 'ADMIN' ? (
+                {/* Gate Control & Logistik Workshop (Available for ALL roles: BASIC, SA, FOREMAN, MECHANIC, ADMIN) */}
+                <motion.button
+                  initial={{ opacity: 0, x: -6 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  whileHover={{ scale: 1.01, x: 2 }}
+                  whileTap={{ scale: 0.99 }}
+                  transition={{ duration: 0.15 }}
+                  onClick={() => { setCurrentView('GATE_CONTROL'); setIsSidebarOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer border-l-4 ${
+                    currentView === 'GATE_CONTROL' 
+                      ? 'bg-blue-600/20 text-blue-200 border-l-[#EF4444] border-t border-r border-b border-blue-500/30 font-bold shadow-md' 
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent font-medium'
+                  }`}
+                >
+                  <ShieldCheck className={`w-4 h-4 transition-colors flex-shrink-0 ${currentView === 'GATE_CONTROL' ? 'text-emerald-400' : 'text-slate-400'}`} />
+                  Gate Control & Logistik
+                </motion.button>
+
+                {currentUser.role === 'BASIC' ? null : currentUser.role === 'ADMIN' ? (
                   <>
                     <motion.button
                       initial={{ opacity: 0, x: -6 }}
@@ -267,6 +300,23 @@ const MainLayout: React.FC = () => {
                       whileHover={{ scale: 1.01, x: 2 }}
                       whileTap={{ scale: 0.99 }}
                       transition={{ duration: 0.15 }}
+                      onClick={() => { setCurrentView('SA_INTAKE'); setIsSidebarOpen(false); }}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer border-l-4 ${
+                        currentView === 'SA_INTAKE' 
+                          ? 'bg-blue-600/20 text-blue-200 border-l-[#EF4444] border-t border-r border-b border-blue-500/30 font-bold shadow-md' 
+                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent font-medium'
+                      }`}
+                    >
+                      <ClipboardList className={`w-4 h-4 transition-colors flex-shrink-0 ${currentView === 'SA_INTAKE' ? 'text-blue-400' : 'text-slate-400'}`} />
+                      Intake & Buat SPK
+                    </motion.button>
+
+                    <motion.button
+                      initial={{ opacity: 0, x: -6 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      whileHover={{ scale: 1.01, x: 2 }}
+                      whileTap={{ scale: 0.99 }}
+                      transition={{ duration: 0.15, delay: 0.02 }}
                       onClick={() => { setCurrentView('ARCHIVE_HISTORY'); setIsSidebarOpen(false); }}
                       className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer border-l-4 ${
                         currentView === 'ARCHIVE_HISTORY' 
@@ -283,7 +333,7 @@ const MainLayout: React.FC = () => {
                       animate={{ opacity: 1, x: 0 }}
                       whileHover={{ scale: 1.01, x: 2 }}
                       whileTap={{ scale: 0.99 }}
-                      transition={{ duration: 0.15, delay: 0.03 }}
+                      transition={{ duration: 0.15, delay: 0.04 }}
                       onClick={() => { setCurrentView('CLAIMS'); setIsSidebarOpen(false); }}
                       className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer border-l-4 ${
                         currentView === 'CLAIMS' 
@@ -336,101 +386,103 @@ const MainLayout: React.FC = () => {
             )}
           </div>
 
-          {/* GROUP 2: ADMINISTRASI & MANAJEMEN */}
-          <div className="space-y-1">
-            <button
-              onClick={() => setIsManagementOpen(!isManagementOpen)}
-              className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-black text-slate-400 hover:text-white uppercase tracking-wider hover:bg-slate-800/50 rounded-lg transition-colors cursor-pointer min-h-[40px]"
-            >
-              <span className="flex items-center gap-2">
-                <Briefcase className="w-3.5 h-3.5 text-blue-400" />
-                Administrasi & Manajemen
-              </span>
-              {isManagementOpen ? (
-                <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
-              ) : (
-                <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
-              )}
-            </button>
-
-            {isManagementOpen && (
-              <div className="space-y-1 pl-1">
-                {currentUser.role === 'ADMIN' ? (
-                  <>
-                    <motion.button
-                      initial={{ opacity: 0, x: -6 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      whileHover={{ scale: 1.01, x: 2 }}
-                      whileTap={{ scale: 0.99 }}
-                      transition={{ duration: 0.15 }}
-                      onClick={() => { setCurrentView('DEFAULT'); setIsSidebarOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer border-l-4 ${
-                        currentView === 'DEFAULT' 
-                          ? 'bg-blue-600/20 text-blue-200 border-l-[#EF4444] border-t border-r border-b border-blue-500/30 font-bold shadow-md' 
-                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent font-medium'
-                      }`}
-                    >
-                      <Users className={`w-4 h-4 transition-colors flex-shrink-0 ${currentView === 'DEFAULT' ? 'text-blue-400' : 'text-slate-400'}`} />
-                      Kelola Pengguna
-                    </motion.button>
-
-                    <motion.button
-                      initial={{ opacity: 0, x: -6 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      whileHover={{ scale: 1.01, x: 2 }}
-                      whileTap={{ scale: 0.99 }}
-                      transition={{ duration: 0.15, delay: 0.03 }}
-                      onClick={() => { setCurrentView('CUSTOMERS'); setIsSidebarOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer border-l-4 ${
-                        currentView === 'CUSTOMERS' 
-                          ? 'bg-blue-600/20 text-blue-200 border-l-[#EF4444] border-t border-r border-b border-blue-500/30 font-bold shadow-md' 
-                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent font-medium'
-                      }`}
-                    >
-                      <Users className={`w-4 h-4 transition-colors flex-shrink-0 ${currentView === 'CUSTOMERS' ? 'text-blue-400' : 'text-slate-400'}`} />
-                      Kelola Konsumen
-                    </motion.button>
-
-                    <motion.button
-                      initial={{ opacity: 0, x: -6 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      whileHover={{ scale: 1.01, x: 2 }}
-                      whileTap={{ scale: 0.99 }}
-                      transition={{ duration: 0.15, delay: 0.06 }}
-                      onClick={() => { setCurrentView('ANALYTICS'); setIsSidebarOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer border-l-4 ${
-                        currentView === 'ANALYTICS' 
-                          ? 'bg-blue-600/20 text-blue-200 border-l-[#EF4444] border-t border-r border-b border-blue-500/30 font-bold shadow-md' 
-                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent font-medium'
-                      }`}
-                    >
-                      <BarChart3 className={`w-4 h-4 transition-colors flex-shrink-0 ${currentView === 'ANALYTICS' ? 'text-blue-400' : 'text-slate-400'}`} />
-                      Analitik & KPI
-                    </motion.button>
-                  </>
+          {/* GROUP 2: ADMINISTRASI & MANAJEMEN (Hidden for BASIC role) */}
+          {currentUser.role !== 'BASIC' && (
+            <div className="space-y-1">
+              <button
+                onClick={() => setIsManagementOpen(!isManagementOpen)}
+                className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-black text-slate-400 hover:text-white uppercase tracking-wider hover:bg-slate-800/50 rounded-lg transition-colors cursor-pointer min-h-[40px]"
+              >
+                <span className="flex items-center gap-2">
+                  <Briefcase className="w-3.5 h-3.5 text-blue-400" />
+                  Administrasi & Manajemen
+                </span>
+                {isManagementOpen ? (
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
                 ) : (
-                  <>
-                    <motion.button
-                      initial={{ opacity: 0, x: -6 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      whileHover={{ scale: 1.01, x: 2 }}
-                      whileTap={{ scale: 0.99 }}
-                      transition={{ duration: 0.15 }}
-                      onClick={() => { setCurrentView('CLAIMS'); setIsSidebarOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer border-l-4 ${
-                        currentView === 'CLAIMS' 
-                          ? 'bg-red-600/20 text-red-200 border-l-[#EF4444] border-t border-r border-b border-red-500/30 font-bold shadow-md' 
-                          : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent font-medium'
-                      }`}
-                    >
-                      <ShieldAlert className={`w-4 h-4 transition-colors flex-shrink-0 ${currentView === 'CLAIMS' ? 'text-red-400' : 'text-slate-400'}`} />
-                      Klaim & Garansi
-                    </motion.button>
-                  </>
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
                 )}
-              </div>
-            )}
-          </div>
+              </button>
+
+              {isManagementOpen && (
+                <div className="space-y-1 pl-1">
+                  {currentUser.role === 'ADMIN' ? (
+                    <>
+                      <motion.button
+                        initial={{ opacity: 0, x: -6 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        whileHover={{ scale: 1.01, x: 2 }}
+                        whileTap={{ scale: 0.99 }}
+                        transition={{ duration: 0.15 }}
+                        onClick={() => { setCurrentView('DEFAULT'); setIsSidebarOpen(false); }}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer border-l-4 ${
+                          currentView === 'DEFAULT' 
+                            ? 'bg-blue-600/20 text-blue-200 border-l-[#EF4444] border-t border-r border-b border-blue-500/30 font-bold shadow-md' 
+                            : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent font-medium'
+                        }`}
+                      >
+                        <Users className={`w-4 h-4 transition-colors flex-shrink-0 ${currentView === 'DEFAULT' ? 'text-blue-400' : 'text-slate-400'}`} />
+                        Kelola Pengguna
+                      </motion.button>
+
+                      <motion.button
+                        initial={{ opacity: 0, x: -6 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        whileHover={{ scale: 1.01, x: 2 }}
+                        whileTap={{ scale: 0.99 }}
+                        transition={{ duration: 0.15, delay: 0.03 }}
+                        onClick={() => { setCurrentView('CUSTOMERS'); setIsSidebarOpen(false); }}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer border-l-4 ${
+                          currentView === 'CUSTOMERS' 
+                            ? 'bg-blue-600/20 text-blue-200 border-l-[#EF4444] border-t border-r border-b border-blue-500/30 font-bold shadow-md' 
+                            : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent font-medium'
+                        }`}
+                      >
+                        <Users className={`w-4 h-4 transition-colors flex-shrink-0 ${currentView === 'CUSTOMERS' ? 'text-blue-400' : 'text-slate-400'}`} />
+                        Kelola Konsumen
+                      </motion.button>
+
+                      <motion.button
+                        initial={{ opacity: 0, x: -6 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        whileHover={{ scale: 1.01, x: 2 }}
+                        whileTap={{ scale: 0.99 }}
+                        transition={{ duration: 0.15, delay: 0.06 }}
+                        onClick={() => { setCurrentView('ANALYTICS'); setIsSidebarOpen(false); }}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer border-l-4 ${
+                          currentView === 'ANALYTICS' 
+                            ? 'bg-blue-600/20 text-blue-200 border-l-[#EF4444] border-t border-r border-b border-blue-500/30 font-bold shadow-md' 
+                            : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent font-medium'
+                        }`}
+                      >
+                        <BarChart3 className={`w-4 h-4 transition-colors flex-shrink-0 ${currentView === 'ANALYTICS' ? 'text-blue-400' : 'text-slate-400'}`} />
+                        Analitik & KPI
+                      </motion.button>
+                    </>
+                  ) : (
+                    <>
+                      <motion.button
+                        initial={{ opacity: 0, x: -6 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        whileHover={{ scale: 1.01, x: 2 }}
+                        whileTap={{ scale: 0.99 }}
+                        transition={{ duration: 0.15 }}
+                        onClick={() => { setCurrentView('CLAIMS'); setIsSidebarOpen(false); }}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer border-l-4 ${
+                          currentView === 'CLAIMS' 
+                            ? 'bg-red-600/20 text-red-200 border-l-[#EF4444] border-t border-r border-b border-red-500/30 font-bold shadow-md' 
+                            : 'text-slate-300 hover:text-white hover:bg-slate-800/60 border-l-transparent font-medium'
+                        }`}
+                      >
+                        <ShieldAlert className={`w-4 h-4 transition-colors flex-shrink-0 ${currentView === 'CLAIMS' ? 'text-red-400' : 'text-slate-400'}`} />
+                        Klaim & Garansi
+                      </motion.button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </nav>
         
         {currentUser && (
@@ -615,7 +667,13 @@ const MainLayout: React.FC = () => {
             </div>
           </div>
 
-          {currentView === 'ANALYTICS' && currentUser.role === 'ADMIN' ? (
+          {currentUser.role === 'BASIC' || currentView === 'GATE_CONTROL' ? (
+            <div className="p-4 md:p-6">
+              <GateControlDashboard />
+            </div>
+          ) : currentView === 'SA_INTAKE' && currentUser.role === 'ADMIN' ? (
+            <SADashboard />
+          ) : currentView === 'ANALYTICS' && currentUser.role === 'ADMIN' ? (
             <div className="p-6">
               <ManagerAnalytics />
             </div>
@@ -678,25 +736,27 @@ const MainLayout: React.FC = () => {
       <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md bg-[#0A1120]/95 backdrop-blur-md border border-slate-800 rounded-2xl shadow-2xl z-40 md:hidden flex items-center justify-around p-1.5 text-slate-300 print:hidden">
         {/* Home/Dashboard Tab */}
         <button
-          onClick={() => { setCurrentView('DEFAULT'); setIsSidebarOpen(false); }}
+          onClick={() => { setCurrentView(currentUser.role === 'BASIC' ? 'GATE_CONTROL' : 'DEFAULT'); setIsSidebarOpen(false); }}
           className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all cursor-pointer ${
-            currentView === 'DEFAULT' ? 'text-blue-400 bg-blue-500/20 font-bold' : 'text-slate-400 hover:text-white'
+            (currentUser.role === 'BASIC' ? currentView === 'GATE_CONTROL' : currentView === 'DEFAULT') ? 'text-blue-400 bg-blue-500/20 font-bold' : 'text-slate-400 hover:text-white'
           }`}
         >
-          <ClipboardList className="w-5 h-5" />
-          <span className="text-[9px] mt-1 tracking-tight">Terminal</span>
+          {currentUser.role === 'BASIC' ? <ShieldCheck className="w-5 h-5" /> : <ClipboardList className="w-5 h-5" />}
+          <span className="text-[9px] mt-1 tracking-tight">{currentUser.role === 'BASIC' ? 'Gate Control' : 'Terminal'}</span>
         </button>
 
-        {/* Archive/History Tab */}
-        <button
-          onClick={() => { setCurrentView('ARCHIVE_HISTORY'); setIsSidebarOpen(false); }}
-          className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all cursor-pointer ${
-            currentView === 'ARCHIVE_HISTORY' ? 'text-blue-400 bg-blue-500/20 font-bold' : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <Archive className="w-5 h-5" />
-          <span className="text-[9px] mt-1 tracking-tight">Arsip</span>
-        </button>
+        {/* Archive/History Tab (Hidden for BASIC) */}
+        {currentUser.role !== 'BASIC' && (
+          <button
+            onClick={() => { setCurrentView('ARCHIVE_HISTORY'); setIsSidebarOpen(false); }}
+            className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all cursor-pointer ${
+              currentView === 'ARCHIVE_HISTORY' ? 'text-blue-400 bg-blue-500/20 font-bold' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Archive className="w-5 h-5" />
+            <span className="text-[9px] mt-1 tracking-tight">Arsip</span>
+          </button>
+        )}
 
         {/* Claim Tab (SA or ADMIN only) */}
         {(currentUser.role === 'ADMIN' || currentUser.role === 'SA') && (
@@ -736,8 +796,9 @@ const MainLayout: React.FC = () => {
         </button>
       </div>
 
-      {/* Print Overlay */}
+      {/* Print Overlays */}
       {printWO && <PrintTemplate />}
+      {printGateDoc && <PrintGateDocument />}
 
       {/* Role-Specific Onboarding Tutorial Overlay */}
       <RoleOnboardingTutorial />

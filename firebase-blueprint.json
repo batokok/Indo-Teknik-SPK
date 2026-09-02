@@ -235,6 +235,58 @@
         { "name": "dateKey", "type": "string" }
       ],
       "rules": "allow read, write: if request.auth != null;"
+    },
+    {
+      "name": "gateEntries",
+      "fields": [
+        { "name": "date", "type": "string" },
+        { "name": "time", "type": "string" },
+        { "name": "createdAt", "type": "string" },
+        { "name": "createdBy", "type": "string" },
+        { "name": "creatorUserId", "type": "string" },
+        { "name": "status", "type": "string" },
+        { "name": "bringerName", "type": "string" },
+        { "name": "customerName", "type": "string" },
+        { "name": "entryType", "type": "string" },
+        { "name": "itemsDescription", "type": "string" },
+        { "name": "condition", "type": "string" },
+        { "name": "receivedBy", "type": "string" }
+      ],
+      "rules": "allow read, write: if request.auth != null;"
+    },
+    {
+      "name": "gateExitDocuments",
+      "fields": [
+        { "name": "date", "type": "string" },
+        { "name": "time", "type": "string" },
+        { "name": "createdAt", "type": "string" },
+        { "name": "createdBy", "type": "string" },
+        { "name": "creatorUserId", "type": "string" },
+        { "name": "status", "type": "string" },
+        { "name": "bringerName", "type": "string" },
+        { "name": "customerName", "type": "string" },
+        { "name": "exitType", "type": "string" },
+        { "name": "refType", "type": "string" },
+        { "name": "referenceNumber", "type": "string" },
+        { "name": "items", "type": "array" }
+      ],
+      "rules": "allow read, write: if request.auth != null;"
+    },
+    {
+      "name": "handoverDocuments",
+      "fields": [
+        { "name": "date", "type": "string" },
+        { "name": "time", "type": "string" },
+        { "name": "createdAt", "type": "string" },
+        { "name": "createdBy", "type": "string" },
+        { "name": "creatorUserId", "type": "string" },
+        { "name": "status", "type": "string" },
+        { "name": "customerName", "type": "string" },
+        { "name": "recipientName", "type": "string" },
+        { "name": "handoverType", "type": "string" },
+        { "name": "items", "type": "array" }
+      ],
+      "rules": "allow read, write: if request.auth != null;"
     }
   ]
 }

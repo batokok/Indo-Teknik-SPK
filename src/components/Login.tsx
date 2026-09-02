@@ -34,15 +34,17 @@ const Login: React.FC<LoginProps> = ({ onTrackClick }) => {
       {/* Subtle tech grid mesh pattern */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-30 pointer-events-none"></div>
 
-      <div className="bg-slate-900/90 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full max-w-sm border border-slate-800/80 relative z-10">
+      <div className="bg-slate-900/90 backdrop-blur-md p-6 sm:p-8 rounded-2xl shadow-2xl w-full max-w-[400px] sm:max-w-md border border-slate-800/80 relative z-10">
         <div className="flex flex-col items-center justify-center mb-8 text-center gap-4">
           <div className="bg-white px-4 py-2 rounded-xl shadow-md border border-slate-200">
             <SmartLogo baseName="logo-indo-teknik" alt="INDO TEKNIK" className="h-9 object-contain" />
           </div>
-          <div className="flex flex-col items-center">
-            <div className="flex items-center gap-2.5 bg-slate-850 border border-slate-700/80 py-1.5 px-3.5 rounded-xl shadow-inner">
-              <SmartLogo baseName="logo-itech" alt="ITech" className="h-7 sm:h-8 object-contain bg-white px-2 py-0.5 rounded shadow-xs" />
-              <span className="text-[11px] font-black text-slate-200 uppercase tracking-widest whitespace-nowrap">AUTHORIZED DEALER & WORKSHOP</span>
+          <div className="flex flex-col items-center w-full">
+            <div className="inline-flex items-center justify-center gap-2 bg-slate-850 border border-slate-700/80 py-1.5 px-3 rounded-xl shadow-inner max-w-full">
+              <SmartLogo baseName="logo-itech" alt="ITech" className="h-6 sm:h-7 object-contain bg-white px-1.5 py-0.5 rounded shadow-xs shrink-0" />
+              <span className="text-[10px] sm:text-[10.5px] font-black text-slate-200 uppercase tracking-wide text-center leading-tight whitespace-nowrap">
+                AUTHORIZED DEALER &amp; WORKSHOP
+              </span>
             </div>
           </div>
         </div>

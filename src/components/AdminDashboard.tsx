@@ -866,6 +866,7 @@ export const AdminDashboard: React.FC = () => {
                       onChange={e => setNewUser({ ...newUser, role: e.target.value as User['role'] })}
                     >
                       <option value="SA">Service Advisor</option>
+                      <option value="BASIC">Pos Satpam & Logistik (Basic User)</option>
                       <option value="MECHANIC">Mekanik Fuel Pump</option>
                       <option value="COMMON_RAIL">Common Rail</option>
                       <option value="TURBO">Mekanik Turbo</option>
@@ -1025,6 +1026,8 @@ export const AdminDashboard: React.FC = () => {
                             <span className="px-2.5 py-1 bg-orange-50 text-orange-700 rounded border border-orange-200 text-[10px] font-black uppercase">Foreman Fuel Pump</span>
                           ) : user.role === 'SA' ? (
                             <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded border border-blue-200 text-[10px] font-black uppercase">Service Advisor</span>
+                          ) : user.role === 'BASIC' ? (
+                            <span className="px-2.5 py-1 bg-sky-50 text-sky-700 rounded border border-sky-200 text-[10px] font-black uppercase">Pos Satpam & Logistik</span>
                           ) : user.role === 'COMMON_RAIL' ? (
                             <span className="px-2.5 py-1 bg-violet-50 text-violet-700 rounded border border-violet-200 text-[10px] font-black uppercase">Common Rail</span>
                           ) : user.role === 'TURBO' ? (
@@ -1125,6 +1128,7 @@ export const AdminDashboard: React.FC = () => {
                   disabled={editUsername === 'admin' || editUsername === 'kenji'}
                 >
                   <option value="SA">Service Advisor</option>
+                  <option value="BASIC">Pos Satpam & Logistik (Basic User)</option>
                   <option value="MECHANIC">Mekanik Fuel Pump</option>
                   <option value="COMMON_RAIL">Common Rail</option>
                   <option value="TURBO">Mekanik Turbo</option>

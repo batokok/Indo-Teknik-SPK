@@ -10,6 +10,8 @@ import { copyWADraftToClipboard } from '../utils/whatsappDraft';
 import { PulsingHealthNode } from './telemetry/PulsingHealthNode';
 import { LiveTimelineHUD } from './telemetry/LiveTimelineHUD';
 import { ObsidianBentoCard } from './telemetry/ObsidianBentoCard';
+import { AnimatedCheckbox } from './AnimatedCheckbox';
+import { TableSkeleton, BentoTelemetrySkeleton, FormCardSkeleton } from './ContextualSkeletons';
 
 const formatRupiah = (value: string | number | undefined | null): string => {
   if (value === undefined || value === null) return '';
@@ -560,69 +562,9 @@ const SADashboard: React.FC = () => {
   if (isLoading) {
     return (
       <div className="p-4 print:hidden space-y-6">
-        {/* Skeleton Top Alert Cards or Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-slate-800/60 h-24 rounded-lg border border-slate-700/50 p-4 flex flex-col justify-between animate-pulse">
-            <div className="h-4 bg-slate-700/60 rounded w-1/3"></div>
-            <div className="h-8 bg-slate-700/60 rounded w-1/2"></div>
-          </div>
-          <div className="bg-slate-800/60 h-24 rounded-lg border border-slate-700/50 p-4 flex flex-col justify-between animate-pulse">
-            <div className="h-4 bg-slate-700/60 rounded w-1/4"></div>
-            <div className="h-8 bg-slate-700/60 rounded w-1/3"></div>
-          </div>
-          <div className="bg-slate-800/60 h-24 rounded-lg border border-slate-700/50 p-4 flex flex-col justify-between animate-pulse">
-            <div className="h-4 bg-slate-700/60 rounded w-1/2"></div>
-            <div className="h-8 bg-slate-700/60 rounded w-2/3"></div>
-          </div>
-        </div>
-
-        {/* Skeleton Live Work Order Status Monitor card */}
-        <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 space-y-4 animate-pulse">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="space-y-2">
-              <div className="h-5 bg-slate-800 rounded w-64"></div>
-              <div className="h-3 bg-slate-800 rounded w-96"></div>
-            </div>
-            <div className="h-6 bg-slate-850 rounded w-28"></div>
-          </div>
-
-          <div className="flex border-b border-slate-800 gap-2 pb-1">
-            <div className="h-8 bg-slate-800 rounded-t-lg w-36"></div>
-            <div className="h-8 bg-slate-800 rounded-t-lg w-36"></div>
-          </div>
-
-          <div className="bg-slate-850 p-3 rounded-lg border border-slate-800 h-14 flex items-center justify-between">
-            <div className="h-8 bg-slate-900 rounded w-72"></div>
-            <div className="flex gap-2">
-              <div className="h-8 bg-slate-900 rounded w-24"></div>
-              <div className="h-8 bg-slate-900 rounded w-24"></div>
-            </div>
-          </div>
-
-          {/* Table Skeleton */}
-          <div className="overflow-x-auto space-y-3">
-            <div className="h-9 bg-slate-800 rounded w-full"></div>
-            <div className="h-12 bg-slate-850 rounded w-full"></div>
-            <div className="h-12 bg-slate-850 rounded w-full"></div>
-            <div className="h-12 bg-slate-850 rounded w-full"></div>
-            <div className="h-12 bg-slate-850 rounded w-full"></div>
-          </div>
-        </div>
-
-        {/* Form Skeleton */}
-        <div className="bg-slate-900 border border-slate-700 rounded-lg p-6 space-y-6 animate-pulse">
-          <div className="h-6 bg-slate-800 rounded w-48"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <div className="h-4 bg-slate-800 rounded w-24"></div>
-              <div className="h-10 bg-slate-850 rounded w-full"></div>
-            </div>
-            <div className="space-y-2">
-              <div className="h-4 bg-slate-800 rounded w-24"></div>
-              <div className="h-10 bg-slate-850 rounded w-full"></div>
-            </div>
-          </div>
-        </div>
+        <BentoTelemetrySkeleton />
+        <TableSkeleton />
+        <FormCardSkeleton />
       </div>
     );
   }
@@ -657,30 +599,44 @@ const SADashboard: React.FC = () => {
       ))}
 
       {/* WORKSPACE TAB SWITCHER */}
-      <div className="flex bg-slate-200/80 p-1 rounded-xl border border-slate-300 max-w-lg mx-auto shadow-sm select-none">
+      <div className="flex bg-slate-200/90 p-1.5 rounded-2xl border border-slate-300/80 max-w-lg mx-auto shadow-sm select-none relative">
         <button
           type="button"
           onClick={() => setActiveTab('MONITOR')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-5 text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+          className={`relative flex-1 flex items-center justify-center gap-2 py-2.5 px-5 text-xs font-black uppercase tracking-wider rounded-xl transition-colors cursor-pointer z-10 ${
             activeTab === 'MONITOR'
-              ? 'bg-[#0F2D59] text-white shadow-md scale-[1.02]'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-300/50'
+              ? 'text-white'
+              : 'text-slate-700 hover:text-slate-950'
           }`}
         >
-          <Clock className="w-3.5 h-3.5" />
-          Monitor Antrean ({workOrders.filter(w => w.status !== 'COMPLETED').length})
+          {activeTab === 'MONITOR' && (
+            <motion.div
+              layoutId="saActiveTabPill"
+              className="absolute inset-0 bg-[#0F2D59] rounded-xl shadow-md"
+              transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+            />
+          )}
+          <Clock className="w-3.5 h-3.5 relative z-10" />
+          <span className="relative z-10">Monitor Antrean ({workOrders.filter(w => w.status !== 'COMPLETED').length})</span>
         </button>
         <button
           type="button"
           onClick={() => setActiveTab('FORM')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-5 text-xs font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+          className={`relative flex-1 flex items-center justify-center gap-2 py-2.5 px-5 text-xs font-black uppercase tracking-wider rounded-xl transition-colors cursor-pointer z-10 ${
             activeTab === 'FORM'
-              ? 'bg-[#0F2D59] text-white shadow-md scale-[1.02]'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-300/50'
+              ? 'text-white'
+              : 'text-slate-700 hover:text-slate-950'
           }`}
         >
-          <ClipboardList className="w-3.5 h-3.5" />
-          Registrasi SPK Baru
+          {activeTab === 'FORM' && (
+            <motion.div
+              layoutId="saActiveTabPill"
+              className="absolute inset-0 bg-[#0F2D59] rounded-xl shadow-md"
+              transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+            />
+          )}
+          <ClipboardList className="w-3.5 h-3.5 relative z-10" />
+          <span className="relative z-10">Registrasi SPK Baru</span>
         </button>
       </div>
 
@@ -2322,7 +2278,7 @@ const SADashboard: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 p-3 bg-slate-50/50 rounded-xl border border-slate-100">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 p-3 bg-slate-50/70 rounded-xl border border-slate-100">
                   {(() => {
                     const filtered = inventory
                       .map((item, index) => ({ item, index }))
@@ -2337,17 +2293,25 @@ const SADashboard: React.FC = () => {
                     }
 
                     return filtered.map(({ item, index }) => (
-                      <label key={item.name} className="flex items-center gap-2.5 cursor-pointer bg-white p-2.5 rounded-lg border border-slate-150 hover:bg-blue-50/40 transition-colors shadow-xs">
-                        <input 
-                          type="checkbox" 
-                          className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500" 
-                          checked={item.checked} 
-                          onChange={() => toggleInventory(index)} 
+                      <div
+                        key={item.name}
+                        onClick={() => toggleInventory(index)}
+                        className={`flex items-center gap-2.5 p-2.5 rounded-lg border transition-all cursor-pointer select-none ${
+                          item.checked
+                            ? 'bg-blue-50/80 border-blue-300/80 shadow-xs'
+                            : 'bg-white border-slate-200/80 hover:bg-slate-50 hover:border-slate-300'
+                        }`}
+                      >
+                        <AnimatedCheckbox
+                          checked={item.checked}
+                          onChange={() => toggleInventory(index)}
+                          size="sm"
+                          variant="primary"
                         />
-                        <span className={`text-[10px] select-none ${item.checked ? 'text-blue-900 font-black' : 'text-slate-700 font-semibold'}`}>
+                        <span className={`text-[10px] leading-tight ${item.checked ? 'text-blue-950 font-black' : 'text-slate-700 font-semibold'}`}>
                           {item.name}
                         </span>
-                      </label>
+                      </div>
                     ));
                   })()}
                 </div>
@@ -2550,13 +2514,75 @@ const SADashboard: React.FC = () => {
                     <h4 className="text-[11px] font-black uppercase text-[#1e3a8a] tracking-wider">A. Pencatatan Nomor Seri Komponen (Component Serialization)</h4>
                     <p className="text-[9px] text-slate-500 italic">Masukkan nama komponen, Part Number (P/N), dan kondisi saat diserahkan.</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={addLoosePart}
-                    className="px-3 py-1.5 bg-blue-600 text-white text-[10px] font-black uppercase rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-xs"
-                  >
-                    <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Baris Komponen
-                  </button>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[9px] font-bold text-slate-500 uppercase mr-1">Preset Cepat:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLooseParts(Array.from({ length: 4 }, (_, i) => ({
+                          id: `p${i + 1}`,
+                          description: `Injector Nozzle ${i + 1}`,
+                          partNumber: '',
+                          physicalCondition: 'OK'
+                        })));
+                      }}
+                      className="px-2 py-1 bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-900 border border-slate-300 rounded text-[9.5px] font-bold transition-colors cursor-pointer"
+                    >
+                      4 Pcs Injector
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLooseParts(Array.from({ length: 6 }, (_, i) => ({
+                          id: `p${i + 1}`,
+                          description: `Injector Nozzle ${i + 1}`,
+                          partNumber: '',
+                          physicalCondition: 'OK'
+                        })));
+                      }}
+                      className="px-2 py-1 bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-900 border border-slate-300 rounded text-[9.5px] font-bold transition-colors cursor-pointer"
+                    >
+                      6 Pcs Injector
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLooseParts(Array.from({ length: 8 }, (_, i) => ({
+                          id: `p${i + 1}`,
+                          description: `Injector Nozzle ${i + 1}`,
+                          partNumber: '',
+                          physicalCondition: 'OK'
+                        })));
+                      }}
+                      className="px-2 py-1 bg-blue-50 hover:bg-blue-200 text-blue-800 border border-blue-300 rounded text-[9.5px] font-black transition-colors cursor-pointer shadow-xs"
+                    >
+                      ★ 8 Pcs Injector
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLooseParts([
+                          { id: 'p_pump', description: 'Supply Pump / Bosch Pump', partNumber: '', physicalCondition: 'OK' },
+                          ...Array.from({ length: 8 }, (_, i) => ({
+                            id: `p_inj_${i + 1}`,
+                            description: `Common Rail Injector ${i + 1}`,
+                            partNumber: '',
+                            physicalCondition: 'OK'
+                          }))
+                        ]);
+                      }}
+                      className="px-2 py-1 bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-900 border border-slate-300 rounded text-[9.5px] font-bold transition-colors cursor-pointer"
+                    >
+                      Pump + 8 Nozzle
+                    </button>
+                    <button
+                      type="button"
+                      onClick={addLoosePart}
+                      className="px-3 py-1 bg-blue-600 text-white text-[10px] font-black uppercase rounded hover:bg-blue-700 transition-colors flex items-center shadow-xs cursor-pointer ml-1"
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-1" /> + Baris
+                    </button>
+                  </div>
                 </div>
                 
                 {(() => {

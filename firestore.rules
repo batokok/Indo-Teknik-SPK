@@ -33,5 +33,17 @@ service cloud.firestore {
     match /internalMessages/{msgId} {
       allow read, write: if true;
     }
+
+    match /gateEntries/{entryId} {
+      allow read, write: if true;
+    }
+
+    match /gateExitDocuments/{docId} {
+      allow read, write: if true;
+    }
+
+    match /handoverDocuments/{docId} {
+      allow read, write: if true;
+    }
   }
 }

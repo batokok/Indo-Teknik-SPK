@@ -1126,6 +1126,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addHandoverDocument = async (docData: Omit<HandoverDocument, 'id' | 'createdAt' | 'status'>): Promise<HandoverDocument> => {
+    // Only Service Advisor, Admin, and Super Admin can create Handover Documents
+    if (currentUser && currentUser.role !== 'SA' && currentUser.role !== 'ADMIN') {
+      throw new Error('Akses ditolak: Hanya Service Advisor, Admin, dan Super Admin yang diizinkan menerbitkan Berita Acara Serah Terima.');
+    }
     const id = generateGateId('ST');
     const newDoc: HandoverDocument = {
       ...docData,
@@ -1139,6 +1143,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const cancelHandoverDocument = async (id: string, reason: string) => {
+    if (currentUser && currentUser.role !== 'SA' && currentUser.role !== 'ADMIN') {
+      throw new Error('Akses ditolak: Hanya Service Advisor, Admin, dan Super Admin yang diizinkan membatalkan dokumen Serah Terima.');
+    }
     const docRef = doc(db, 'handoverDocuments', id);
     await updateDoc(docRef, cleanFirestoreData({
       status: 'CANCELLED',

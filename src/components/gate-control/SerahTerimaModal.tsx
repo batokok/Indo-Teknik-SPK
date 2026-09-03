@@ -37,6 +37,9 @@ export const SerahTerimaModal: React.FC<SerahTerimaModalProps> = ({
 }) => {
   const { currentUser, customers, workOrders, addHandoverDocument, setPrintGateDoc } = useApp();
 
+  // Role permissions: Only Service Advisor, Admin, and Super Admin can create Handover / Serah Terima (BAST).
+  const canCreateHandover = currentUser?.role === 'SA' || currentUser?.role === 'ADMIN';
+
   const [selectedWOId, setSelectedWOId] = useState(initialWO?.id || '');
   const [selectedCustomerId, setSelectedCustomerId] = useState(initialWO?.customerId || '');
   const [customCustomerName, setCustomCustomerName] = useState(initialWO?.customerName || '');
@@ -193,6 +196,11 @@ export const SerahTerimaModal: React.FC<SerahTerimaModalProps> = ({
     e.preventDefault();
     setValidationError('');
 
+    if (!canCreateHandover) {
+      setValidationError('Akses Ditolak: Pembuatan Berita Acara Serah Terima hanya diizinkan untuk Service Advisor, Admin, dan Super Admin.');
+      return;
+    }
+
     if (!resolvedCustomerName.trim()) {
       setValidationError('Nama konsumen / pemilik wajib dipilih atau diisi.');
       return;
@@ -213,6 +221,11 @@ export const SerahTerimaModal: React.FC<SerahTerimaModalProps> = ({
   };
 
   const handleFinalSubmit = async () => {
+    if (!canCreateHandover) {
+      setValidationError('Akses Ditolak: Pembuatan Berita Acara Serah Terima hanya diizinkan untuk Service Advisor, Admin, dan Super Admin.');
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       const now = new Date();
@@ -256,6 +269,37 @@ export const SerahTerimaModal: React.FC<SerahTerimaModalProps> = ({
       setIsSubmitting(false);
     }
   };
+
+  if (!isOpen) return null;
+
+  if (!canCreateHandover) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-6 shadow-2xl text-center space-y-4"
+        >
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center mx-auto">
+            <ShieldCheck className="w-8 h-8" />
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-white uppercase tracking-wide">Akses Terbatas</h3>
+            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+              Formulir Berita Acara Serah Terima (BAST) hanya dapat diakses dan diterbitkan oleh <span className="text-white font-bold">Service Advisor</span>, <span className="text-white font-bold">Admin</span>, dan <span className="text-white font-bold">Super Admin</span>.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold uppercase rounded-xl transition-colors cursor-pointer"
+          >
+            Tutup
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs overflow-y-auto">

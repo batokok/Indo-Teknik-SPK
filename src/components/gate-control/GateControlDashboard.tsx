@@ -47,6 +47,10 @@ export const GateControlDashboard: React.FC = () => {
   const [dateFilter, setDateFilter] = useState<'TODAY' | 'WEEK' | 'MONTH' | 'ALL'>('TODAY');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'CANCELLED'>('ALL');
 
+  // Role permissions: Only Service Advisor, Admin, and Super Admin can create Handover / Serah Terima (BAST).
+  // Basic User, Foreman, and Mechanic are restricted to Barang Masuk & Surat Jalan only.
+  const canCreateSerahTerima = currentUser?.role === 'SA' || currentUser?.role === 'ADMIN';
+
   // Modals state
   const [isBarangMasukOpen, setIsBarangMasukOpen] = useState(false);
   const [isBarangKeluarOpen, setIsBarangKeluarOpen] = useState(false);
@@ -267,8 +271,8 @@ export const GateControlDashboard: React.FC = () => {
       </div>
 
       {/* Big Action Buttons (Elderly & Touch Friendly Launcher) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Button 1: Barang Masuk */}
+      <div className={`grid grid-cols-1 ${canCreateSerahTerima ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
+        {/* Button 1: Barang Masuk (Available for all roles: Basic User, Foreman, Mechanic, SA, Admin) */}
         <motion.button
           type="button"
           whileHover={{ scale: 1.01 }}
@@ -298,7 +302,7 @@ export const GateControlDashboard: React.FC = () => {
           </div>
         </motion.button>
 
-        {/* Button 2: Surat Jalan / Keluar */}
+        {/* Button 2: Surat Jalan / Keluar (Available for all roles: Basic User, Foreman, Mechanic, SA, Admin) */}
         <motion.button
           type="button"
           whileHover={{ scale: 1.01 }}
@@ -331,35 +335,37 @@ export const GateControlDashboard: React.FC = () => {
           </div>
         </motion.button>
 
-        {/* Button 3: Serah Terima (BAST) */}
-        <motion.button
-          type="button"
-          whileHover={{ scale: 1.01 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => setIsSerahTerimaOpen(true)}
-          className="p-5 rounded-2xl bg-gradient-to-br from-teal-950/80 via-slate-900 to-slate-900 border border-teal-700/50 hover:border-teal-500 text-left flex flex-col justify-between shadow-xl transition-all group cursor-pointer"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 rounded-xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-400 group-hover:scale-110 transition-transform">
-              <CheckCircle2 className="w-6 h-6" />
+        {/* Button 3: Serah Terima (BAST) - ONLY for Service Advisor, Admin, and Super Admin */}
+        {canCreateSerahTerima && (
+          <motion.button
+            type="button"
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setIsSerahTerimaOpen(true)}
+            className="p-5 rounded-2xl bg-gradient-to-br from-teal-950/80 via-slate-900 to-slate-900 border border-teal-700/50 hover:border-teal-500 text-left flex flex-col justify-between shadow-xl transition-all group cursor-pointer"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 rounded-xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-400 group-hover:scale-110 transition-transform">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <span className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                Berita Acara (BAST)
+              </span>
             </div>
-            <span className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-teal-500/20 text-teal-300 border border-teal-500/30">
-              Berita Acara (BAST)
-            </span>
-          </div>
-          <div>
-            <h3 className="text-lg font-black text-white uppercase tracking-wide flex items-center gap-2">
-              <span>+ Buat Serah Terima</span>
-            </h3>
-            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-              Terbitkan Berita Acara Serah Terima unit & kalibrasi lengkap dengan klausul garansi.
-            </p>
-          </div>
-          <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-teal-400 font-bold">
-            <span>Buka Formulir</span>
-            <Plus className="w-4 h-4" />
-          </div>
-        </motion.button>
+            <div>
+              <h3 className="text-lg font-black text-white uppercase tracking-wide flex items-center gap-2">
+                <span>+ Buat Serah Terima</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                Terbitkan Berita Acara Serah Terima unit & kalibrasi lengkap dengan klausul garansi.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-teal-400 font-bold">
+              <span>Buka Formulir</span>
+              <Plus className="w-4 h-4" />
+            </div>
+          </motion.button>
+        )}
       </div>
 
       {/* Summary Metrics Cards */}
@@ -619,8 +625,8 @@ export const GateControlDashboard: React.FC = () => {
                             </button>
                           )}
 
-                          {/* Cancel Button */}
-                          {!isCancelled && (
+                          {/* Cancel Button - ST cancellation is restricted to SA and Admin/SuperAdmin */}
+                          {!isCancelled && (item.type !== 'ST' || canCreateSerahTerima) && (
                             <button
                               type="button"
                               onClick={() => setCancelTarget({
@@ -660,11 +666,14 @@ export const GateControlDashboard: React.FC = () => {
         initialValues={suratJalanInitialValues}
       />
 
-      <SerahTerimaModal
-        isOpen={isSerahTerimaOpen}
-        onClose={() => setIsSerahTerimaOpen(false)}
-        onForwardToSuratJalan={handleOpenForwardSuratJalan}
-      />
+      {/* Serah Terima Modal - Exclusively mounted for Service Advisor, Admin, and Super Admin */}
+      {canCreateSerahTerima && (
+        <SerahTerimaModal
+          isOpen={isSerahTerimaOpen}
+          onClose={() => setIsSerahTerimaOpen(false)}
+          onForwardToSuratJalan={handleOpenForwardSuratJalan}
+        />
+      )}
 
       {/* Cancel Confirmation Modal */}
       <AnimatePresence>

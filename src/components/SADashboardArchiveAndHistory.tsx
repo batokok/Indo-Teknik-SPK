@@ -498,11 +498,19 @@ export const SADashboardArchiveAndHistory: React.FC<SADashboardArchiveAndHistory
                         </thead>
                         <tbody className="divide-y divide-slate-800">
                           {adminFilteredWOs.map(wo => {
-                           const estTotal = wo.todoActions?.reduce((sum, act) => {
+                           const estTotalMin = wo.todoActions?.reduce((sum, act) => {
                              const numStr = String(act.estimasiHargaMin || act.estimasiHarga || '').replace(/\D/g, '');
                              const numVal = parseInt(numStr, 10);
                              return sum + (isNaN(numVal) ? 0 : numVal);
                            }, 0) || 0;
+                           const estTotalMax = wo.todoActions?.reduce((sum, act) => {
+                             const minVal = parseInt(String(act.estimasiHargaMin || act.estimasiHarga || '').replace(/\D/g, ''), 10) || 0;
+                             const maxVal = parseInt(String(act.estimasiHargaMax || '').replace(/\D/g, ''), 10) || 0;
+                             return sum + (maxVal > 0 ? maxVal : minVal);
+                           }, 0) || 0;
+                           const estTotalFormatted = (estTotalMax > estTotalMin && estTotalMin > 0)
+                             ? `${formatRupiah(estTotalMin)} s/d ${formatRupiah(estTotalMax)}`
+                             : formatRupiah(estTotalMin || estTotalMax);
 
                             const isSelected = selectedAdminWO === wo.id;
 
@@ -544,7 +552,7 @@ export const SADashboardArchiveAndHistory: React.FC<SADashboardArchiveAndHistory
                                     </div>
                                   </td>
                                   <td className="p-2 font-mono font-black text-slate-200 uppercase">{wo.plateNumber}</td>
-                                  <td className="p-2 font-mono text-amber-400 font-bold">{formatRupiah(estTotal)}</td>
+                                  <td className="p-2 font-mono text-amber-400 font-bold whitespace-nowrap">{estTotalFormatted}</td>
                                   <td className="p-2 text-center">
                                     <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-black ${
                                       wo.status === 'COMPLETED' ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800' :
@@ -704,11 +712,19 @@ export const SADashboardArchiveAndHistory: React.FC<SADashboardArchiveAndHistory
                     {/* Mobile Card View */}
                     <div className="block md:hidden space-y-3">
                       {adminFilteredWOs.map(wo => {
-                        const estTotal = wo.todoActions?.reduce((sum, act) => {
+                        const estTotalMin = wo.todoActions?.reduce((sum, act) => {
                           const numStr = String(act.estimasiHargaMin || act.estimasiHarga || '').replace(/\D/g, '');
                           const numVal = parseInt(numStr, 10);
                           return sum + (isNaN(numVal) ? 0 : numVal);
                         }, 0) || 0;
+                        const estTotalMax = wo.todoActions?.reduce((sum, act) => {
+                          const minVal = parseInt(String(act.estimasiHargaMin || act.estimasiHarga || '').replace(/\D/g, ''), 10) || 0;
+                          const maxVal = parseInt(String(act.estimasiHargaMax || '').replace(/\D/g, ''), 10) || 0;
+                          return sum + (maxVal > 0 ? maxVal : minVal);
+                        }, 0) || 0;
+                        const estTotalFormatted = (estTotalMax > estTotalMin && estTotalMin > 0)
+                          ? `${formatRupiah(estTotalMin)} s/d ${formatRupiah(estTotalMax)}`
+                          : formatRupiah(estTotalMin || estTotalMax);
 
                         const isSelected = selectedAdminWO === wo.id;
 
@@ -758,7 +774,7 @@ export const SADashboardArchiveAndHistory: React.FC<SADashboardArchiveAndHistory
                               <div>
                                 <span className="text-[9px] text-slate-500 uppercase font-bold block">Plat & Nilai</span>
                                 <span className="font-bold text-slate-200 block truncate uppercase">{wo.plateNumber}</span>
-                                <span className="text-[10px] text-amber-400 font-mono font-bold block">{formatRupiah(estTotal)}</span>
+                                <span className="text-[10px] text-amber-400 font-mono font-bold block">{estTotalFormatted}</span>
                               </div>
                             </div>
 
@@ -1078,7 +1094,7 @@ export const SADashboardArchiveAndHistory: React.FC<SADashboardArchiveAndHistory
                                             <ul className="list-disc pl-4 space-y-0.5 text-slate-300">
                                               {visit.todoActions.map((act) => (
                                                 <li key={act.id}>
-                                                  {act.jenisPengerjaan} (Qty: {act.qty}) - <span className="font-mono text-amber-500">{formatRupiah(act.estimasiHarga)}</span>
+                                                  {act.jenisPengerjaan} (Qty: {act.qty}) - <span className="font-mono text-amber-500">{act.estimasiHargaMax && act.estimasiHargaMax !== act.estimasiHargaMin && act.estimasiHargaMin ? `${formatRupiah(act.estimasiHargaMin)} s/d ${formatRupiah(act.estimasiHargaMax)}` : formatRupiah(act.estimasiHargaMin || act.estimasiHarga)}</span>
                                                 </li>
                                               ))}
                                             </ul>

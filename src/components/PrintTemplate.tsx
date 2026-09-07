@@ -8,6 +8,7 @@ import { SmartLogo } from './SmartLogo';
 import { FuelGauge } from './FuelGauge';
 import { CarInspectionMap } from './CarInspectionMap';
 import { DocumentWatermark, WatermarkControl, WatermarkConfig, DEFAULT_WATERMARK_CONFIG } from './DocumentWatermark';
+import { QRCodeSVG } from 'qrcode.react';
 
 const formatRupiah = (value: string | number | undefined | null): string => {
   if (value === undefined || value === null) return '';
@@ -321,14 +322,51 @@ export const PrintTemplate: React.FC = () => {
     return Boolean(found?.checked);
   };
 
-  const totalEstimation = todoList.reduce((sum, item) => {
-    const minVal = parseInt(String(item.estimasiHargaMin || item.estimasiHarga || '0').replace(/\D/g, ''), 10) || 0;
-    return sum + minVal;
+  // Helper to parse min and max estimation values for an item
+  const parseItemEstimation = (item: {
+    estimasiHarga?: string;
+    estimasiHargaMin?: string;
+    estimasiHargaMax?: string;
+  }) => {
+    const rawMin = String(item.estimasiHargaMin || item.estimasiHarga || '').replace(/\D/g, '');
+    const rawMax = String(item.estimasiHargaMax || '').replace(/\D/g, '');
+    let min = rawMin ? parseInt(rawMin, 10) : 0;
+    let max = rawMax ? parseInt(rawMax, 10) : 0;
+
+    // Handle case where user entered reversed min and max
+    if (min > 0 && max > 0 && min > max) {
+      const temp = min;
+      min = max;
+      max = temp;
+    }
+
+    const hasRange = (min > 0 && max > 0 && max > min) || (min === 0 && max > 0);
+    // Effective max for computing total max (if no upper bound specified, upper equals lower)
+    const effectiveMax = max > 0 ? max : min;
+
+    return { min, max, effectiveMax, hasRange };
+  };
+
+  const totalEstimationMin = todoList.reduce((sum, item) => {
+    const { min } = parseItemEstimation(item);
+    return sum + min;
   }, 0);
+
+  const totalEstimationMax = todoList.reduce((sum, item) => {
+    const { effectiveMax } = parseItemEstimation(item);
+    return sum + effectiveMax;
+  }, 0);
+
+  const hasTotalRange = totalEstimationMax > totalEstimationMin && totalEstimationMax > 0;
+  const hasAnyEstimation = totalEstimationMin > 0 || totalEstimationMax > 0;
 
   // =========================================================================
   // PAGE 1: SURAT PERINTAH KERJA (SPK DOKUMEN BENGKEL)
   // =========================================================================
+  const trackingUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/?tracking=${printWO.id}`
+    : `https://it-erp-app.web.app/?tracking=${printWO.id}`;
+
   const renderSPKPage1 = () => (
     <div className="relative print-page print-page-1 space-y-2.5 box-border">
       {/* Watermark */}
@@ -373,24 +411,33 @@ export const PrintTemplate: React.FC = () => {
               </div>
             </div>
             
-            {/* Header Right / WO Number */}
-            <div className="text-right flex flex-col items-end shrink-0 max-w-[48%]">
-              <div className="flex items-center justify-end gap-2 flex-wrap">
-                <h2 className="text-xs font-black bg-[#0F2D59] text-white px-3 py-1 rounded tracking-wider uppercase shadow-xs">
-                  SURAT PERINTAH KERJA (SPK)
-                </h2>
-                <span className="text-[9px] font-black bg-blue-100 text-blue-950 border border-blue-300 px-2 py-0.5 rounded uppercase shrink-0">
-                  HALAMAN 1 • SPK
-                </span>
+            {/* Header Right / WO Number & Digital Verification QR */}
+            <div className="flex items-center gap-2.5 shrink-0 max-w-[50%]">
+              <div className="bg-white border border-slate-300 rounded-lg p-1 shadow-xs flex flex-col items-center justify-center shrink-0">
+                <QRCodeSVG value={trackingUrl} size={46} level="M" />
+                <span className="text-[7px] font-mono font-black text-slate-500 uppercase mt-0.5 tracking-tight">Scan Tracking</span>
               </div>
 
-              <div className="mt-1 flex items-center gap-2 bg-slate-50 border-2 border-slate-400 rounded-lg px-3 py-1 shadow-xs">
-                <span className="text-[9.5px] font-black text-slate-600 uppercase">NO. WO:</span>
-                <span className="text-base sm:text-lg font-mono font-black text-[#0F2D59] tracking-tight">{printWO.id}</span>
-              </div>
+              <div className="text-right flex flex-col items-end">
+                <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                  <h2 className="text-xs font-black bg-[#0F2D59] text-white px-3 py-1 rounded tracking-wider uppercase shadow-xs">
+                    SURAT PERINTAH KERJA (SPK)
+                  </h2>
+                  <span className="text-[8.5px] font-black bg-blue-100 text-blue-950 border border-blue-300 px-2 py-0.5 rounded uppercase shrink-0">
+                    HALAMAN 1 • SPK
+                  </span>
+                </div>
 
-              <div className="text-[9px] text-slate-600 font-bold mt-0.5 font-mono">
-                Tanggal: {new Date(printWO.createdAt || Date.now()).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                <div className="mt-1 flex items-center gap-2 bg-slate-50 border-2 border-slate-400 rounded-lg px-3 py-1 shadow-xs">
+                  <span className="text-[9.5px] font-black text-slate-600 uppercase">NO. WO:</span>
+                  <span className="text-base sm:text-lg font-mono font-black text-[#0F2D59] tracking-tight">{printWO.id}</span>
+                </div>
+
+                <div className="text-[9px] text-slate-600 font-bold mt-0.5 font-mono flex items-center gap-1.5">
+                  <span>Tgl: {new Date(printWO.createdAt || Date.now()).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                  <span>•</span>
+                  <span>SA: {printWO.createdBy || 'Front Office'}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -399,75 +446,79 @@ export const PrintTemplate: React.FC = () => {
         {/* SECTION 1: CUSTOMER & VEHICLE PROFILE GRID */}
         <div className="grid grid-cols-12 gap-2 text-xs">
           {/* Customer Box (6 Cols) */}
-          <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2 shadow-xs">
-            <h3 className="font-black border-b border-slate-300 pb-0.5 mb-1 text-[#0F2D59] text-[10px] uppercase tracking-wider flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-blue-600"></span> DATA PELANGGAN & PEMBAWA
-            </h3>
-            <div className="space-y-0.5 text-xs">
-              <div className="flex justify-between items-baseline gap-2">
-                <span className="text-slate-500 font-semibold shrink-0 text-[10px]">Pelanggan:</span>
-                <span className="font-black text-slate-950 text-right truncate text-xs">{printWO.customerName}</span>
-              </div>
-              <div className="flex justify-between items-baseline gap-2">
-                <span className="text-slate-500 font-semibold shrink-0 text-[10px]">Telepon:</span>
-                <span className="font-bold text-slate-800 text-right font-mono text-[11px]">{printWO.customerPhone || '-'}</span>
-              </div>
-              <div className="flex justify-between items-baseline gap-2">
-                <span className="text-slate-500 font-semibold shrink-0 text-[10px]">Alamat:</span>
-                <span className="text-slate-700 text-right truncate text-[10.5px] max-w-[210px]">{printWO.customerAddress || '-'}</span>
-              </div>
-              {printWO.bringerName && (
-                <div className="flex justify-between items-baseline gap-2 pt-0.5 border-t border-slate-200">
-                  <span className="text-blue-800 font-bold shrink-0 text-[10px]">Pembawa:</span>
-                  <span className="font-bold text-slate-900 text-right truncate text-[10.5px]">
-                    {printWO.bringerName} {printWO.bringerPhone ? `(${printWO.bringerPhone})` : ''}
-                  </span>
+          <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2.5 shadow-xs flex flex-col justify-between">
+            <div>
+              <h3 className="font-black border-b border-slate-300 pb-1 mb-1.5 text-[#0F2D59] text-[10px] uppercase tracking-wider flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-blue-600"></span> DATA PELANGGAN & PEMBAWA
+              </h3>
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between items-baseline gap-2">
+                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Pelanggan:</span>
+                  <span className="font-black text-slate-950 text-right truncate text-xs">{printWO.customerName}</span>
                 </div>
-              )}
+                <div className="flex justify-between items-baseline gap-2">
+                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">No. Telepon:</span>
+                  <span className="font-bold text-slate-900 text-right font-mono text-[11px] bg-white px-1.5 py-0.2 rounded border border-slate-200">{printWO.customerPhone || '-'}</span>
+                </div>
+                <div className="flex justify-between items-baseline gap-2">
+                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Alamat:</span>
+                  <span className="text-slate-700 text-right truncate text-[10.5px] max-w-[210px]">{printWO.customerAddress || '-'}</span>
+                </div>
+              </div>
             </div>
+            {printWO.bringerName && (
+              <div className="flex justify-between items-baseline gap-2 pt-1 mt-1 border-t border-slate-200">
+                <span className="text-blue-900 font-black shrink-0 text-[10px] uppercase">Pembawa Unit:</span>
+                <span className="font-bold text-slate-900 text-right truncate text-[10.5px]">
+                  {printWO.bringerName} {printWO.bringerPhone ? `(${printWO.bringerPhone})` : ''}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Vehicle Box (6 Cols) */}
-          <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2 shadow-xs">
-            <h3 className="font-black border-b border-slate-300 pb-0.5 mb-1 text-[#0F2D59] text-[10px] uppercase tracking-wider flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-red-600"></span> IDENTITAS KENDARAAN / UNIT
-            </h3>
-            <div className="space-y-0.5 text-xs">
-              <div className="flex justify-between items-baseline gap-2">
-                <span className="text-slate-500 font-semibold shrink-0 text-[10px]">No. Polisi:</span>
-                <span className="font-black text-blue-950 text-right font-mono text-sm tracking-wide bg-blue-50 px-1.5 rounded border border-blue-200">
-                  {printWO.plateNumber || '-'}
-                </span>
+          <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2.5 shadow-xs flex flex-col justify-between">
+            <div>
+              <h3 className="font-black border-b border-slate-300 pb-1 mb-1.5 text-[#0F2D59] text-[10px] uppercase tracking-wider flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-red-600"></span> IDENTITAS KENDARAAN / UNIT
+              </h3>
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between items-center gap-2">
+                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">No. Polisi:</span>
+                  <span className="font-mono font-black text-white text-xs bg-slate-950 px-2 py-0.5 rounded border border-slate-700 tracking-wider shadow-xs">
+                    {printWO.plateNumber || '-'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-baseline gap-2">
+                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Merek / Tipe:</span>
+                  <span className="font-black text-slate-900 text-right truncate text-xs">{printWO.vehicleBrand || '-'}</span>
+                </div>
+                <div className="flex justify-between items-baseline gap-2">
+                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">No. Rangka:</span>
+                  <span className="font-mono text-slate-800 text-right truncate text-[10.5px] font-semibold">{printWO.vin || '-'}</span>
+                </div>
               </div>
-              <div className="flex justify-between items-baseline gap-2">
-                <span className="text-slate-500 font-semibold shrink-0 text-[10px]">Merek / Tipe:</span>
-                <span className="font-bold text-slate-900 text-right truncate text-xs">{printWO.vehicleBrand || '-'}</span>
-              </div>
-              <div className="flex justify-between items-baseline gap-2">
-                <span className="text-slate-500 font-semibold shrink-0 text-[10px]">No. Rangka (VIN):</span>
-                <span className="font-mono text-slate-800 text-right truncate text-[10.5px]">{printWO.vin || '-'}</span>
-              </div>
-              <div className="flex justify-between items-baseline gap-2">
-                <span className="text-slate-500 font-semibold shrink-0 text-[10px]">Odometer:</span>
-                <span className="font-bold text-slate-800 text-right text-[10.5px]">
-                  {printWO.odometer ? `${Number(printWO.odometer).toLocaleString('id-ID')} km` : '-'}
-                </span>
-              </div>
+            </div>
+            <div className="flex justify-between items-baseline gap-2 pt-1 mt-1 border-t border-slate-200">
+              <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Odometer / Waktu:</span>
+              <span className="font-bold text-slate-800 text-right text-[10.5px] font-mono">
+                {printWO.odometer ? `${Number(printWO.odometer).toLocaleString('id-ID')} km` : '-'}
+              </span>
             </div>
           </div>
         </div>
 
         {/* SECTION 2: KELUHAN AWAL */}
-        <div className="border border-slate-300 bg-white rounded-lg p-2 shadow-xs">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-0.5 mb-1">
+        <div className="border border-slate-300 bg-white rounded-lg p-2.5 shadow-xs">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-1 mb-1.5">
             <h3 className="text-[10px] font-black text-[#0F2D59] uppercase tracking-wider flex items-center gap-1.5">
               <Wrench className="w-3.5 h-3.5 text-amber-600" /> KELUHAN / GEJALA KERUSAKAN AWAL (CUSTOMER VOICE)
             </h3>
-            <span className="text-[9px] font-bold text-slate-500 uppercase">
+            <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase font-mono tracking-tight bg-slate-100 text-slate-700 border border-slate-200">
               Metode: {printWO.dropMethod === 'PARTS' ? 'KOMPONEN COPOTAN' : 'MOBIL UTUH'}
             </span>
           </div>
-          <div className="bg-slate-50 border border-slate-200 rounded p-1.5 text-[11px] font-bold text-slate-900 leading-relaxed whitespace-pre-line">
+          <div className="bg-slate-50 border border-slate-200 rounded p-2 text-[11px] font-bold text-slate-900 leading-relaxed whitespace-pre-line">
             {printWO.customerVoice || 'Tidak ada catatan keluhan spesifik yang didaftarkan.'}
           </div>
         </div>
@@ -536,22 +587,42 @@ export const PrintTemplate: React.FC = () => {
                   <th className="py-0.5 px-2">Jenis Pengerjaan / Tindakan</th>
                   <th className="py-0.5 px-2 text-center w-12">Qty</th>
                   <th className="py-0.5 px-2">Catatan Mekanik / Spesifikasi</th>
-                  <th className="py-0.5 px-2 text-right w-28">Estimasi Biaya</th>
+                  <th className="py-0.5 px-2 text-right w-36 sm:w-44 whitespace-nowrap">Estimasi Biaya</th>
                 </tr>
               </thead>
               <tbody className={`divide-y divide-slate-200 ${todoList.length > 6 ? 'text-[9.5px]' : 'text-[10.5px]'}`}>
                 {todoList.length > 0 ? (
-                  todoList.map((act, idx) => (
-                    <tr key={act.id || idx} className="hover:bg-slate-50">
-                      <td className="py-0.5 px-2 text-slate-500 font-bold text-center font-mono">{idx + 1}</td>
-                      <td className="py-0.5 px-2 font-black text-slate-900">{act.jenisPengerjaan || 'Pemeriksaan & Servis'}</td>
-                      <td className="py-0.5 px-2 text-center font-bold text-slate-800">{act.qty || 1}</td>
-                      <td className="py-0.5 px-2 text-slate-600 text-[9.5px]">{act.catatanMekanik || '-'}</td>
-                      <td className="py-0.5 px-2 text-right font-mono font-bold text-slate-900">
-                        {formatRupiah(act.estimasiHargaMin || act.estimasiHarga) || '-'}
-                      </td>
-                    </tr>
-                  ))
+                  todoList.map((act, idx) => {
+                    const { min, max, hasRange } = parseItemEstimation(act);
+                    return (
+                      <tr key={act.id || idx} className="hover:bg-slate-50">
+                        <td className="py-0.5 px-2 text-slate-500 font-bold text-center font-mono">{idx + 1}</td>
+                        <td className="py-0.5 px-2 font-black text-slate-900">{act.jenisPengerjaan || 'Pemeriksaan & Servis'}</td>
+                        <td className="py-0.5 px-2 text-center font-bold text-slate-800">{act.qty || 1}</td>
+                        <td className="py-0.5 px-2 text-slate-600 text-[9.5px]">{act.catatanMekanik || '-'}</td>
+                        <td className="py-0.5 px-2 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
+                          {hasRange ? (
+                            min > 0 ? (
+                              <span>
+                                {formatRupiah(min)}{' '}
+                                <span className="text-slate-500 font-sans text-[9px] font-semibold">s/d</span>{' '}
+                                {formatRupiah(max)}
+                              </span>
+                            ) : (
+                              <span>
+                                <span className="text-slate-500 font-sans text-[9px] font-semibold mr-0.5">s/d</span>{' '}
+                                {formatRupiah(max)}
+                              </span>
+                            )
+                          ) : min > 0 ? (
+                            formatRupiah(min)
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td colSpan={5} className="py-2 px-2 text-center text-slate-500 italic text-[10px]">
@@ -560,14 +631,29 @@ export const PrintTemplate: React.FC = () => {
                   </tr>
                 )}
               </tbody>
-              {totalEstimation > 0 && (
+              {hasAnyEstimation && (
                 <tfoot className="bg-slate-100 border-t-2 border-slate-300 text-xs font-black">
                   <tr>
                     <td colSpan={4} className="py-0.5 px-2 text-right uppercase text-slate-800 text-[9.5px]">
                       Total Estimasi Biaya Sementara:
                     </td>
-                    <td className="py-0.5 px-2 text-right font-mono text-[#0F2D59] text-xs">
-                      {formatRupiah(totalEstimation)}
+                    <td className="py-0.5 px-2 text-right font-mono text-[#0F2D59] text-xs whitespace-nowrap font-black">
+                      {hasTotalRange ? (
+                        totalEstimationMin > 0 ? (
+                          <span>
+                            {formatRupiah(totalEstimationMin)}{' '}
+                            <span className="text-slate-600 font-sans font-black text-[10px] mx-0.5">s/d</span>{' '}
+                            {formatRupiah(totalEstimationMax)}
+                          </span>
+                        ) : (
+                          <span>
+                            <span className="text-slate-600 font-sans font-black text-[10px] mr-1">s/d</span>
+                            {formatRupiah(totalEstimationMax)}
+                          </span>
+                        )
+                      ) : (
+                        formatRupiah(totalEstimationMin || totalEstimationMax)
+                      )}
                     </td>
                   </tr>
                 </tfoot>
@@ -659,20 +745,46 @@ export const PrintTemplate: React.FC = () => {
                   </p>
                 </div>
               </div>
+              <div className="flex items-center gap-2 mt-1 pl-0.5">
+                <SmartLogo 
+                  baseName="logo-itech" 
+                  alt="ITech" 
+                  className="h-7 w-auto object-contain flex-shrink-0 bg-white px-2 py-0.5 rounded border border-slate-200" 
+                  style={{ height: '24px', maxWidth: '90px' }}
+                />
+                <p className="text-[9.5px] font-black tracking-wider text-[#0F2D59] whitespace-nowrap bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                  ITECH AUTHORIZED DEALER & WORKSHOP
+                </p>
+              </div>
             </div>
             
-            <div className="text-right flex flex-col items-end shrink-0 max-w-[48%]">
-              <div className="flex items-center justify-end gap-2 flex-wrap">
-                <h2 className="text-xs font-black bg-[#0F2D59] text-white px-3 py-1 rounded tracking-wider uppercase shadow-xs">
-                  LEMBAR PEMERIKSAAN KENDARAAN
-                </h2>
-                <span className="text-[9px] font-black bg-blue-100 text-blue-950 border border-blue-300 px-2 py-0.5 rounded uppercase shrink-0">
-                  HALAMAN 2 • INSPEKSI
-                </span>
+            {/* Header Right / WO Number & Digital Verification QR */}
+            <div className="flex items-center gap-2.5 shrink-0 max-w-[50%]">
+              <div className="bg-white border border-slate-300 rounded-lg p-1 shadow-xs flex flex-col items-center justify-center shrink-0">
+                <QRCodeSVG value={trackingUrl} size={46} level="M" />
+                <span className="text-[7px] font-mono font-black text-slate-500 uppercase mt-0.5 tracking-tight">Scan Tracking</span>
               </div>
-              <div className="mt-1 flex items-center gap-2 bg-slate-50 border-2 border-slate-400 rounded-lg px-3 py-1">
-                <span className="text-[9.5px] font-black text-slate-600 uppercase">NO. WO:</span>
-                <span className="text-base font-mono font-black text-[#0F2D59]">{printWO.id}</span>
+
+              <div className="text-right flex flex-col items-end">
+                <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                  <h2 className="text-xs font-black bg-[#0F2D59] text-white px-2.5 py-0.5 rounded tracking-wider uppercase shadow-xs">
+                    LEMBAR PEMERIKSAAN KENDARAAN
+                  </h2>
+                  <span className="text-[8.5px] font-black bg-blue-100 text-blue-950 border border-blue-300 px-1.5 py-0.5 rounded uppercase shrink-0">
+                    HALAMAN 2 • INSPEKSI
+                  </span>
+                </div>
+
+                <div className="mt-1 flex items-center gap-2 bg-slate-50 border-2 border-slate-400 rounded-lg px-2.5 py-0.5 shadow-xs">
+                  <span className="text-[9px] font-black text-slate-600 uppercase">NO. WO:</span>
+                  <span className="text-base sm:text-lg font-mono font-black text-[#0F2D59] tracking-tight">{printWO.id}</span>
+                </div>
+
+                <div className="text-[9px] text-slate-600 font-bold mt-0.5 font-mono flex items-center gap-1.5">
+                  <span>Tgl: {new Date(printWO.createdAt || Date.now()).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                  <span>•</span>
+                  <span>SA: {printWO.createdBy || 'Front Office'}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -680,26 +792,64 @@ export const PrintTemplate: React.FC = () => {
 
         {/* Profile Grid Compact */}
         <div className="grid grid-cols-12 gap-2 text-xs">
-          <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2">
-            <TableInfo label="Pelanggan" value={printWO.customerName} highlight />
-            <TableInfo label="Telepon" value={printWO.customerPhone || '-'} />
-            <TableInfo label="Alamat" value={printWO.customerAddress || '-'} />
+          <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2.5 shadow-xs flex flex-col justify-between">
+            <div className="space-y-1">
+              <h3 className="font-black border-b border-slate-300 pb-1 mb-1 text-[#0F2D59] text-[10px] uppercase tracking-wider flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-blue-600"></span> DATA PELANGGAN
+              </h3>
+              <div className="flex justify-between items-baseline gap-2">
+                <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Pelanggan:</span>
+                <span className="font-black text-slate-950 text-right truncate text-xs">{printWO.customerName}</span>
+              </div>
+              <div className="flex justify-between items-baseline gap-2">
+                <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">No. Telepon:</span>
+                <span className="font-bold text-slate-900 text-right font-mono text-[11px] bg-white px-1.5 py-0.2 rounded border border-slate-200">{printWO.customerPhone || '-'}</span>
+              </div>
+              <div className="flex justify-between items-baseline gap-2">
+                <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Alamat:</span>
+                <span className="text-slate-700 text-right truncate text-[10.5px] max-w-[210px]">{printWO.customerAddress || '-'}</span>
+              </div>
+            </div>
           </div>
-          <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2">
-            <TableInfo label="No. Polisi" value={printWO.plateNumber || '-'} highlight />
-            <TableInfo label="Merek / Tipe" value={printWO.vehicleBrand || '-'} />
-            <TableInfo label="Odometer" value={printWO.odometer ? `${Number(printWO.odometer).toLocaleString('id-ID')} km` : '-'} />
+          <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2.5 shadow-xs flex flex-col justify-between">
+            <div className="space-y-1">
+              <h3 className="font-black border-b border-slate-300 pb-1 mb-1 text-[#0F2D59] text-[10px] uppercase tracking-wider flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-red-600"></span> IDENTITAS UNIT
+              </h3>
+              <div className="flex justify-between items-center gap-2">
+                <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">No. Polisi:</span>
+                <span className="font-mono font-black text-white text-xs bg-slate-950 px-2 py-0.5 rounded border border-slate-700 tracking-wider shadow-xs">
+                  {printWO.plateNumber || '-'}
+                </span>
+              </div>
+              <div className="flex justify-between items-baseline gap-2">
+                <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Merek / Tipe:</span>
+                <span className="font-black text-slate-900 text-right truncate text-xs">{printWO.vehicleBrand || '-'}</span>
+              </div>
+              <div className="flex justify-between items-baseline gap-2">
+                <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Odometer:</span>
+                <span className="font-bold text-slate-800 text-right text-[10.5px] font-mono">
+                  {printWO.odometer ? `${Number(printWO.odometer).toLocaleString('id-ID')} km` : '-'}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Car Inspection Visual Map & Fuel Grid */}
         <div className="grid grid-cols-12 gap-2.5">
           {/* Visual Body Diagram (7 Cols) */}
-          <div className="col-span-7 border border-slate-300 rounded-lg p-2 bg-white shadow-xs">
-            <h3 className="text-[10px] font-black text-[#0F2D59] uppercase tracking-wider mb-1 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-blue-600"></span> DENAH PEMERIKSAAN KONDISI FISIK BODI KENDARAAN
-            </h3>
-            <div className="flex items-center justify-center p-1.5 bg-slate-50 rounded border border-slate-200">
+          <div className="col-span-7 border border-slate-300 rounded-lg p-2.5 bg-white shadow-xs">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-1 mb-1.5">
+              <h3 className="text-[10px] font-black text-[#0F2D59] uppercase tracking-wider flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-blue-600"></span> DENAH PEMERIKSAAN KONDISI FISIK BODI KENDARAAN
+              </h3>
+              <div className="flex items-center gap-2 text-[8px] font-bold text-slate-500 font-mono">
+                <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded-full bg-red-600 inline-block"></span> Dent/Penyok</span>
+                <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded-full bg-amber-500 inline-block"></span> Scratch/Baret</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-center p-1.5 bg-slate-50 rounded-lg border border-slate-200">
               <CarInspectionMap
                 damages={printWO.damages || []}
                 onAddDamage={() => {}}
@@ -712,52 +862,53 @@ export const PrintTemplate: React.FC = () => {
           {/* Fuel & Physical Damage Notes (5 Cols) */}
           <div className="col-span-5 flex flex-col justify-between gap-2">
             {/* Fuel Box */}
-            <div className="border border-slate-300 rounded-lg p-2 bg-white shadow-xs">
-              <div className="flex justify-between items-center mb-1">
+            <div className="border border-slate-300 rounded-lg p-2.5 bg-white shadow-xs">
+              <div className="flex justify-between items-center mb-1.5">
                 <h3 className="text-[9.5px] font-black text-[#0F2D59] uppercase tracking-wider">
                   KONDISI BAHAN BAKAR (BBM)
                 </h3>
-                <span className="text-[9px] font-bold text-slate-700 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-300">
+                <span className="text-[9px] font-black font-mono text-cyan-900 bg-cyan-50 px-2 py-0.5 rounded border border-cyan-200">
                   Level: {printWO.fuelLevel || '1/2'}
                 </span>
               </div>
-              <div className="bg-slate-50 p-1 rounded border border-slate-200">
+              <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
                 <FuelGauge level={printWO.fuelLevel || '1/2'} onChange={() => {}} readonly={true} />
               </div>
             </div>
 
             {/* Physical damages notes */}
-            <div className="border border-slate-300 rounded-lg p-2 bg-slate-50 flex-1 shadow-xs">
-              <h3 className="text-[9.5px] font-black text-[#0F2D59] uppercase tracking-wider mb-1">
-                CATATAN KERUSAKAN / GORESAN BODI
+            <div className="border border-slate-300 rounded-lg p-2.5 bg-slate-50 flex-1 shadow-xs">
+              <h3 className="text-[9.5px] font-black text-[#0F2D59] uppercase tracking-wider mb-1.5 flex items-center justify-between border-b border-slate-200 pb-1">
+                <span>CATATAN KERUSAKAN / GORESAN BODI</span>
+                <span className="text-[8.5px] font-mono text-slate-500">{damagesList.length} Titik</span>
               </h3>
               {damagesList.length > 0 ? (
-                <ul className="text-[9px] text-slate-800 space-y-0.5 max-h-24 overflow-y-auto">
+                <ul className="text-[9px] text-slate-800 space-y-1 max-h-24 overflow-y-auto">
                   {damagesList.map((dmg, i) => (
-                    <li key={i} className="flex items-start gap-1">
-                      <span className="text-red-600 font-bold">•</span>
-                      <span><strong>{dmg.partId}:</strong> {dmg.description}</span>
+                    <li key={i} className="flex items-start gap-1.5 bg-white p-1 rounded border border-slate-200">
+                      <span className="text-red-600 font-bold shrink-0">•</span>
+                      <span><strong className="text-slate-950 uppercase">{dmg.partId}:</strong> {dmg.description}</span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-[9px] text-slate-500 italic">Tidak ada catatan kerusakan fisik bodi teridentifikasi saat serah terima awal.</p>
+                <p className="text-[9px] text-slate-500 italic p-1">Tidak ada catatan kerusakan fisik bodi teridentifikasi saat serah terima awal.</p>
               )}
             </div>
           </div>
         </div>
 
         {/* Full Inventory Items */}
-        <div className="border border-slate-300 rounded-lg p-2 bg-white shadow-xs">
-          <h3 className="text-[9.5px] font-black text-[#0F2D59] uppercase tracking-wider mb-1 flex items-center gap-1.5">
+        <div className="border border-slate-300 rounded-lg p-2.5 bg-white shadow-xs">
+          <h3 className="text-[9.5px] font-black text-[#0F2D59] uppercase tracking-wider mb-1.5 flex items-center gap-1.5 border-b border-slate-200 pb-1">
             <span className="w-2 h-2 rounded-full bg-emerald-600"></span> CHECKLIST KELENGKAPAN & INVENTARIS UNIT
           </h3>
-          <div className="grid grid-cols-4 gap-1 text-[9px]">
+          <div className="grid grid-cols-4 gap-1.5 text-[9px]">
             {DEFAULT_INVENTORY_ITEMS.map((item) => {
               const checked = isInventoryChecked(item);
               return (
-                <div key={item} className={`flex items-center gap-1 px-1.5 py-0.5 rounded border ${checked ? 'bg-emerald-50 border-emerald-300 font-bold text-emerald-950' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
-                  <span className={`w-3 h-3 rounded-full flex items-center justify-center text-[7.5px] font-black ${checked ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
+                <div key={item} className={`flex items-center gap-1.5 px-2 py-0.5 rounded border transition-colors ${checked ? 'bg-emerald-50/90 border-emerald-300 font-bold text-emerald-950' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
+                  <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-black shrink-0 ${checked ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
                     {checked ? '✓' : '✗'}
                   </span>
                   <span className="truncate">{item}</span>
@@ -768,33 +919,36 @@ export const PrintTemplate: React.FC = () => {
         </div>
 
         {/* Serah Terima Notes */}
-        <div className="border border-slate-200 bg-slate-50 rounded-lg p-1.5 text-[8.5px] text-slate-700 leading-snug">
+        <div className="border border-slate-200 bg-slate-50 rounded-lg p-2 text-[8.5px] text-slate-700 leading-snug">
           <span className="font-bold text-slate-900">Pernyataan Kesepakatan Kondisi Fisik: </span>
           Kondisi fisik bodi, kelengkapan inventaris, dan level bahan bakar di atas telah diperiksa bersama secara seksama antara Pelanggan/Pembawa Unit dan Service Advisor Indo Teknik saat penerimaan unit.
         </div>
       </div>
 
       {/* Bottom Signatures Page 2 */}
-      <div className="border-t-2 border-slate-400 pt-1.5 shrink-0 print:break-inside-avoid">
-        <div className="grid grid-cols-2 gap-4 text-center">
-          <div className="border border-slate-300 rounded-lg p-1.5 bg-slate-50/60 shadow-xs">
+      <div className="border-t-2 border-slate-400 pt-2 shrink-0 print:break-inside-avoid">
+        <div className="text-right text-[8px] text-slate-500 font-mono mb-1">
+          Pekanbaru, {new Date(printWO.createdAt || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+        </div>
+        <div className="grid grid-cols-2 gap-6 text-center">
+          <div className="border border-slate-300 rounded-lg p-2 bg-slate-50/70 shadow-xs">
             <p className="text-[9.5px] font-black text-slate-900 uppercase">Pelanggan / Pembawa Unit</p>
-            <div className="h-10 border-b border-slate-400 my-1 flex items-end justify-center pb-0.5 text-[8px] text-slate-400">
+            <div className="h-12 border-b border-slate-400 my-1.5 flex items-end justify-center pb-0.5 text-[8px] text-slate-400">
               (Tanda Tangan & Nama Terang)
             </div>
-            <p className="font-bold text-slate-950 text-[10px] truncate">{printWO.customerName}</p>
+            <p className="font-black text-slate-950 text-[10px] truncate">{printWO.customerName}</p>
           </div>
 
-          <div className="border border-slate-300 rounded-lg p-1.5 bg-slate-50/60 shadow-xs">
+          <div className="border border-slate-300 rounded-lg p-2 bg-slate-50/70 shadow-xs">
             <p className="text-[9.5px] font-black text-slate-900 uppercase">Service Advisor (Indo Teknik)</p>
-            <div className="h-10 border-b border-slate-400 my-1 flex items-end justify-center pb-0.5 text-[8px] text-slate-400">
+            <div className="h-12 border-b border-slate-400 my-1.5 flex items-end justify-center pb-0.5 text-[8px] text-slate-400">
               (Tanda Tangan & Stempel)
             </div>
-            <p className="font-bold text-slate-950 text-[10px]">Front Office Staff</p>
+            <p className="font-black text-slate-950 text-[10px]">{printWO.createdBy || 'Front Office Staff'}</p>
           </div>
         </div>
 
-        <div className="flex justify-between items-center text-[7.5px] text-slate-500 border-t border-slate-200 pt-0.5 mt-1 font-mono">
+        <div className="flex justify-between items-center text-[7.5px] text-slate-500 border-t border-slate-200 pt-1 mt-1.5 font-mono">
           <span>Indo Teknik Pekanbaru • One Stop Solution for All Your Diesel Needs</span>
           <span className="font-bold text-slate-800">Lembar Pemeriksaan Halaman 2 • Dicetak: {new Date().toLocaleString('id-ID')} WIB</span>
         </div>

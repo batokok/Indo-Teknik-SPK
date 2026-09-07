@@ -23,11 +23,17 @@ export const generateWAStatusDraft = (
 
   const link = customTrackingUrl || (typeof window !== 'undefined' ? `${window.location.origin}/?tracking=${wo.id}` : '');
 
-  // Calculate estimated total if available
-  const estTotal = wo.todoActions?.reduce((sum: number, act: any) => {
+  // Calculate estimated total if available (min & max dynamic range)
+  const estTotalMin = wo.todoActions?.reduce((sum: number, act: any) => {
     const numStr = String(act.estimasiHargaMin || act.estimasiHarga || '').replace(/\D/g, '');
     const numVal = parseInt(numStr, 10);
     return sum + (isNaN(numVal) ? 0 : numVal);
+  }, 0) || 0;
+
+  const estTotalMax = wo.todoActions?.reduce((sum: number, act: any) => {
+    const minVal = parseInt(String(act.estimasiHargaMin || act.estimasiHarga || '').replace(/\D/g, ''), 10) || 0;
+    const maxVal = parseInt(String(act.estimasiHargaMax || '').replace(/\D/g, ''), 10) || 0;
+    return sum + (maxVal > 0 ? maxVal : minVal);
   }, 0) || 0;
 
   let text = `*UPDATE STATUS SERVIS - INDO TEKNIK*\n`;
@@ -47,8 +53,10 @@ export const generateWAStatusDraft = (
   if (wo.complaint) {
     text += `📝 *Keluhan / Request:* ${wo.complaint}\n`;
   }
-  if (estTotal > 0) {
-    text += `💰 *Estimasi Total:* Rp ${estTotal.toLocaleString('id-ID')}\n`;
+  if (estTotalMin > 0 && estTotalMax > estTotalMin) {
+    text += `💰 *Estimasi Total:* Rp ${estTotalMin.toLocaleString('id-ID')} s/d Rp ${estTotalMax.toLocaleString('id-ID')}\n`;
+  } else if (estTotalMin > 0 || estTotalMax > 0) {
+    text += `💰 *Estimasi Total:* Rp ${(estTotalMin || estTotalMax).toLocaleString('id-ID')}\n`;
   }
   text += `\n`;
 

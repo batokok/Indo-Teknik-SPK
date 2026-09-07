@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../store/AppContext';
-import { Priority, PartDetails, InventoryItem, DamageReport, TodoAction, LoosePartDetails } from '../types';
+import { Priority, PartDetails, InventoryItem, DamageReport, TodoAction, LoosePartDetails, WorkOrder } from '../types';
 import { Printer, Car, ShieldAlert, Plus, Trash2, Camera, User, ClipboardList, Check, ChevronRight, ChevronLeft, Wrench, Archive, RotateCcw, Search, GripVertical, Calendar, TrendingUp, Clock, Download, History, BarChart2, ArrowRight, BookOpen, FileSpreadsheet, ChevronDown, ChevronUp, RefreshCw, MapPin, Copy, Share2, Pencil, CheckCircle2, FileCheck, Sparkles, AlertCircle, AlertTriangle, MessageSquare, Ban, XCircle } from 'lucide-react';
 import { Reorder, motion } from 'motion/react';
 import { FuelGauge } from './FuelGauge';
@@ -19,6 +19,39 @@ const formatRupiah = (value: string | number | undefined | null): string => {
   if (!str) return '';
   const num = parseInt(str, 10);
   return 'Rp ' + num.toLocaleString('id-ID');
+};
+
+const getWOEstimationDisplay = (wo: WorkOrder) => {
+  if (wo.todoActions && wo.todoActions.length > 0) {
+    let totalMin = 0;
+    let totalMax = 0;
+    let hasPrice = false;
+    wo.todoActions.forEach((act) => {
+      const min = act.estimasiHargaMin ? parseInt(String(act.estimasiHargaMin).replace(/\D/g, ''), 10) : 0;
+      const max = act.estimasiHargaMax ? parseInt(String(act.estimasiHargaMax).replace(/\D/g, ''), 10) : 0;
+      if (min > 0 || max > 0) {
+        hasPrice = true;
+        totalMin += (min || max);
+        totalMax += (max || min);
+      } else if (act.estimasiHarga) {
+        const parsed = parseInt(String(act.estimasiHarga).replace(/\D/g, ''), 10);
+        if (!isNaN(parsed) && parsed > 0) {
+          hasPrice = true;
+          totalMin += parsed;
+          totalMax += parsed;
+        }
+      }
+    });
+
+    if (hasPrice && (totalMin > 0 || totalMax > 0)) {
+      if (totalMin === totalMax) {
+        return { isRange: false, min: totalMin, max: totalMax, text: formatRupiah(totalMin), shortText: formatRupiah(totalMin) };
+      }
+      return { isRange: true, min: totalMin, max: totalMax, text: `${formatRupiah(totalMin)} - ${formatRupiah(totalMax)}`, shortText: `${formatRupiah(totalMin)} - ${formatRupiah(totalMax)}` };
+    }
+  }
+
+  return { isRange: false, min: 0, max: 0, text: '-', shortText: '-' };
 };
 
 const INITIAL_INVENTORY: InventoryItem[] = [
@@ -996,6 +1029,7 @@ const SADashboard: React.FC = () => {
                           <th className="py-3 px-3.5 font-bold w-36">WO ID & Status</th>
                           <th className="py-3 px-3.5 font-bold">Pelanggan & Kontak</th>
                           <th className="py-3 px-3.5 font-bold">Kendaraan & Plat</th>
+                          <th className="py-3 px-3.5 font-bold w-40">Estimasi Biaya</th>
                           <th className="py-3 px-3.5 font-bold">Mekanik Terpilih</th>
                           <th className="py-3 px-3.5 font-bold text-center w-36">Status Kerja</th>
                           <th className="py-3 px-3.5 font-bold text-center w-52">Aksi Cepat</th>
@@ -1076,9 +1110,26 @@ const SADashboard: React.FC = () => {
                                 </td>
                                 <td className="py-2.5 px-3.5 align-middle truncate max-w-[150px]">
                                   <div className="font-semibold text-slate-200 truncate text-xs">{wo.vehicleBrand}</div>
-                                  <div className="inline-block mt-0.5 px-1.5 py-0.5 rounded bg-slate-950 border border-slate-700/80 text-[10px] text-cyan-300 font-mono font-bold truncate">
+                                  <div className="inline-block mt-0.5 px-2 py-0.5 rounded bg-slate-950 border border-slate-700 text-[10px] text-white font-mono font-black truncate shadow-xs">
                                     {wo.plateNumber}
                                   </div>
+                                </td>
+                                <td className="py-2.5 px-3.5 align-middle whitespace-nowrap">
+                                  {(() => {
+                                    const est = getWOEstimationDisplay(wo);
+                                    return est.text === '-' ? (
+                                      <span className="text-slate-500 font-mono text-[11px]">-</span>
+                                    ) : est.isRange ? (
+                                      <div className="font-mono text-[11px] leading-tight">
+                                        <span className="text-emerald-400 font-bold">{formatRupiah(est.min)}</span>
+                                        <div className="text-[9.5px] text-slate-400 flex items-center gap-0.5">
+                                          <span>s/d</span> <span className="text-emerald-300 font-bold">{formatRupiah(est.max)}</span>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <span className="font-mono text-emerald-400 font-bold text-[11px]">{est.text}</span>
+                                    );
+                                  })()}
                                 </td>
                                 <td className="py-2.5 px-3.5 align-middle whitespace-nowrap">
                                   <div className="flex items-center gap-1.5 whitespace-nowrap">
@@ -1247,7 +1298,7 @@ const SADashboard: React.FC = () => {
                               {/* Expanded Live Telemetry HUD Row */}
                               {isHUDExpanded && (
                                 <tr className="bg-slate-950">
-                                  <td colSpan={6} className="p-3 border-b border-cyan-500/40">
+                                  <td colSpan={7} className="p-3 border-b border-cyan-500/40">
                                     <LiveTimelineHUD workOrder={wo} />
                                   </td>
                                 </tr>
@@ -1282,7 +1333,7 @@ const SADashboard: React.FC = () => {
                         >
                           <div className="specular-rim-top-right"></div>
 
-                          {/* Card Header: WO ID, Telemetry Node */}
+                          {/* Card Header: WO ID, Telemetry Node & Estimasi */}
                           <div className="flex items-center justify-between gap-2 relative z-10">
                             <div className="flex items-center gap-2 flex-wrap">
                               <PulsingHealthNode status={wo.status} priority={wo.priority} size="xs" />
@@ -1300,6 +1351,16 @@ const SADashboard: React.FC = () => {
                                 </span>
                               )}
                             </div>
+
+                            {(() => {
+                              const est = getWOEstimationDisplay(wo);
+                              if (est.text === '-') return null;
+                              return (
+                                <span className="px-2 py-0.5 rounded bg-emerald-950/90 border border-emerald-700/80 text-emerald-300 font-mono font-bold text-[10px] shadow-xs">
+                                  {est.shortText}
+                                </span>
+                              );
+                            })()}
                           </div>
 
                           {/* Customer & Vehicle Info */}
@@ -1341,7 +1402,7 @@ const SADashboard: React.FC = () => {
                             <div>
                               <span className="text-[8.5px] text-slate-400 uppercase font-mono font-bold block">Kendaraan & Plat</span>
                               <span className="font-bold text-slate-100 block truncate">{wo.vehicleBrand}</span>
-                              <span className="inline-block mt-1 px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700/80 text-[10px] text-cyan-300 font-mono font-bold">
+                              <span className="inline-block mt-1 px-2 py-0.5 rounded bg-slate-950 border border-slate-700 text-[10px] text-white font-mono font-black shadow-xs">
                                 {wo.plateNumber}
                               </span>
                             </div>
@@ -2776,6 +2837,62 @@ const SADashboard: React.FC = () => {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Real-time Total Estimation Summary */}
+                {(() => {
+                  let totalMin = 0;
+                  let totalMax = 0;
+                  let countWithPrice = 0;
+                  todoActions.forEach((act) => {
+                    const min = act.estimasiHargaMin ? parseInt(String(act.estimasiHargaMin).replace(/\D/g, ''), 10) : 0;
+                    const max = act.estimasiHargaMax ? parseInt(String(act.estimasiHargaMax).replace(/\D/g, ''), 10) : 0;
+                    if (min > 0 || max > 0) {
+                      countWithPrice++;
+                      totalMin += (min || max);
+                      totalMax += (max || min);
+                    }
+                  });
+
+                  return (
+                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-xs mt-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-800 flex items-center justify-center font-bold text-lg shrink-0">
+                          💰
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider block">
+                            Ringkasan Estimasi Biaya SPK
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-700 font-semibold">
+                              Total Item Pengerjaan: <strong className="text-slate-900">{todoActions.length} Tindakan</strong>
+                            </span>
+                            {countWithPrice < todoActions.length && (
+                              <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded">
+                                {todoActions.length - countWithPrice} item belum diisi nominal
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right w-full md:w-auto bg-white md:bg-transparent p-2.5 md:p-0 rounded-lg border md:border-none border-slate-200">
+                        <span className="text-[9px] font-black uppercase text-slate-400 block">Total Kisaran Biaya (Est.)</span>
+                        <div className="text-base font-black font-mono text-blue-800 tracking-tight">
+                          {totalMin > 0 || totalMax > 0 ? (
+                            totalMin === totalMax ? (
+                              formatRupiah(totalMin)
+                            ) : (
+                              <span>{formatRupiah(totalMin)} <span className="text-xs text-slate-400 font-normal">s/d</span> {formatRupiah(totalMax)}</span>
+                            )
+                          ) : (
+                            <span className="text-xs text-slate-400 font-normal italic">Belum ditentukan (TBD saat diagnosa)</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>

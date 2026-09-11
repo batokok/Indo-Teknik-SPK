@@ -88,7 +88,7 @@ export const PrintTemplate: React.FC = () => {
           }
         `}</style>
         
-        <div className="relative max-w-[210mm] mx-auto bg-white p-6 sm:p-8 shadow-2xl print:shadow-none print:max-w-none print:w-full print:p-0 print:m-0 print-handover-sheet">
+        <div className="relative max-w-[210mm] mx-auto bg-white p-3.5 sm:p-8 shadow-2xl print:shadow-none print:max-w-none print:w-full print:p-0 print:m-0 print-handover-sheet">
           {/* Subtle Watermark Overlay */}
           <DocumentWatermark 
             config={watermarkConfig} 
@@ -99,20 +99,21 @@ export const PrintTemplate: React.FC = () => {
           <div className="relative z-1 space-y-3">
             
             {/* ACTION BAR (Hidden in print) */}
-            <div className="flex justify-between items-center mb-6 print:hidden no-print border-b pb-3 bg-slate-50 -mx-6 sm:-mx-8 -mt-6 sm:-mt-8 p-4 sm:p-5 rounded-t-lg border-slate-200">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 mb-6 print:hidden no-print border-b pb-3 bg-slate-50 -mx-3.5 sm:-mx-8 -mt-3.5 sm:-mt-8 p-3 sm:p-5 rounded-t-lg border-slate-200">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <button 
                   onClick={() => setPrintWO(null)} 
-                  className="px-4 py-2 border border-slate-300 rounded-lg hover:bg-white text-slate-700 flex items-center gap-2 text-sm font-bold transition-colors shadow-xs cursor-pointer"
+                  className="px-3.5 py-2 min-h-[42px] border border-slate-300 rounded-lg hover:bg-white text-slate-700 flex items-center gap-2 text-xs sm:text-sm font-bold transition-colors shadow-xs cursor-pointer active:scale-95 shrink-0"
                 >
-                  <ArrowLeft className="w-4 h-4" /> Kembali
+                  <ArrowLeft className="w-4 h-4" /> <span className="hidden xs:inline">Kembali</span>
                 </button>
-                <div>
-                  <h2 className="text-base font-extrabold text-slate-800 leading-tight">Bukti Penyerahan Barang (Handover Receipt)</h2>
-                  <p className="text-xs text-slate-500 font-medium">Dokumen Resmi Penyerahan Unit & Garansi</p>
+                <div className="min-w-0">
+                  <h2 className="text-sm sm:text-base font-extrabold text-slate-800 leading-tight truncate">Bukti Penyerahan Barang (Handover)</h2>
+                  <p className="text-[10px] sm:text-xs text-slate-500 font-medium">Dokumen Resmi Penyerahan Unit & Garansi</p>
                 </div>
               </div>
-              <div className="flex items-center space-x-2">
+
+              <div className="flex flex-wrap items-center gap-2 justify-end">
                 <WatermarkControl 
                   config={watermarkConfig} 
                   onChange={setWatermarkConfig} 
@@ -122,17 +123,40 @@ export const PrintTemplate: React.FC = () => {
 
                 <button 
                   onClick={() => window.print()} 
-                  className="px-4 py-2 bg-white border border-slate-300 text-slate-800 rounded-lg hover:bg-slate-100 text-sm font-bold flex items-center gap-2 transition-colors shadow-xs cursor-pointer"
+                  className="flex-1 sm:flex-initial px-3.5 py-2 min-h-[42px] bg-white border border-rose-300 hover:bg-rose-50 text-rose-700 rounded-lg text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs cursor-pointer active:scale-95"
+                  title="Simpan sebagai file PDF di HP / Laptop"
                 >
-                  <Download className="w-4 h-4" /> Simpan PDF
+                  <Download className="w-4 h-4 text-rose-600" /> Simpan PDF
                 </button>
                 <button 
                   onClick={() => window.print()} 
-                  className="px-5 py-2 bg-[#0F2D59] text-white rounded-lg hover:bg-[#153a6c] text-sm font-bold flex items-center gap-2 transition-colors shadow-md cursor-pointer"
+                  className="flex-1 sm:flex-initial px-4 py-2 min-h-[42px] bg-[#0F2D59] text-white rounded-lg hover:bg-[#153a6c] text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-colors shadow-md cursor-pointer active:scale-95"
                 >
-                  <Printer className="w-4 h-4" /> Cetak Dokumen
+                  <Printer className="w-4 h-4" /> Cetak
                 </button>
               </div>
+            </div>
+
+            {/* Mobile Sticky Action Bar at bottom */}
+            <div className="sm:hidden fixed bottom-4 inset-x-3 z-50 flex gap-2 bg-slate-900/95 backdrop-blur-md p-2 rounded-2xl shadow-2xl border border-white/20 print:hidden">
+              <button
+                onClick={() => setPrintWO(null)}
+                className="px-3 min-h-[44px] bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold flex items-center justify-center shrink-0 active:scale-95 cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="flex-1 min-h-[44px] bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg active:scale-95 cursor-pointer"
+              >
+                <Download className="w-4 h-4" /> Simpan PDF
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="flex-1 min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg active:scale-95 cursor-pointer"
+              >
+                <Printer className="w-4 h-4" /> Cetak
+              </button>
             </div>
 
             {/* HEADER AREA */}
@@ -1001,7 +1025,7 @@ export const PrintTemplate: React.FC = () => {
         }
       `}</style>
 
-      <div className={`w-full mx-auto bg-white p-6 sm:p-8 shadow-2xl print:shadow-none print:max-w-none print:w-full print:p-0 print:m-0 print-wrapper box-border ${
+      <div className={`w-full mx-auto bg-white p-3.5 sm:p-8 shadow-2xl print:shadow-none print:max-w-none print:w-full print:p-0 print:m-0 print-wrapper box-border ${
         previewLayout === 'SIDE_BY_SIDE' && spkViewMode === 'FULL_2_PAGES'
           ? 'max-w-[450mm]'
           : 'max-w-[210mm]'
@@ -1014,55 +1038,55 @@ export const PrintTemplate: React.FC = () => {
       >
         
         {/* ================= ACTION BAR (Hidden in print) ================= */}
-        <div className="flex flex-wrap justify-between items-center gap-3 mb-6 print:hidden no-print border-b pb-3 bg-slate-50 -mx-6 sm:-mx-8 -mt-6 sm:-mt-8 p-4 sm:p-5 rounded-t-lg border-slate-200">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 mb-6 print:hidden no-print border-b pb-3 bg-slate-50 -mx-3.5 sm:-mx-8 -mt-3.5 sm:-mt-8 p-3.5 sm:p-5 rounded-t-lg border-slate-200">
+          <div className="flex items-center gap-2.5 sm:gap-3">
             <button 
               onClick={() => setPrintWO(null)} 
-              className="px-4 py-2 border border-slate-300 rounded-lg hover:bg-white text-slate-700 flex items-center gap-2 text-sm font-bold transition-colors shadow-xs cursor-pointer"
+              className="px-3.5 py-2 min-h-[42px] border border-slate-300 rounded-lg hover:bg-white text-slate-700 flex items-center gap-2 text-xs sm:text-sm font-bold transition-colors shadow-xs cursor-pointer active:scale-95 shrink-0"
             >
-              <ArrowLeft className="w-4 h-4" /> Kembali
+              <ArrowLeft className="w-4 h-4" /> <span className="hidden xs:inline">Kembali</span>
             </button>
-            <div>
-              <h2 className="text-base font-extrabold text-slate-800 leading-tight">Pratinjau Cetak Surat Perintah Kerja (SPK)</h2>
-              <p className="text-xs text-slate-500 font-medium">Dokumen Resmi Workshop & Konsumen (2 Halaman A4)</p>
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-base font-extrabold text-slate-800 leading-tight truncate">Pratinjau Cetak SPK</h2>
+              <p className="text-[10px] sm:text-xs text-slate-500 font-medium">Dokumen Resmi Workshop & Konsumen</p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 justify-between sm:justify-end">
             {/* View Mode Switcher */}
-            <div className="flex bg-slate-200 p-1 rounded-lg border border-slate-300 text-xs font-bold">
+            <div className="flex bg-slate-200 p-1 rounded-lg border border-slate-300 text-xs font-bold overflow-x-auto max-w-full">
               <button
                 type="button"
                 onClick={() => setSpkViewMode('FULL_2_PAGES')}
-                className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap text-[11px] sm:text-xs ${
                   spkViewMode === 'FULL_2_PAGES'
                     ? 'bg-blue-900 text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <Layers className="w-3.5 h-3.5" /> 2 Hal Lengkap
+                <Layers className="w-3.5 h-3.5" /> 2 Hal
               </button>
               <button
                 type="button"
                 onClick={() => setSpkViewMode('SPK_ONLY')}
-                className={`px-2.5 py-1.5 rounded-md flex items-center gap-1.5 transition-all cursor-pointer ${
+                className={`px-2 sm:px-2.5 py-1.5 rounded-md flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap text-[11px] sm:text-xs ${
                   spkViewMode === 'SPK_ONLY'
                     ? 'bg-white text-[#0F2D59] shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <FileText className="w-3.5 h-3.5" /> Hal 1 Saja
+                <FileText className="w-3.5 h-3.5" /> Hal 1
               </button>
               <button
                 type="button"
                 onClick={() => setSpkViewMode('INSPECTION_ONLY')}
-                className={`px-2.5 py-1.5 rounded-md flex items-center gap-1.5 transition-all cursor-pointer ${
+                className={`px-2 sm:px-2.5 py-1.5 rounded-md flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap text-[11px] sm:text-xs ${
                   spkViewMode === 'INSPECTION_ONLY'
                     ? 'bg-white text-[#0F2D59] shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <ClipboardCheck className="w-3.5 h-3.5" /> Hal 2 Saja
+                <ClipboardCheck className="w-3.5 h-3.5" /> Hal 2
               </button>
             </div>
 
@@ -1092,8 +1116,8 @@ export const PrintTemplate: React.FC = () => {
               </div>
             )}
 
-            {/* Zoom Controls */}
-            <div className="flex items-center bg-slate-200 p-1 rounded-lg border border-slate-300 text-xs font-bold">
+            {/* Zoom Controls (Hidden on small mobile) */}
+            <div className="hidden xs:flex items-center bg-slate-200 p-1 rounded-lg border border-slate-300 text-xs font-bold">
               <button
                 type="button"
                 onClick={() => setZoomLevel(prev => Math.max(50, prev - 15))}
@@ -1132,7 +1156,7 @@ export const PrintTemplate: React.FC = () => {
 
             <button 
               onClick={() => window.print()} 
-              className="h-10 px-4 bg-white hover:bg-rose-50 border-2 border-rose-500/90 hover:border-rose-600 text-rose-700 hover:text-rose-800 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-xs transition-all active:scale-95 cursor-pointer"
+              className="flex-1 sm:flex-initial h-10 px-3 sm:px-4 bg-white hover:bg-rose-50 border-2 border-rose-500/90 hover:border-rose-600 text-rose-700 hover:text-rose-800 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer min-h-[42px]"
               title="Simpan atau Ekspor SPK sebagai file PDF"
             >
               <Download className="w-4 h-4 text-rose-600 shrink-0" />
@@ -1141,19 +1165,44 @@ export const PrintTemplate: React.FC = () => {
 
             <button 
               onClick={() => window.print()} 
-              className="h-11 px-6 bg-[#0F2D59] hover:bg-[#16427e] text-white rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider flex items-center gap-2.5 transition-all shadow-lg shadow-[#0F2D59]/30 ring-2 ring-blue-400/40 ring-offset-2 active:scale-95 cursor-pointer"
+              className="flex-1 sm:flex-initial h-10 sm:h-11 px-4 sm:px-6 bg-[#0F2D59] hover:bg-[#16427e] text-white rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#0F2D59]/30 ring-2 ring-blue-400/40 ring-offset-2 active:scale-95 cursor-pointer min-h-[42px]"
               title="Cetak SPK Fisik ke Printer"
             >
-              <Printer className="w-4.5 h-4.5 text-blue-200 shrink-0" />
+              <Printer className="w-4 h-4 text-blue-200 shrink-0" />
               <span>
                 {spkViewMode === 'FULL_2_PAGES' 
-                  ? 'Cetak SPK (2 Hal)' 
+                  ? 'Cetak (2 Hal)' 
                   : spkViewMode === 'SPK_ONLY' 
                     ? 'Cetak Hal 1' 
                     : 'Cetak Hal 2'}
               </span>
             </button>
           </div>
+        </div>
+
+        {/* Mobile Sticky Quick-Action Bar at bottom */}
+        <div className="sm:hidden fixed bottom-4 inset-x-3 z-50 flex gap-2 bg-slate-900/95 backdrop-blur-md p-2 rounded-2xl shadow-2xl border border-white/20 print:hidden">
+          <button
+            onClick={() => setPrintWO(null)}
+            className="px-3 min-h-[44px] bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold flex items-center justify-center shrink-0 active:scale-95 cursor-pointer"
+            title="Kembali"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => window.print()}
+            className="flex-1 min-h-[44px] bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg active:scale-95 cursor-pointer"
+            title="Simpan PDF di Handphone"
+          >
+            <Download className="w-4 h-4" /> Simpan PDF
+          </button>
+          <button
+            onClick={() => window.print()}
+            className="flex-1 min-h-[44px] bg-[#0F2D59] hover:bg-blue-800 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg active:scale-95 cursor-pointer"
+            title="Cetak ke Printer"
+          >
+            <Printer className="w-4 h-4" /> Cetak
+          </button>
         </div>
 
         {/* ================= RENDER PAGES ACCORDING TO VIEW MODE ================= */}

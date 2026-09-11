@@ -488,31 +488,38 @@ const MainLayout: React.FC = () => {
         {currentUser && (
           /* Workshop Feed section inside Sidebar */
           <div className="px-3 mt-2 flex-1 flex flex-col min-h-0 border-t border-slate-800/80 pt-3 overflow-hidden">
-            <div className="flex items-center justify-between px-2 mb-2 shrink-0">
-              <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <Bell className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
-                Workshop Feed
+            <div className="flex items-center justify-between px-2 mb-1.5 shrink-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                  <Bell className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
+                  Workshop Feed
+                </span>
+                <span className="text-[8.5px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-cyan-400/90" title="Feed di-clear otomatis setiap pergantian hari">
+                  Hari Ini
+                </span>
                 {notifications.filter(n => !n.read).length > 0 && (
                   <span className="bg-amber-400 text-slate-950 font-black text-[9px] px-1.5 py-0.2 rounded-full">
                     {notifications.filter(n => !n.read).length}
                   </span>
                 )}
+              </div>
+              <div className="flex items-center gap-1.5">
                 <button
                   onClick={refreshWorkshopFeed}
-                  className="ml-1 p-1 hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-white flex items-center justify-center cursor-pointer"
+                  className="p-1 hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-white flex items-center justify-center cursor-pointer"
                   title="Sinkronisasi Live Feed"
                 >
                   <RefreshCw className={`w-3 h-3 ${isRefreshingFeed ? 'animate-spin text-blue-400' : ''}`} />
                 </button>
-              </span>
-              {notifications.length > 0 && (
-                <button
-                  onClick={markAllAsRead}
-                  className="text-[10px] text-slate-400 hover:text-blue-300 underline transition-colors cursor-pointer"
-                >
-                  Read All
-                </button>
-              )}
+                {notifications.length > 0 && (
+                  <button
+                    onClick={markAllAsRead}
+                    className="text-[10px] text-slate-400 hover:text-blue-300 underline transition-colors cursor-pointer"
+                  >
+                    Read All
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className={`flex-1 overflow-y-auto space-y-2 pr-1 select-none custom-scrollbar transition-opacity duration-300 ${isRefreshingFeed ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
@@ -600,37 +607,46 @@ const MainLayout: React.FC = () => {
       {/* Main Content Viewport */}
       <main className="flex-1 flex flex-col min-w-0 print:hidden bg-[#f8fafc]">
         {/* Header */}
-        <header className="h-16 bg-white/95 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 md:px-8 shrink-0 print:hidden shadow-xs">
-          <div className="flex items-center gap-4">
+        <header className="h-16 bg-white/95 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-3 sm:px-4 md:px-8 shrink-0 print:hidden shadow-xs">
+          <div className="flex items-center gap-2.5 sm:gap-4 min-w-0">
             {/* Mobile Hamburger menu */}
             <button
               onClick={() => setIsSidebarOpen(true)}
-              className="p-2 -ml-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 md:hidden transition-all cursor-pointer"
-              title="Open Sidebar"
+              className="p-2 -ml-1 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 md:hidden transition-all cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0"
+              title="Buka Navigasi"
+              aria-label="Buka Menu"
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div className="flex flex-col">
-              <span className="text-[9.5px] font-black text-blue-600 tracking-widest uppercase flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
-                Indo Teknik Pekanbaru • ITech Authorized Dealer
+            <div className="flex flex-col min-w-0">
+              <span className="text-[8.5px] sm:text-[9.5px] font-black text-blue-600 tracking-wider sm:tracking-widest uppercase flex items-center gap-1 sm:gap-1.5 truncate">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0"></span>
+                <span className="truncate">Indo Teknik • ITech Dealer</span>
               </span>
-              <h2 className="text-sm md:text-lg font-black text-slate-900 tracking-tight leading-none mt-1">
+              <h2 className="text-xs sm:text-sm md:text-lg font-black text-slate-900 tracking-tight leading-none mt-0.5 sm:mt-1 truncate">
                 {getHeaderTitle()}
               </h2>
             </div>
           </div>
 
           {/* Right Header Widgets */}
-          <div className="hidden sm:flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+            {/* Mobile Cloud Sync Pulse for ultra-compact display */}
+            <div className="flex sm:hidden items-center justify-center p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700" title="Cloud Synced">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
+              </span>
+            </div>
+
             {/* Shift & Operational Status */}
-            <div className="flex items-center gap-2 bg-blue-50/80 border border-blue-200/80 px-3 py-1.5 rounded-xl text-blue-900 shadow-2xs">
+            <div className="hidden md:flex items-center gap-2 bg-blue-50/80 border border-blue-200/80 px-3 py-1.5 rounded-xl text-blue-900 shadow-2xs">
               <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
               <span className="text-[10px] font-black tracking-wider uppercase">Shift Workshop Aktif</span>
             </div>
 
             {/* Live Sync Status Pill */}
-            <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl text-emerald-800 shadow-2xs">
+            <div className="hidden sm:flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl text-emerald-800 shadow-2xs">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
@@ -639,7 +655,7 @@ const MainLayout: React.FC = () => {
             </div>
 
             {/* Date & Time Pill */}
-            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-slate-800 shadow-2xs">
+            <div className="hidden lg:flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-slate-800 shadow-2xs">
               <Calendar className="w-3.5 h-3.5 text-slate-500" />
               <span className="text-[11px] font-bold font-mono">
                 {new Date().toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
@@ -651,19 +667,19 @@ const MainLayout: React.FC = () => {
         {/* Main Content Area */}
         <div className="flex-1 overflow-y-auto relative bg-[#f8fafc] pb-24 md:pb-6 custom-scrollbar">
           {/* Brand Announcement / Welcome Banner */}
-          <div className="mx-4 md:mx-6 mt-4 md:mt-5 p-3.5 bg-white border border-slate-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs print:hidden">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-blue-50 border border-blue-200 text-blue-600 rounded-xl">
-                <Wrench className="w-4 h-4 text-blue-600" />
+          <div className="mx-2.5 sm:mx-4 md:mx-6 mt-3 sm:mt-4 md:mt-5 p-3 sm:p-3.5 bg-white border border-slate-200 rounded-xl sm:rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 shadow-xs print:hidden">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="p-2 sm:p-2.5 bg-blue-50 border border-blue-200 text-blue-600 rounded-xl shrink-0">
+                <Wrench className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600" />
               </div>
-              <div>
-                <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">INDO TEKNIK PEKANBARU</h4>
-                <p className="text-[10px] text-slate-500 font-medium">Authorized Diesel Fuel Injection Specialist • ITech & Denso Partner</p>
+              <div className="min-w-0">
+                <h4 className="text-[11px] sm:text-xs font-black text-slate-900 uppercase tracking-wider truncate">INDO TEKNIK PEKANBARU</h4>
+                <p className="text-[9.5px] sm:text-[10px] text-slate-500 font-medium truncate">Authorized Diesel Specialist • ITech Partner</p>
               </div>
             </div>
-            <div className="flex items-center gap-2.5 bg-slate-50 px-3.5 py-1.5 rounded-xl border border-slate-200 self-start sm:self-auto shadow-2xs">
-              <SmartLogo baseName="logo-itech" alt="ITech" className="h-6 sm:h-7 object-contain bg-white px-2 py-0.5 rounded shadow-2xs border border-slate-200" />
-              <span className="text-[10.5px] font-black text-[#EF4444] tracking-widest uppercase">ITech Authorized Dealer</span>
+            <div className="flex items-center gap-2 bg-slate-50 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border border-slate-200 self-start sm:self-auto shadow-2xs shrink-0">
+              <SmartLogo baseName="logo-itech" alt="ITech" className="h-5 sm:h-7 object-contain bg-white px-1.5 sm:px-2 py-0.5 rounded shadow-2xs border border-slate-200" />
+              <span className="text-[9.5px] sm:text-[10.5px] font-black text-[#EF4444] tracking-wider sm:tracking-widest uppercase whitespace-nowrap">ITech Authorized</span>
             </div>
           </div>
 

@@ -535,32 +535,50 @@ const PublicTrackingView: React.FC<{ initialWoId?: string; onBackToLogin: () => 
   };
 
   return (
-    <div className="min-h-screen bg-[#060a12] text-slate-100 font-sans flex flex-col justify-between pb-10 relative overflow-x-hidden selection:bg-blue-500/30 selection:text-blue-200">
+    <div className="min-h-screen bg-[#030712] text-slate-100 font-sans flex flex-col justify-between pb-10 relative overflow-x-hidden selection:bg-cyan-500/30 selection:text-cyan-200">
       
-      {/* Dynamic Cyber Grid Lines */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.003)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.003)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
-      <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-blue-500/5 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-emerald-500/5 blur-[120px] pointer-events-none" />
+      {/* IMMERSIVE CYBER GRID & AMBIENT DEPTH */}
+      <div 
+        className="absolute inset-0 pointer-events-none opacity-20"
+        style={{
+          backgroundImage: `
+            linear-gradient(to right, rgba(6, 182, 212, 0.12) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(6, 182, 212, 0.12) 1px, transparent 1px)
+          `,
+          backgroundSize: '40px 40px',
+        }}
+      />
+      <div className="absolute top-[-10%] left-[-10%] w-[55vw] h-[55vw] rounded-full bg-cyan-600/10 blur-[140px] pointer-events-none animate-pulse" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[55vw] h-[55vw] rounded-full bg-[#EF4444]/10 blur-[140px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70vw] h-[70vw] rounded-full bg-blue-600/5 blur-[160px] pointer-events-none" />
 
       {/* Navigation Header */}
-      <header className="border-b border-white/5 bg-[#080d16]/90 backdrop-blur-xl py-3 px-4 sm:px-8 sticky top-0 z-50 flex items-center justify-between shadow-xl">
+      <header className="border-b border-cyan-500/20 bg-[#060b18]/90 backdrop-blur-2xl py-3 px-4 sm:px-8 sticky top-0 z-50 flex items-center justify-between shadow-2xl">
         <div className="flex items-center gap-3">
-          <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_10px_#3b82f6]" />
+          <div className="relative flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500 shadow-[0_0_12px_#06b6d4]"></span>
+          </div>
           <div>
-            <h1 className="text-xs sm:text-sm font-black tracking-[0.15em] text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-blue-400 uppercase font-mono">
+            <h1 className="text-xs sm:text-sm font-black tracking-[0.18em] text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-cyan-300 uppercase font-mono">
               INDO TEKNIK
             </h1>
-            <p className="text-[7px] sm:text-[9px] text-slate-400 font-mono font-bold uppercase tracking-widest mt-0.5">Live Tracking System</p>
+            <p className="text-[7.5px] sm:text-[9px] text-cyan-400/80 font-mono font-bold uppercase tracking-widest mt-0.5">
+              Live Precision Tracking Gateway
+            </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <SmartLogo baseName="logo-tech" alt="Indo Teknik" className="h-8 sm:h-9 object-contain bg-white/95 px-3 py-1 rounded-lg shadow-md saturate-110" />
+          <div className="bg-white/95 px-3 py-1 rounded-xl shadow-md border border-slate-200/80 hidden sm:flex items-center">
+            <SmartLogo baseName="logo-indo-teknik" alt="Indo Teknik" className="h-6 sm:h-7 object-contain saturate-110" />
+          </div>
           <button 
             onClick={onBackToLogin}
-            className="px-3 py-1.5 text-[8px] sm:text-[10px] bg-white/[0.03] hover:bg-white/[0.08] text-slate-200 hover:text-white border border-white/10 hover:border-white/20 rounded-lg font-black uppercase tracking-wider transition-all cursor-pointer active:scale-95 font-mono"
+            className="px-3.5 py-2 text-[9px] sm:text-[10px] bg-cyan-950/40 hover:bg-cyan-900/50 text-cyan-300 hover:text-white border border-cyan-500/30 hover:border-cyan-400 rounded-xl font-black uppercase tracking-wider transition-all cursor-pointer active:scale-95 font-mono flex items-center gap-1.5 shadow-xs"
           >
-            Portal Staff
+            <User className="w-3 h-3 text-cyan-400" />
+            <span>Portal Staf</span>
           </button>
         </div>
       </header>
@@ -571,59 +589,66 @@ const PublicTrackingView: React.FC<{ initialWoId?: string; onBackToLogin: () => 
         <div 
           className={workOrder 
             ? "mb-6 bg-slate-900/40 border border-white/5 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 backdrop-blur-md w-full" 
-            : "w-full max-w-2xl bg-gradient-to-b from-[#0e1628]/95 to-[#050810]/95 border border-blue-500/25 rounded-3xl p-8 md:p-12 flex flex-col items-center justify-center text-center shadow-[0_0_50px_rgba(59,130,246,0.15)] backdrop-blur-xl relative overflow-hidden transition-all duration-300 my-auto"
+            : "w-full max-w-2xl bg-gradient-to-b from-[#0c162b]/95 via-[#081020]/95 to-[#040813]/95 border border-cyan-500/30 rounded-3xl p-7 sm:p-10 md:p-12 flex flex-col items-center justify-center text-center shadow-[0_0_60px_rgba(6,182,212,0.18)] backdrop-blur-2xl relative overflow-hidden transition-all duration-300 my-auto group"
           }
         >
           {!workOrder && (
             <>
+              {/* Futuristic HUD Corner Decors */}
+              <div className="absolute top-3.5 left-3.5 w-4 h-4 border-t-2 border-l-2 border-cyan-400/50 pointer-events-none" />
+              <div className="absolute top-3.5 right-3.5 w-4 h-4 border-t-2 border-r-2 border-cyan-400/50 pointer-events-none" />
+              <div className="absolute bottom-3.5 left-3.5 w-4 h-4 border-b-2 border-l-2 border-cyan-400/50 pointer-events-none" />
+              <div className="absolute bottom-3.5 right-3.5 w-4 h-4 border-b-2 border-r-2 border-cyan-400/50 pointer-events-none" />
+
               {/* Decorative glows inside the card */}
-              <div className="absolute -top-24 -left-24 w-48 h-48 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
-              <div className="absolute -bottom-24 -right-24 w-48 h-48 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+              <div className="absolute -top-24 -left-24 w-52 h-52 rounded-full bg-cyan-500/15 blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-24 -right-24 w-52 h-52 rounded-full bg-[#EF4444]/15 blur-3xl pointer-events-none" />
               
               {/* Premium Title Group */}
               <motion.div 
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="mb-8 space-y-3 flex flex-col items-center text-center"
+                className="mb-8 space-y-3 flex flex-col items-center text-center relative z-10"
               >
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full text-blue-400 font-mono text-[9px] font-black uppercase tracking-widest">
-                  <Sparkles className="w-3 h-3 text-blue-400" /> CUSTOMER GATEWAY
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-cyan-950/70 border border-cyan-500/40 rounded-full text-cyan-300 font-mono text-[9.5px] font-black uppercase tracking-widest shadow-xs">
+                  <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-pulse" /> 
+                  <span>INDO TEKNIK • CUSTOMER GATEWAY</span>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-slate-100 to-slate-300 uppercase tracking-tight leading-none">
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-slate-100 to-slate-300 uppercase tracking-tight leading-tight">
                   PORTAL PELACAKAN UNIT
                 </h2>
-                <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
-                  Pantau progres kalibrasi injektor, pompa bahan bakar, dan turbocharger kendaraan Anda secara real-time langsung dari ruang uji Indo Teknik.
+                <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
+                  Pantau progres kalibrasi injektor, pompa bahan bakar diesel, dan turbocharger kendaraan Anda secara presisi dan transparan.
                 </p>
               </motion.div>
             </>
           )}
 
-          <form onSubmit={handleSearchSubmit} className={workOrder ? "relative w-full md:max-w-md group" : "relative w-full max-w-lg group mt-1"}>
+          <form onSubmit={handleSearchSubmit} className={workOrder ? "relative w-full md:max-w-md group" : "relative w-full max-w-lg group mt-1 z-10"}>
             <div 
               className={workOrder 
-                ? "absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl blur opacity-15 group-focus-within:opacity-35 transition-all" 
-                : "absolute -inset-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500 rounded-2xl blur opacity-25 group-focus-within:opacity-50 transition-all duration-300"
+                ? "absolute -inset-0.5 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl blur opacity-20 group-focus-within:opacity-40 transition-all" 
+                : "absolute -inset-1 bg-gradient-to-r from-cyan-500 via-blue-500 to-emerald-500 rounded-2xl blur opacity-25 group-focus-within:opacity-60 transition-all duration-300"
               } 
             />
-            <div className={workOrder ? "relative flex" : "relative flex items-center bg-black/60 border border-white/10 rounded-xl overflow-hidden p-1 sm:p-1.5"}>
+            <div className={workOrder ? "relative flex" : "relative flex items-center bg-slate-950/90 border border-cyan-500/30 rounded-2xl overflow-hidden p-1 sm:p-1.5 shadow-inner"}>
               <input 
                 type="text"
                 placeholder="Masukkan No. SPK (e.g. WO-2026-0001)"
                 className={workOrder 
-                  ? "w-full bg-black/50 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-xs font-mono font-semibold tracking-wide text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/15 transition-all uppercase" 
-                  : "w-full bg-transparent border-0 py-2.5 sm:py-3 pl-9 sm:pl-11 pr-32 sm:pr-48 text-xs sm:text-sm font-mono font-semibold tracking-wider text-white placeholder-slate-500 placeholder:text-[10px] sm:placeholder:text-sm focus:outline-none focus:ring-0 uppercase"
+                  ? "w-full bg-black/50 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-xs font-mono font-semibold tracking-wide text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 transition-all uppercase" 
+                  : "w-full bg-transparent border-0 py-2.5 sm:py-3.5 pl-10 sm:pl-12 pr-32 sm:pr-48 text-xs sm:text-sm font-mono font-bold tracking-wider text-white placeholder-slate-500 placeholder:text-[11px] sm:placeholder:text-sm focus:outline-none focus:ring-0 uppercase"
                 }
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
               />
-              <Search className={workOrder ? "w-4 h-4 text-slate-500 absolute left-3 top-3" : "w-4 h-4 text-slate-400 absolute left-3 sm:left-4 top-3.5 sm:top-4"} />
+              <Search className={workOrder ? "w-4 h-4 text-slate-500 absolute left-3 top-3" : "w-4 h-4 text-cyan-400 absolute left-3.5 sm:left-4 top-3.5 sm:top-4"} />
               <button
                 type="submit"
                 className={workOrder 
-                  ? "absolute right-1.5 top-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[9px] font-bold font-mono uppercase tracking-wider transition-all" 
-                  : "absolute right-1.5 sm:right-2 top-1.5 sm:top-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-[10px] sm:text-xs font-black font-mono uppercase tracking-widest transition-all shadow-md shadow-blue-500/25 active:scale-95 cursor-pointer whitespace-nowrap"
+                  ? "absolute right-1.5 top-1.5 px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-[9px] font-bold font-mono uppercase tracking-wider transition-all cursor-pointer" 
+                  : "absolute right-1.5 sm:right-2 top-1.5 sm:top-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 active:scale-95 text-white rounded-xl text-[10px] sm:text-xs font-black font-mono uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(6,182,212,0.4)] cursor-pointer whitespace-nowrap"
                 }
               >
                 {workOrder ? "Lacak" : "Mulai Lacak"}
@@ -667,35 +692,35 @@ const PublicTrackingView: React.FC<{ initialWoId?: string; onBackToLogin: () => 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 w-full border-t border-white/5 pt-8 text-left"
+              className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 w-full border-t border-cyan-500/20 pt-8 text-left relative z-10"
             >
-              <div className="bg-white/[0.01] border border-white/5 p-4 rounded-xl space-y-2">
-                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400">
+              <div className="bg-slate-900/60 border border-slate-800 hover:border-cyan-500/40 p-4 rounded-2xl space-y-2 transition-all">
+                <div className="w-8 h-8 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 border border-cyan-500/20">
                   <Activity className="w-4 h-4" />
                 </div>
                 <h4 className="text-[11px] font-mono font-bold text-slate-200 uppercase tracking-wide">Live Telemetri</h4>
-                <p className="text-[10px] text-slate-400 leading-normal">
+                <p className="text-[10.5px] text-slate-400 leading-normal">
                   Pantau fluktuasi tekanan bertenaga tinggi & grafik nozzle secara real-time.
                 </p>
               </div>
 
-              <div className="bg-white/[0.01] border border-white/5 p-4 rounded-xl space-y-2">
-                <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400">
+              <div className="bg-slate-900/60 border border-slate-800 hover:border-amber-500/40 p-4 rounded-2xl space-y-2 transition-all">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400 border border-amber-500/20">
                   <QrCode className="w-4 h-4" />
                 </div>
                 <h4 className="text-[11px] font-mono font-bold text-slate-200 uppercase tracking-wide">Sertifikat Digital</h4>
-                <p className="text-[10px] text-slate-400 leading-normal">
+                <p className="text-[10.5px] text-slate-400 leading-normal">
                   Unduh sertifikat kalibrasi resmi yang dilengkapi QR Code penjamin keaslian.
                 </p>
               </div>
 
-              <div className="bg-white/[0.01] border border-white/5 p-4 rounded-xl space-y-2">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+              <div className="bg-slate-900/60 border border-slate-800 hover:border-emerald-500/40 p-4 rounded-2xl space-y-2 transition-all">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 border border-emerald-500/20">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
                 <h4 className="text-[11px] font-mono font-bold text-slate-200 uppercase tracking-wide">Garansi Authorized</h4>
-                <p className="text-[10px] text-slate-400 leading-normal">
-                  Perlindungan garansi resmi servis s/d 6 bulan dengan dukungan suku cadang original.
+                <p className="text-[10.5px] text-slate-400 leading-normal">
+                  Perlindungan garansi resmi servis s/d 6 bulan dengan jaminan suku cadang original.
                 </p>
               </div>
             </motion.div>

@@ -54,6 +54,121 @@ const getWOEstimationDisplay = (wo: WorkOrder) => {
   return { isRange: false, min: 0, max: 0, text: '-', shortText: '-' };
 };
 
+const parseEstimasiToSeconds = (estimasi: string): number => {
+  if (!estimasi) return 0;
+  const matches = estimasi.match(/(\d+)\s*(hari|day|jam|hour|menit|min|minggu|week)/i);
+  if (matches) {
+    const val = parseInt(matches[1], 10);
+    const text = matches[2].toLowerCase();
+    if (text.includes('minggu') || text.includes('week')) {
+      return val * 7 * 24 * 3600;
+    }
+    if (text.includes('hari') || text.includes('day')) {
+      return val * 24 * 3600;
+    }
+    if (text.includes('jam') || text.includes('hour')) {
+      return val * 3600;
+    }
+    if (text.includes('menit') || text.includes('min')) {
+      return val * 60;
+    }
+  }
+  const valOnly = parseInt(estimasi, 10);
+  if (!isNaN(valOnly)) return valOnly * 3600;
+  return 0;
+};
+
+interface WOOverdueInfo {
+  isOverdue: boolean;
+  overdueMs: number;
+  overdueText: string;
+  deadlineDate: Date | null;
+}
+
+const checkWOOverdueStatus = (wo: WorkOrder): WOOverdueInfo => {
+  if (wo.status === 'COMPLETED' || wo.status === 'CANCELLED') {
+    return { isOverdue: false, overdueMs: 0, overdueText: '', deadlineDate: null };
+  }
+
+  const durationSec = parseEstimasiToSeconds(wo.estimasiPengerjaan);
+  if (durationSec <= 0) {
+    return { isOverdue: false, overdueMs: 0, overdueText: '', deadlineDate: null };
+  }
+
+  const startTime = new Date(wo.startedAt || wo.intakeDate || wo.createdAt || 0).getTime();
+  if (isNaN(startTime) || startTime <= 0) {
+    return { isOverdue: false, overdueMs: 0, overdueText: '', deadlineDate: null };
+  }
+
+  const deadlineMs = startTime + (durationSec * 1000);
+  const now = Date.now();
+
+  if (now > deadlineMs) {
+    const overdueMs = now - deadlineMs;
+    const totalMinutes = Math.floor(overdueMs / (1000 * 60));
+    const hours = Math.floor(totalMinutes / 60);
+    const days = Math.floor(hours / 24);
+    const remainingHours = hours % 24;
+
+    let overdueText = '';
+    if (days > 0) {
+      overdueText = `${days} Hari${remainingHours > 0 ? ` ${remainingHours} Jam` : ''}`;
+    } else if (hours > 0) {
+      overdueText = `${hours} Jam`;
+    } else {
+      overdueText = `${Math.max(1, totalMinutes)} Menit`;
+    }
+
+    return {
+      isOverdue: true,
+      overdueMs,
+      overdueText,
+      deadlineDate: new Date(deadlineMs),
+    };
+  }
+
+  return {
+    isOverdue: false,
+    overdueMs: 0,
+    overdueText: '',
+    deadlineDate: new Date(deadlineMs),
+  };
+};
+
+const formatSPKDate = (dateStr?: string) => {
+  if (!dateStr) return { fullDate: '-', time: '', relative: '' };
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return { fullDate: dateStr, time: '', relative: '' };
+
+    const fullDate = d.toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+    const time = d.toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit'
+    }) + ' WIB';
+
+    const diffMs = Date.now() - d.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 3600));
+    const diffDays = Math.floor(diffHours / 24);
+    let relative = '';
+    if (diffDays === 0) {
+      relative = diffHours < 1 ? 'Baru saja' : `${diffHours} jam lalu`;
+    } else if (diffDays === 1) {
+      relative = 'Kemarin';
+    } else {
+      relative = `${diffDays} hari lalu`;
+    }
+
+    return { fullDate, time, relative };
+  } catch {
+    return { fullDate: dateStr || '-', time: '', relative: '' };
+  }
+};
+
 const INITIAL_INVENTORY: InventoryItem[] = [
   { name: 'Ban Serap', checked: false },
   { name: 'Dongkrak', checked: false },
@@ -284,6 +399,7 @@ const SADashboard: React.FC = () => {
   const [queueSearch, setQueueSearch] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<'ALL' | '1' | '2' | '3'>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'QUEUE' | 'IN_PROGRESS' | 'PENDING_APPROVAL' | 'PENDING_PARTS' | 'COMPLETED' | 'CANCELLED' | 'ARCHIVED'>('ALL');
+  const [tableSortTab, setTableSortTab] = useState<'ALL' | 'OVERDUE' | 'WAITING_HANDOVER' | 'CANCELLED'>('ALL');
   const [showArchived, setShowArchived] = useState(false);
   const [woListPage, setWoListPage] = useState(1);
   const [woListLimit, setWoListLimit] = useState(5);
@@ -291,7 +407,7 @@ const SADashboard: React.FC = () => {
 
   React.useEffect(() => {
     setWoListPage(1);
-  }, [queueSearch, priorityFilter, statusFilter, showArchived]);
+  }, [queueSearch, priorityFilter, statusFilter, showArchived, tableSortTab]);
 
   const getHistoricalWorkOrders = (pn: string) => {
     if (!pn || pn.trim().length < 3) return [];
@@ -676,46 +792,56 @@ const SADashboard: React.FC = () => {
       {activeTab === 'MONITOR' ? (
         <>
           {/* LIVE WORK ORDER TRACKING DASHBOARD */}
-          <div className="bg-slate-900 text-white p-4 rounded-lg shadow-md border border-slate-700">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div className="bg-gradient-to-r from-slate-900 via-[#0b1322] to-slate-900 text-white p-4 sm:p-5 rounded-2xl shadow-xl border border-slate-800 relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 relative z-10">
           <div>
-            <h3 className="text-xs font-black uppercase tracking-wider text-blue-400 flex items-center">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping mr-2"></span>
-              LIVE WORK ORDER STATUS MONITOR (REAL-TIME MECHANIC FEED)
-            </h3>
-            <p className="text-[10px] text-slate-400 mt-1">
-              Pantau antrean pengerjaan laboratorium diesel & arsipkan SPK yang telah selesai agar daftar tetap rapi.
+            <div className="flex items-center gap-2 mb-1">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+              <h3 className="text-xs font-mono font-black uppercase tracking-wider text-cyan-300 flex items-center gap-2">
+                WORKSHOP LIVE COMMAND CONSOLE
+              </h3>
+              <span className="text-[9px] font-mono font-bold bg-cyan-950/80 border border-cyan-800/60 text-cyan-400 px-2 py-0.5 rounded-full">
+                Real-Time Cloud Sync
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Monitoring pengerjaan laboratorium diesel, estimasi pengerjaan, dan antrean servis kendaraan secara langsung.
             </p>
           </div>
           <div className="flex items-center gap-2 self-start sm:self-center">
-            <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono border border-slate-700">
-              Antrean Aktif: {workOrders.filter(w => w.status !== 'COMPLETED').length} Unit
-            </span>
+            <div className="bg-slate-950/90 text-slate-300 px-3 py-1.5 rounded-xl font-mono text-xs border border-slate-800 flex items-center gap-2 shadow-inner">
+              <span className="text-slate-500 text-[10px] uppercase font-bold">Aktif:</span>
+              <span className="text-cyan-400 font-black">{workOrders.filter(w => w.status !== 'COMPLETED').length}</span>
+              <span className="text-slate-500 text-[10px]">Unit</span>
+            </div>
           </div>
         </div>
 
         <>
           {/* INTERACTIVE OBSIDIAN BENTO KPI TELEMETRY BAR */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5 mb-4 select-none">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5 mb-3.5 sm:mb-4 select-none">
             {/* All Active Card */}
             <button
               type="button"
               onClick={() => setStatusFilter('ALL')}
-              className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between h-20 group ${
+              className={`p-2.5 sm:p-3 rounded-xl border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between min-h-[72px] sm:h-20 group ${
                 statusFilter === 'ALL'
                   ? 'bento-card-obsidian border-cyan-500/80 shadow-[0_0_15px_rgba(6,182,212,0.25)] ring-1 ring-cyan-400/40'
                   : 'bento-card-obsidian border-slate-800/80 hover:border-slate-700 hover:shadow-md'
               }`}
             >
               <div className="specular-rim-top-right"></div>
-              <div className="flex items-center justify-between w-full gap-2 relative z-10">
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 truncate font-mono">Total Unit</span>
+              <div className="flex items-center justify-between w-full gap-1.5 relative z-10">
+                <span className="text-[8.5px] sm:text-[9px] font-black uppercase tracking-wider text-slate-400 truncate font-mono">Total Unit</span>
                 <PulsingHealthNode status="IN_PROGRESS" size="xs" />
               </div>
               <div className="flex items-baseline justify-between mt-1 relative z-10">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-black text-white font-mono">{workOrders.filter(w => w.status !== 'COMPLETED' || !w.isHandoverConfirmed).length}</span>
-                  <span className="text-[8.5px] text-cyan-400 font-bold font-mono uppercase">SPK</span>
+                  <span className="text-lg sm:text-xl font-black text-white font-mono">{workOrders.filter(w => w.status !== 'COMPLETED' || !w.isHandoverConfirmed).length}</span>
+                  <span className="text-[8px] sm:text-[8.5px] text-cyan-400 font-bold font-mono uppercase">SPK</span>
                 </div>
                 <Car className={`w-3.5 h-3.5 shrink-0 ${statusFilter === 'ALL' ? 'text-cyan-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
               </div>
@@ -726,21 +852,21 @@ const SADashboard: React.FC = () => {
             <button
               type="button"
               onClick={() => setStatusFilter('QUEUE')}
-              className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between h-20 group ${
+              className={`p-2.5 sm:p-3 rounded-xl border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between min-h-[72px] sm:h-20 group ${
                 statusFilter === 'QUEUE'
                   ? 'bento-card-obsidian border-slate-400/80 shadow-[0_0_15px_rgba(148,163,184,0.25)] ring-1 ring-slate-300/40'
                   : 'bento-card-obsidian border-slate-800/80 hover:border-slate-700 hover:shadow-md'
               }`}
             >
               <div className="specular-rim-top-right"></div>
-              <div className="flex items-center justify-between w-full gap-2 relative z-10">
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 truncate font-mono">Antrean</span>
+              <div className="flex items-center justify-between w-full gap-1.5 relative z-10">
+                <span className="text-[8.5px] sm:text-[9px] font-black uppercase tracking-wider text-slate-400 truncate font-mono">Antrean</span>
                 <PulsingHealthNode status="QUEUE" size="xs" />
               </div>
               <div className="flex items-baseline justify-between mt-1 relative z-10">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-black text-white font-mono">{workOrders.filter(w => w.status === 'QUEUE').length}</span>
-                  <span className="text-[8.5px] text-slate-400 font-bold font-mono uppercase">Unit</span>
+                  <span className="text-lg sm:text-xl font-black text-white font-mono">{workOrders.filter(w => w.status === 'QUEUE').length}</span>
+                  <span className="text-[8px] sm:text-[8.5px] text-slate-400 font-bold font-mono uppercase">Unit</span>
                 </div>
                 <Clock className={`w-3.5 h-3.5 shrink-0 ${statusFilter === 'QUEUE' ? 'text-slate-300 animate-pulse' : 'text-slate-500 group-hover:text-slate-300'}`} />
               </div>
@@ -751,21 +877,21 @@ const SADashboard: React.FC = () => {
             <button
               type="button"
               onClick={() => setStatusFilter('IN_PROGRESS')}
-              className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between h-20 group ${
+              className={`p-2.5 sm:p-3 rounded-xl border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between min-h-[72px] sm:h-20 group ${
                 statusFilter === 'IN_PROGRESS'
                   ? 'bento-card-obsidian border-cyan-400/80 shadow-[0_0_15px_rgba(6,182,212,0.3)] ring-1 ring-cyan-300/40'
                   : 'bento-card-obsidian border-slate-800/80 hover:border-slate-700 hover:shadow-md'
               }`}
             >
               <div className="specular-rim-top-right"></div>
-              <div className="flex items-center justify-between w-full gap-2 relative z-10">
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 truncate font-mono">Kalibrasi / Kerja</span>
+              <div className="flex items-center justify-between w-full gap-1.5 relative z-10">
+                <span className="text-[8.5px] sm:text-[9px] font-black uppercase tracking-wider text-slate-400 truncate font-mono">Kalibrasi</span>
                 <PulsingHealthNode status="IN_PROGRESS" size="xs" />
               </div>
               <div className="flex items-baseline justify-between mt-1 relative z-10">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-black text-cyan-300 font-mono">{workOrders.filter(w => w.status === 'IN_PROGRESS').length}</span>
-                  <span className="text-[8.5px] text-cyan-400 font-bold font-mono uppercase">Unit</span>
+                  <span className="text-lg sm:text-xl font-black text-cyan-300 font-mono">{workOrders.filter(w => w.status === 'IN_PROGRESS').length}</span>
+                  <span className="text-[8px] sm:text-[8.5px] text-cyan-400 font-bold font-mono uppercase">Unit</span>
                 </div>
                 <Wrench className={`w-3.5 h-3.5 shrink-0 ${statusFilter === 'IN_PROGRESS' ? 'text-cyan-400 animate-pulse' : 'text-slate-500 group-hover:text-cyan-400'}`} />
               </div>
@@ -776,21 +902,21 @@ const SADashboard: React.FC = () => {
             <button
               type="button"
               onClick={() => setStatusFilter('PENDING_APPROVAL')}
-              className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between h-20 group ${
+              className={`p-2.5 sm:p-3 rounded-xl border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between min-h-[72px] sm:h-20 group ${
                 statusFilter === 'PENDING_APPROVAL'
                   ? 'bento-card-obsidian border-rose-500/80 shadow-[0_0_15px_rgba(244,63,94,0.3)] ring-1 ring-rose-400/40'
                   : 'bento-card-obsidian border-slate-800/80 hover:border-slate-700 hover:shadow-md'
               }`}
             >
               <div className="specular-rim-crimson"></div>
-              <div className="flex items-center justify-between w-full gap-2 relative z-10">
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 truncate font-mono">Approval SPK</span>
+              <div className="flex items-center justify-between w-full gap-1.5 relative z-10">
+                <span className="text-[8.5px] sm:text-[9px] font-black uppercase tracking-wider text-slate-400 truncate font-mono">Approval</span>
                 <PulsingHealthNode status="PENDING_APPROVAL" priority={1} size="xs" />
               </div>
               <div className="flex items-baseline justify-between mt-1 relative z-10">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-black text-rose-300 font-mono">{workOrders.filter(w => w.status === 'PENDING_APPROVAL').length}</span>
-                  <span className="text-[8.5px] text-rose-400 font-bold font-mono uppercase">Unit</span>
+                  <span className="text-lg sm:text-xl font-black text-rose-300 font-mono">{workOrders.filter(w => w.status === 'PENDING_APPROVAL').length}</span>
+                  <span className="text-[8px] sm:text-[8.5px] text-rose-400 font-bold font-mono uppercase">Unit</span>
                 </div>
                 <ShieldAlert className={`w-3.5 h-3.5 shrink-0 ${statusFilter === 'PENDING_APPROVAL' ? 'text-rose-400 animate-bounce' : 'text-slate-500 group-hover:text-rose-400'}`} />
               </div>
@@ -801,21 +927,21 @@ const SADashboard: React.FC = () => {
             <button
               type="button"
               onClick={() => setStatusFilter('PENDING_PARTS')}
-              className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between h-20 group ${
+              className={`p-2.5 sm:p-3 rounded-xl border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between min-h-[72px] sm:h-20 group ${
                 statusFilter === 'PENDING_PARTS'
                   ? 'bento-card-obsidian border-amber-500/80 shadow-[0_0_15px_rgba(245,158,11,0.3)] ring-1 ring-amber-400/40'
                   : 'bento-card-obsidian border-slate-800/80 hover:border-slate-700 hover:shadow-md'
               }`}
             >
               <div className="specular-rim-amber"></div>
-              <div className="flex items-center justify-between w-full gap-2 relative z-10">
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 truncate font-mono">Parts Tunda</span>
+              <div className="flex items-center justify-between w-full gap-1.5 relative z-10">
+                <span className="text-[8.5px] sm:text-[9px] font-black uppercase tracking-wider text-slate-400 truncate font-mono">Parts Tunda</span>
                 <PulsingHealthNode status="PENDING_PARTS" size="xs" />
               </div>
               <div className="flex items-baseline justify-between mt-1 relative z-10">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-black text-amber-300 font-mono">{workOrders.filter(w => w.status === 'PENDING_PARTS').length}</span>
-                  <span className="text-[8.5px] text-amber-400 font-bold font-mono uppercase">Unit</span>
+                  <span className="text-lg sm:text-xl font-black text-amber-300 font-mono">{workOrders.filter(w => w.status === 'PENDING_PARTS').length}</span>
+                  <span className="text-[8px] sm:text-[8.5px] text-amber-400 font-bold font-mono uppercase">Unit</span>
                 </div>
                 <Archive className={`w-3.5 h-3.5 shrink-0 ${statusFilter === 'PENDING_PARTS' ? 'text-amber-400 animate-pulse' : 'text-slate-500 group-hover:text-amber-400'}`} />
               </div>
@@ -826,21 +952,21 @@ const SADashboard: React.FC = () => {
             <button
               type="button"
               onClick={() => setStatusFilter('COMPLETED')}
-              className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between h-20 group ${
+              className={`p-2.5 sm:p-3 rounded-xl border text-left transition-all relative overflow-hidden cursor-pointer flex flex-col justify-between min-h-[72px] sm:h-20 group ${
                 statusFilter === 'COMPLETED'
                   ? 'bento-card-obsidian border-emerald-500/80 shadow-[0_0_15px_rgba(16,185,129,0.3)] ring-1 ring-emerald-400/40'
                   : 'bento-card-obsidian border-slate-800/80 hover:border-slate-700 hover:shadow-md'
               }`}
             >
               <div className="specular-rim-emerald"></div>
-              <div className="flex items-center justify-between w-full gap-2 relative z-10">
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 truncate font-mono">Siap QC / Serah</span>
+              <div className="flex items-center justify-between w-full gap-1.5 relative z-10">
+                <span className="text-[8.5px] sm:text-[9px] font-black uppercase tracking-wider text-slate-400 truncate font-mono">Siap Serah</span>
                 <PulsingHealthNode status="COMPLETED" size="xs" />
               </div>
               <div className="flex items-baseline justify-between mt-1 relative z-10">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-black text-emerald-300 font-mono">{workOrders.filter(w => w.status === 'COMPLETED' && !w.isHandoverConfirmed).length}</span>
-                  <span className="text-[8.5px] text-emerald-400 font-bold font-mono uppercase">Unit</span>
+                  <span className="text-lg sm:text-xl font-black text-emerald-300 font-mono">{workOrders.filter(w => w.status === 'COMPLETED' && !w.isHandoverConfirmed).length}</span>
+                  <span className="text-[8px] sm:text-[8.5px] text-emerald-400 font-bold font-mono uppercase">Unit</span>
                 </div>
                 <Check className={`w-3.5 h-3.5 shrink-0 ${statusFilter === 'COMPLETED' ? 'text-emerald-400 font-black' : 'text-slate-500 group-hover:text-emerald-400'}`} />
               </div>
@@ -848,88 +974,230 @@ const SADashboard: React.FC = () => {
             </button>
           </div>
 
-          {/* Search & Status Filter Panel - Clean, Compact & Unified */}
-          <div className="bg-slate-900/90 p-3 rounded-xl border border-slate-800 mb-3.5 flex flex-col md:flex-row gap-2.5 items-stretch md:items-center justify-between shadow-sm">
-            {/* Search Input */}
-            <div className="relative flex-1 max-w-lg">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
-                <Search className="w-3.5 h-3.5" />
-              </span>
-              <input
-                id="wo-search-input"
-                type="text"
-                placeholder="Cari nama pelanggan, plat nomor, atau ID SPK..."
-                value={queueSearch}
-                onChange={(e) => setQueueSearch(e.target.value)}
-                className="w-full pl-9 pr-8 py-2 bg-slate-950/80 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all font-medium"
-              />
-              {queueSearch && (
-                <button
-                  type="button"
-                  onClick={() => setQueueSearch('')}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-white text-xs font-bold cursor-pointer"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
+          {/* DYNAMIC CATEGORY COUNTS & ATTENTION BANNER */}
+          {(() => {
+            const countAll = workOrders.filter(w => !w.isArchived).length;
+            const countOverdue = workOrders.filter(w => !w.isArchived && checkWOOverdueStatus(w).isOverdue).length;
+            const countWaitingHandover = workOrders.filter(w => !w.isArchived && w.status === 'COMPLETED' && !w.isHandoverConfirmed).length;
+            const countCancelled = workOrders.filter(w => !w.isArchived && w.status === 'CANCELLED').length;
 
-            {/* Quick Actions & Status Filters */}
-            <div className="flex flex-wrap items-center gap-2">
-              {/* Status Filter Dropdown */}
-              <div className="relative">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as any)}
-                  className="bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-cyan-500 text-xs font-bold text-slate-200 py-2 pl-3 pr-8 rounded-lg focus:ring-1 focus:ring-cyan-500/30 outline-none transition-all cursor-pointer shadow-xs appearance-none"
-                >
-                  <option value="ALL">📋 Semua Status</option>
-                  <option value="QUEUE">⏳ Antrean</option>
-                  <option value="IN_PROGRESS">⚡ Sedang Kerja</option>
-                  <option value="PENDING_APPROVAL">⚠️ Butuh Approval</option>
-                  <option value="PENDING_PARTS">🔧 Tertunda Parts</option>
-                  <option value="COMPLETED">✅ Selesai / Siap QC</option>
-                  <option value="CANCELLED">❌ Dibatalkan</option>
-                  <option value="ARCHIVED">📦 Hanya Arsip</option>
-                </select>
-                <span className="absolute inset-y-0 right-0 flex items-center pr-2.5 pointer-events-none text-slate-400 text-[10px]">
-                  ▼
-                </span>
-              </div>
+            return (
+              <>
+                {/* CALM MATTE RED OVERDUE ATTENTION BANNER (Only when overdue SPKs exist) */}
+                {countOverdue > 0 && (
+                  <div className="mb-3 px-3.5 py-3 rounded-xl bg-gradient-to-r from-rose-950/40 via-slate-900/90 to-slate-900/90 border border-rose-900/60 text-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-rose-950/80 border border-rose-800/60 text-rose-300 flex items-center justify-center shrink-0 shadow-xs">
+                        <AlertTriangle className="w-4 h-4 text-rose-400" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold font-mono tracking-wide text-rose-200 flex items-center gap-1.5 flex-wrap">
+                          <span>PERHATIAN: ADA</span>
+                          <span className="px-2 py-0.5 rounded bg-rose-900/70 border border-rose-700/60 text-white font-mono font-black text-xs shadow-xs">
+                            {countOverdue}
+                          </span>
+                          <span>SPK YANG MELEBIHI BATAS ESTIMASI WAKTU! SEGERA UPDATE SPK!</span>
+                        </div>
+                        <p className="text-[10px] text-rose-300/70 font-mono mt-0.5">
+                          Batas waktu pengerjaan telah terlewati. Konfirmasi mekanik atau perbarui estimasi pengerjaan untuk pelanggan.
+                        </p>
+                      </div>
+                    </div>
+                    {tableSortTab !== 'OVERDUE' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTableSortTab('OVERDUE');
+                          setStatusFilter('ALL');
+                        }}
+                        className="px-3 py-1.5 bg-rose-950/70 hover:bg-rose-900/80 text-rose-200 border border-rose-800/70 rounded-lg text-[11px] font-mono font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 shadow-xs self-start sm:self-center"
+                      >
+                        <span>Lihat SPK Overdue</span>
+                        <ArrowRight className="w-3.5 h-3.5 text-rose-300" />
+                      </button>
+                    )}
+                  </div>
+                )}
 
-              {/* Show Archived Quick Toggle */}
-              <button
-                type="button"
-                onClick={() => setShowArchived(!showArchived)}
-                className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer select-none ${
-                  showArchived 
-                    ? 'bg-amber-950/70 border-amber-600/80 text-amber-300 shadow-xs' 
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-                }`}
-                title="Tampilkan juga SPK yang sudah diarsipkan"
-              >
-                <Archive className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span>Termasuk Arsip</span>
-                {showArchived && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>}
-              </button>
+                {/* UNIFIED MONITOR COMMAND & FILTER TOOLBAR */}
+                <div className="bg-slate-900/90 rounded-xl border border-slate-800 mb-3.5 p-3 space-y-2.5 shadow-sm">
+                  {/* ROW 1: PRIMARY CATEGORY / TABLE SORTING TABS & QUICK COUNTER */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
+                    <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto custom-scrollbar select-none -mx-1 px-1 py-0.5">
+                      {/* Tab: ALL */}
+                      <button
+                        type="button"
+                        onClick={() => setTableSortTab('ALL')}
+                        className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold font-mono flex items-center gap-1 sm:gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                          tableSortTab === 'ALL'
+                            ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-xs'
+                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-950 border border-transparent'
+                        }`}
+                      >
+                        <ClipboardList className="w-3.5 h-3.5" />
+                        <span>Semua</span>
+                        <span className={`px-1.5 py-0.2 rounded-full text-[9.5px] sm:text-[10px] font-mono font-bold ${
+                          tableSortTab === 'ALL' ? 'bg-cyan-500/30 text-cyan-200' : 'bg-slate-800 text-slate-400'
+                        }`}>
+                          {countAll}
+                        </span>
+                      </button>
 
-              {/* Reset Filters Button if any is active */}
-              {(queueSearch || statusFilter !== 'ALL' || showArchived) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQueueSearch('');
-                    setStatusFilter('ALL');
-                    setShowArchived(false);
-                  }}
-                  className="px-2.5 py-2 text-xs text-slate-400 hover:text-cyan-300 font-bold bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-lg transition-all cursor-pointer flex items-center gap-1"
-                >
-                  <RotateCcw className="w-3 h-3" />
-                  <span>Reset</span>
-                </button>
-              )}
-            </div>
-          </div>
+                      {/* Tab: OVERDUE (Calm Rose Palette) */}
+                      <button
+                        type="button"
+                        onClick={() => setTableSortTab('OVERDUE')}
+                        className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold font-mono flex items-center gap-1 sm:gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                          tableSortTab === 'OVERDUE'
+                            ? 'bg-rose-950/60 text-rose-200 border border-rose-700/60 shadow-xs'
+                            : 'text-slate-400 hover:text-rose-300 hover:bg-slate-950 border border-transparent'
+                        }`}
+                      >
+                        <Clock className={`w-3.5 h-3.5 ${tableSortTab === 'OVERDUE' ? 'text-rose-300' : 'text-slate-400'}`} />
+                        <span>Overdue</span>
+                        <span className={`px-1.5 py-0.2 rounded-full text-[9.5px] sm:text-[10px] font-mono font-bold ${
+                          countOverdue > 0
+                            ? tableSortTab === 'OVERDUE' ? 'bg-rose-900/80 text-rose-100 border border-rose-700/60' : 'bg-rose-950/60 text-rose-300 border border-rose-900/60'
+                            : 'bg-slate-800 text-slate-400'
+                        }`}>
+                          {countOverdue}
+                        </span>
+                      </button>
+
+                      {/* Tab: SELESAI */}
+                      <button
+                        type="button"
+                        onClick={() => setTableSortTab('WAITING_HANDOVER')}
+                        className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold font-mono flex items-center gap-1 sm:gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                          tableSortTab === 'WAITING_HANDOVER'
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
+                            : 'text-slate-400 hover:text-emerald-300 hover:bg-slate-950 border border-transparent'
+                        }`}
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Siap Serah</span>
+                        <span className={`px-1.5 py-0.2 rounded-full text-[9.5px] sm:text-[10px] font-mono font-bold ${
+                          countWaitingHandover > 0
+                            ? 'bg-emerald-500/30 text-emerald-200 border border-emerald-500/40'
+                            : 'bg-slate-800 text-slate-400'
+                        }`}>
+                          {countWaitingHandover}
+                        </span>
+                      </button>
+
+                      {/* Tab: CANCELLED */}
+                      <button
+                        type="button"
+                        onClick={() => setTableSortTab('CANCELLED')}
+                        className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold font-mono flex items-center gap-1 sm:gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                          tableSortTab === 'CANCELLED'
+                            ? 'bg-slate-800 text-slate-200 border border-slate-700 shadow-xs'
+                            : 'text-slate-400 hover:text-slate-300 hover:bg-slate-950 border border-transparent'
+                        }`}
+                      >
+                        <Ban className="w-3.5 h-3.5 text-rose-400/80" />
+                        <span>Batal</span>
+                        <span className={`px-1.5 py-0.2 rounded-full text-[9.5px] sm:text-[10px] font-mono font-bold ${
+                          countCancelled > 0
+                            ? 'bg-slate-800 text-slate-300 border border-slate-700'
+                            : 'bg-slate-800 text-slate-400'
+                        }`}>
+                          {countCancelled}
+                        </span>
+                      </button>
+                    </div>
+
+                    {/* Quick Reset Button if Filters Active */}
+                    <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                      {(queueSearch || statusFilter !== 'ALL' || showArchived || tableSortTab !== 'ALL') && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setQueueSearch('');
+                            setStatusFilter('ALL');
+                            setTableSortTab('ALL');
+                            setShowArchived(false);
+                          }}
+                          className="px-2.5 py-1 text-[10.5px] sm:text-[11px] text-slate-400 hover:text-cyan-300 font-mono font-bold bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                          title="Reset semua filter dan pencarian"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          <span>Reset</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ROW 2: SEARCH INPUT + GRANULAR STATUS SELECT + ARCHIVE TOGGLE */}
+                  <div className="flex flex-col md:flex-row gap-2 sm:gap-2.5 items-stretch md:items-center justify-between">
+                    {/* Search Input */}
+                    <div className="relative flex-1 min-w-0">
+                      <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                        <Search className="w-3.5 h-3.5" />
+                      </span>
+                      <input
+                        id="wo-search-input"
+                        type="text"
+                        placeholder="Cari pelanggan, plat, ID SPK..."
+                        value={queueSearch}
+                        onChange={(e) => setQueueSearch(e.target.value)}
+                        className="w-full pl-9 pr-8 py-2 bg-slate-950/80 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all font-medium"
+                      />
+                      {queueSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setQueueSearch('')}
+                          className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-white text-xs font-bold cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Secondary Filter Controls */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                      {/* Status Filter Dropdown */}
+                      <div className="relative flex-1 sm:flex-none">
+                        <select
+                          value={statusFilter}
+                          onChange={(e) => setStatusFilter(e.target.value as any)}
+                          className="w-full sm:w-auto bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-cyan-500 text-xs font-bold text-slate-200 py-2 pl-3 pr-8 rounded-lg focus:ring-1 focus:ring-cyan-500/30 outline-none transition-all cursor-pointer shadow-xs appearance-none"
+                        >
+                          <option value="ALL">📋 Semua Status Pengerjaan</option>
+                          <option value="QUEUE">⏳ Antrean</option>
+                          <option value="IN_PROGRESS">⚡ Sedang Kerja</option>
+                          <option value="PENDING_APPROVAL">⚠️ Butuh Approval</option>
+                          <option value="PENDING_PARTS">🔧 Tertunda Parts</option>
+                          <option value="COMPLETED">✅ Selesai / Siap QC</option>
+                          <option value="CANCELLED">❌ Dibatalkan</option>
+                          <option value="ARCHIVED">📦 Hanya Arsip</option>
+                        </select>
+                        <span className="absolute inset-y-0 right-0 flex items-center pr-2.5 pointer-events-none text-slate-400 text-[10px]">
+                          ▼
+                        </span>
+                      </div>
+
+                      {/* Show Archived Quick Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => setShowArchived(!showArchived)}
+                        className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none ${
+                          showArchived 
+                            ? 'bg-amber-950/70 border-amber-600/80 text-amber-300 shadow-xs' 
+                            : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                        }`}
+                        title="Tampilkan juga SPK yang sudah diarsipkan"
+                      >
+                        <Archive className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <span>Termasuk Arsip</span>
+                        {showArchived && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
 
             {(() => {
               const filteredWOs = workOrders.filter(wo => {
@@ -943,14 +1211,24 @@ const SADashboard: React.FC = () => {
                   if (wo.isArchived) return false;
                 }
 
-                // Filter by operational status
-                if (statusFilter !== 'ALL' && statusFilter !== 'ARCHIVED') {
-                  if (wo.status !== statusFilter) return false;
+                // Primary Category / Table Sort Tab Filter
+                if (tableSortTab === 'OVERDUE') {
+                  const overdueStatus = checkWOOverdueStatus(wo);
+                  if (!overdueStatus.isOverdue) return false;
+                } else if (tableSortTab === 'WAITING_HANDOVER') {
+                  if (wo.status !== 'COMPLETED' || wo.isHandoverConfirmed) return false;
+                } else if (tableSortTab === 'CANCELLED') {
+                  if (wo.status !== 'CANCELLED') return false;
+                } else {
+                  // 'ALL' tab: allow secondary operational status filter from dropdown
+                  if (statusFilter !== 'ALL' && statusFilter !== 'ARCHIVED') {
+                    if (wo.status !== statusFilter) return false;
+                  }
                 }
 
-                // For COMPLETED items without search / without showArchived / without ARCHIVED status:
-                if (statusFilter === 'ALL' && !showArchived && !isSearchActive && wo.status === 'COMPLETED') {
-                  // If handover is not yet confirmed, we must show it in the active list so SA can confirm handover!
+                // For COMPLETED items on 'ALL' tab without search / without showArchived / without ARCHIVED status:
+                if (tableSortTab === 'ALL' && statusFilter === 'ALL' && !showArchived && !isSearchActive && wo.status === 'COMPLETED') {
+                  // If handover is not yet confirmed, show it so SA can confirm handover!
                   if (!wo.isHandoverConfirmed) return true;
 
                   try {
@@ -981,19 +1259,43 @@ const SADashboard: React.FC = () => {
 
                 return true;
               }).sort((a, b) => {
+                const overdueA = checkWOOverdueStatus(a);
+                const overdueB = checkWOOverdueStatus(b);
+
+                // Priority 1: When on 'OVERDUE' tab, sort by longest overdue first
+                if (tableSortTab === 'OVERDUE') {
+                  return overdueB.overdueMs - overdueA.overdueMs;
+                }
+
+                // Priority 2: When on 'ALL' tab, overdue work orders pinned to the top
+                if (tableSortTab === 'ALL') {
+                  if (overdueA.isOverdue && !overdueB.isOverdue) return -1;
+                  if (!overdueA.isOverdue && overdueB.isOverdue) return 1;
+                  if (overdueA.isOverdue && overdueB.isOverdue) {
+                    return overdueB.overdueMs - overdueA.overdueMs;
+                  }
+                }
+
+                // Priority 3: Default sort - most recently created/intake first
                 const tA = new Date(a.createdAt || a.intakeDate || 0).getTime();
                 const tB = new Date(b.createdAt || b.intakeDate || 0).getTime();
                 return tB - tA;
               });
               
               if (filteredWOs.length === 0) {
-                const hasFilters = queueSearch || statusFilter !== 'ALL';
+                const hasFilters = queueSearch || statusFilter !== 'ALL' || tableSortTab !== 'ALL' || showArchived;
                 return (
                   <div className="text-center p-8 text-slate-400 text-xs bg-slate-900 rounded-xl border border-slate-800 flex flex-col items-center justify-center gap-2">
                     <p>
-                      {hasFilters 
-                        ? "Tidak ada SPK yang cocok dengan kata kunci pencarian atau filter yang aktif."
-                        : "Belum ada SPK aktif terdaftar dalam antrean laboratorium. Silakan buat SPK baru menggunakan formulir di tab 'Registrasi SPK Baru'."
+                      {tableSortTab === 'OVERDUE'
+                        ? "Bagus! Tidak ada SPK yang melebihi batas estimasi waktu. Seluruh pengerjaan berjalan tepat waktu."
+                        : tableSortTab === 'WAITING_HANDOVER'
+                          ? "Tidak ada unit berstatus selesai yang sedang menunggu serah terima ke pelanggan."
+                          : tableSortTab === 'CANCELLED'
+                            ? "Tidak ada SPK dengan status dibatalkan (canceled)."
+                            : hasFilters 
+                              ? "Tidak ada SPK yang cocok dengan kata kunci pencarian atau filter yang aktif."
+                              : "Belum ada SPK aktif terdaftar dalam antrean laboratorium. Silakan buat SPK baru menggunakan formulir di tab 'Registrasi SPK Baru'."
                       }
                     </p>
                     {hasFilters && (
@@ -1002,11 +1304,12 @@ const SADashboard: React.FC = () => {
                         onClick={() => {
                           setQueueSearch('');
                           setStatusFilter('ALL');
+                          setTableSortTab('ALL');
                           setShowArchived(false);
                         }}
                         className="px-3.5 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg text-xs mt-1 transition-all cursor-pointer shadow-sm"
                       >
-                        Reset Filter & Pencarian
+                        Reset Filter & Tampilkan Semua SPK
                       </button>
                     )}
                   </div>
@@ -1014,6 +1317,7 @@ const SADashboard: React.FC = () => {
               }
 
               const totalItems = filteredWOs.length;
+              const overdueCount = filteredWOs.filter(w => checkWOOverdueStatus(w).isOverdue).length;
               const totalPages = Math.ceil(totalItems / woListLimit);
               const startIndex = (woListPage - 1) * woListLimit;
               const paginatedWOs = filteredWOs.slice(startIndex, startIndex + woListLimit);
@@ -1026,11 +1330,11 @@ const SADashboard: React.FC = () => {
                     <table className="w-full border-collapse text-left text-xs text-slate-300 relative z-10">
                       <thead>
                         <tr className="bg-slate-950 text-slate-400 border-b border-slate-800 text-[10.5px] font-mono uppercase tracking-wider">
-                          <th className="py-3 px-3.5 font-bold w-36">WO ID & Status</th>
+                          <th className="py-3 px-3.5 font-bold w-40">WO ID & Status</th>
                           <th className="py-3 px-3.5 font-bold">Pelanggan & Kontak</th>
                           <th className="py-3 px-3.5 font-bold">Kendaraan & Plat</th>
                           <th className="py-3 px-3.5 font-bold w-40">Estimasi Biaya</th>
-                          <th className="py-3 px-3.5 font-bold">Mekanik Terpilih</th>
+                          <th className="py-3 px-3.5 font-bold w-44">Tgl SPK Dibuat</th>
                           <th className="py-3 px-3.5 font-bold text-center w-36">Status Kerja</th>
                           <th className="py-3 px-3.5 font-bold text-center w-52">Aksi Cepat</th>
                         </tr>
@@ -1039,6 +1343,8 @@ const SADashboard: React.FC = () => {
                         {paginatedWOs.map((wo) => {
                           const assignedMech = users.find(u => u.id === wo.mechanicId)?.name || 'Queue Antrean';
                           const isHUDExpanded = expandedTelemetryWOId === wo.id;
+                          const overdueInfo = checkWOOverdueStatus(wo);
+                          const spkDate = formatSPKDate(wo.createdAt || wo.intakeDate);
 
                           return (
                             <React.Fragment key={wo.id}>
@@ -1046,15 +1352,28 @@ const SADashboard: React.FC = () => {
                                 className={`transition-colors ${
                                   isHUDExpanded
                                     ? 'bg-slate-900/95 border-b border-cyan-500/40 shadow-inner'
-                                    : wo.isArchived 
-                                      ? 'bg-slate-950/60 opacity-80 hover:opacity-100 border-b border-dashed border-amber-900/40' 
-                                      : 'hover:bg-slate-900/60'
+                                    : overdueInfo.isOverdue
+                                      ? 'bg-rose-950/20 hover:bg-rose-950/30 border-l-2 border-l-rose-700/80'
+                                      : wo.isArchived 
+                                        ? 'bg-slate-950/60 opacity-80 hover:opacity-100 border-b border-dashed border-amber-900/40' 
+                                        : 'hover:bg-slate-900/60'
                                 }`}
                               >
                                 <td className="py-2.5 px-3.5 align-middle font-mono text-[11px]">
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-2 flex-wrap">
                                     <PulsingHealthNode status={wo.status} priority={wo.priority} size="xs" />
-                                    <span className="font-bold text-cyan-300 tracking-tight font-mono">{wo.id}</span>
+                                    <span className="font-bold tracking-tight font-mono text-cyan-300">
+                                      {wo.id}
+                                    </span>
+                                    {overdueInfo.isOverdue && (
+                                      <span 
+                                        className="px-1.5 py-0.5 bg-rose-950/60 text-rose-300 text-[8.5px] font-mono font-bold rounded border border-rose-800/60 flex items-center gap-1 shadow-xs tracking-wider"
+                                        title={`SPK melewati batas estimasi (${wo.estimasiPengerjaan || '-'}). Terlambat ${overdueInfo.overdueText}.`}
+                                      >
+                                        <Clock className="w-2.5 h-2.5 text-rose-400" />
+                                        OVERDUE (+{overdueInfo.overdueText})
+                                      </span>
+                                    )}
                                     {wo.status === 'CANCELLED' && (
                                       <span 
                                         className="px-1.5 py-0.5 bg-rose-950 text-rose-300 text-[8px] font-black rounded border border-rose-800 flex items-center gap-0.5 shadow-xs tracking-wider"
@@ -1132,9 +1451,25 @@ const SADashboard: React.FC = () => {
                                   })()}
                                 </td>
                                 <td className="py-2.5 px-3.5 align-middle whitespace-nowrap">
-                                  <div className="flex items-center gap-1.5 whitespace-nowrap">
-                                    <span className={`w-1.5 h-1.5 rounded-full ${wo.mechanicId ? 'bg-cyan-400 shadow-[0_0_6px_#06b6d4]' : 'bg-slate-500'} shrink-0`}></span>
-                                    <span className="font-medium text-slate-300 truncate max-w-[120px] font-mono text-[11px]">{assignedMech}</span>
+                                  <div className="flex flex-col">
+                                    <div className="flex items-center gap-1.5 font-mono text-xs font-bold text-slate-200">
+                                      <Calendar className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                                      <span>{spkDate.fullDate}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-400 font-mono">
+                                      <span>{spkDate.time}</span>
+                                      {spkDate.relative && (
+                                        <span className="px-1.5 py-0.2 rounded bg-slate-900 border border-slate-800 text-slate-400 text-[8.5px]">
+                                          {spkDate.relative}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1 mt-1 text-[9.5px] text-slate-400 font-mono truncate">
+                                      <span className={`w-1.5 h-1.5 rounded-full ${wo.mechanicId ? 'bg-cyan-400 shadow-[0_0_6px_#06b6d4]' : 'bg-slate-600'} shrink-0`}></span>
+                                      <span className="truncate max-w-[130px]" title={`Mekanik: ${assignedMech}`}>
+                                        {wo.mechanicId ? assignedMech : 'Queue Antrean'}
+                                      </span>
+                                    </div>
                                   </div>
                                 </td>
                                 <td className="py-2.5 px-3.5 align-middle text-center">
@@ -1155,7 +1490,7 @@ const SADashboard: React.FC = () => {
                                       wo.status === 'PENDING_PARTS' ? 'bg-amber-950/80 text-amber-300 border-amber-700 hover:bg-amber-900/60 shadow-[0_0_8px_rgba(245,158,11,0.2)]' :
                                       wo.status === 'CANCELLED' ? 'bg-rose-950/80 text-rose-300 border-rose-800 hover:bg-rose-900/50' :
                                       'bg-emerald-950/80 text-emerald-300 border-emerald-700 hover:bg-emerald-900/60 shadow-[0_0_8px_rgba(16,185,129,0.2)]'
-                                    }`}
+                                    } ${overdueInfo.isOverdue ? 'ring-1 ring-rose-700/60' : ''}`}
                                   >
                                     <option value="QUEUE" className="bg-slate-950 text-slate-200 font-semibold">⏳ Antrean</option>
                                     <option value="IN_PROGRESS" className="bg-slate-950 text-slate-200 font-semibold">⚡ Sedang Kerja</option>
@@ -1164,6 +1499,11 @@ const SADashboard: React.FC = () => {
                                     <option value="COMPLETED" className="bg-slate-950 text-slate-200 font-semibold">✅ Selesai / Siap QC</option>
                                     <option value="CANCELLED" className="bg-slate-950 text-slate-200 font-semibold">❌ Dibatalkan</option>
                                   </select>
+                                  {overdueInfo.isOverdue && (
+                                    <div className="text-[8.5px] text-rose-300/90 font-mono mt-1 text-center truncate max-w-[130px] mx-auto" title={`Estimasi: ${wo.estimasiPengerjaan || '-'}`}>
+                                      Lewat Est. ({wo.estimasiPengerjaan})
+                                    </div>
+                                  )}
                                 </td>
                                 <td className="py-2.5 px-3.5 align-middle text-center">
                                   <div className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap">
@@ -1315,6 +1655,8 @@ const SADashboard: React.FC = () => {
                     {paginatedWOs.map((wo, index) => {
                       const assignedMech = users.find(u => u.id === wo.mechanicId)?.name || 'Queue Antrean';
                       const isHUDExpanded = expandedTelemetryWOId === wo.id;
+                      const overdueInfo = checkWOOverdueStatus(wo);
+                      const spkDate = formatSPKDate(wo.createdAt || wo.intakeDate);
 
                       return (
                         <motion.div
@@ -1324,11 +1666,13 @@ const SADashboard: React.FC = () => {
                           whileHover={{ scale: 1.01, y: -2 }}
                           transition={{ duration: 0.25, delay: Math.min(index * 0.04, 0.2) }}
                           className={`bento-card-obsidian rounded-xl p-3.5 border space-y-2.5 relative overflow-hidden transition-all ${
-                            wo.isArchived
-                              ? 'border-dashed border-amber-900/60 opacity-85 hover:opacity-100'
-                              : isHUDExpanded
-                                ? 'border-cyan-500/80 shadow-[0_0_20px_rgba(6,182,212,0.25)]'
-                                : 'border-slate-800/80 hover:border-slate-700'
+                            overdueInfo.isOverdue
+                              ? 'border-rose-900/60 bg-slate-900/95 shadow-sm'
+                              : wo.isArchived
+                                ? 'border-dashed border-amber-900/60 opacity-85 hover:opacity-100'
+                                : isHUDExpanded
+                                  ? 'border-cyan-500/80 shadow-[0_0_20px_rgba(6,182,212,0.25)]'
+                                  : 'border-slate-800/80 hover:border-slate-700'
                           }`}
                         >
                           <div className="specular-rim-top-right"></div>
@@ -1337,7 +1681,15 @@ const SADashboard: React.FC = () => {
                           <div className="flex items-center justify-between gap-2 relative z-10">
                             <div className="flex items-center gap-2 flex-wrap">
                               <PulsingHealthNode status={wo.status} priority={wo.priority} size="xs" />
-                              <span className="font-mono text-xs text-cyan-300 font-black">{wo.id}</span>
+                              <span className="font-mono text-xs font-bold text-cyan-300">
+                                {wo.id}
+                              </span>
+                              {overdueInfo.isOverdue && (
+                                <span className="px-1.5 py-0.5 bg-rose-950/60 text-rose-300 text-[8.5px] font-bold font-mono rounded border border-rose-800/60 flex items-center gap-1 shadow-xs tracking-wider">
+                                  <Clock className="w-2.5 h-2.5 text-rose-400" />
+                                  OVERDUE (+{overdueInfo.overdueText})
+                                </span>
+                              )}
                               {wo.status === 'CANCELLED' && (
                                 <span className="px-1.5 py-0.5 bg-rose-950 text-rose-300 text-[8px] font-black rounded border border-rose-800 flex items-center gap-1 shadow-xs tracking-wider">
                                   <Ban className="w-2.5 h-2.5 text-rose-400" />
@@ -1364,42 +1716,42 @@ const SADashboard: React.FC = () => {
                           </div>
 
                           {/* Customer & Vehicle Info */}
-                          <div className="grid grid-cols-2 gap-2 text-xs border-t border-slate-800/80 pt-2.5 relative z-10">
-                            <div>
+                          <div className="flex flex-col sm:grid sm:grid-cols-2 gap-2.5 sm:gap-2 text-xs border-t border-slate-800/80 pt-2.5 relative z-10">
+                            <div className="min-w-0">
                               <span className="text-[8.5px] text-slate-400 uppercase font-mono font-bold block">Pelanggan</span>
-                              <span className="font-bold text-slate-100 block truncate">{wo.customerName}</span>
+                              <span className="font-bold text-slate-100 block truncate text-xs sm:text-sm">{wo.customerName}</span>
                               <div className="flex items-center justify-between gap-1 mt-1">
-                                <span className="text-[10px] text-slate-400 font-mono truncate">{wo.customerPhone}</span>
+                                <span className="text-[10px] sm:text-[10.5px] text-slate-400 font-mono truncate">{wo.customerPhone}</span>
                                 <div className="flex items-center gap-1 shrink-0">
                                   <button
                                     type="button"
                                     onClick={() => handleCopyTrackingLink(wo)}
-                                    className="h-6 w-6 rounded flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-cyan-400 transition-colors cursor-pointer border border-slate-800"
+                                    className="h-7 w-7 rounded-lg flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-cyan-400 transition-colors cursor-pointer border border-slate-800 shrink-0"
                                     title="Salin Link Pelacakan"
                                   >
-                                    <Copy className="w-3 h-3" />
+                                    <Copy className="w-3.5 h-3.5" />
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => handleShareWhatsApp(wo)}
-                                    className="h-6 w-6 rounded flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-emerald-400 transition-colors cursor-pointer border border-slate-800"
+                                    className="h-7 w-7 rounded-lg flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-emerald-400 transition-colors cursor-pointer border border-slate-800 shrink-0"
                                     title="Kirim via WhatsApp"
                                   >
-                                    <Share2 className="w-3 h-3" />
+                                    <Share2 className="w-3.5 h-3.5" />
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => handleCopyWADraft(wo)}
-                                    className="h-6 px-1.5 bg-emerald-950/80 hover:bg-emerald-700 text-emerald-300 border border-emerald-800/80 rounded text-[9px] font-mono font-bold transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-xs"
+                                    className="h-7 px-2 bg-emerald-950/80 hover:bg-emerald-700 text-emerald-300 border border-emerald-800/80 rounded-lg text-[9.5px] font-mono font-bold transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-xs shrink-0"
                                     title="Salin Template Pesan WhatsApp Siap Kirim"
                                   >
-                                    <MessageSquare className="w-3 h-3 text-emerald-400" />
+                                    <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
                                     <span>WA</span>
                                   </button>
                                 </div>
                               </div>
                             </div>
-                            <div>
+                            <div className="min-w-0 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-slate-800/40">
                               <span className="text-[8.5px] text-slate-400 uppercase font-mono font-bold block">Kendaraan & Plat</span>
                               <span className="font-bold text-slate-100 block truncate">{wo.vehicleBrand}</span>
                               <span className="inline-block mt-1 px-2 py-0.5 rounded bg-slate-950 border border-slate-700 text-[10px] text-white font-mono font-black shadow-xs">
@@ -1413,16 +1765,26 @@ const SADashboard: React.FC = () => {
                             <LiveTimelineHUD workOrder={wo} compact={true} />
                           </div>
 
-                          {/* Mechanic & Status Selection */}
-                          <div className="grid grid-cols-2 gap-2 text-xs border-t border-slate-800/80 pt-2.5 relative z-10">
-                            <div>
-                              <span className="text-[8.5px] text-slate-400 uppercase font-mono font-bold block">Mekanik</span>
-                              <div className="flex items-center gap-1.5 mt-1">
-                                <span className={`w-1.5 h-1.5 rounded-full ${wo.mechanicId ? 'bg-cyan-400 shadow-[0_0_6px_#06b6d4]' : 'bg-slate-500'}`}></span>
-                                <span className="font-mono text-[11px] text-slate-200 truncate max-w-[100px]">{assignedMech}</span>
+                          {/* SPK Date & Status Selection */}
+                          <div className="flex flex-col sm:grid sm:grid-cols-2 gap-2 text-xs border-t border-slate-800/80 pt-2 relative z-10">
+                            <div className="min-w-0">
+                              <span className="text-[8.5px] text-slate-400 uppercase font-mono font-bold block">Tgl SPK Dibuat</span>
+                              <div className="mt-1 font-mono text-xs font-bold text-slate-200 flex items-center gap-1">
+                                <Calendar className="w-3 h-3 text-cyan-400 shrink-0" />
+                                <span>{spkDate.fullDate}</span>
+                              </div>
+                              <div className="text-[9.5px] text-slate-400 font-mono flex items-center gap-1 mt-0.5">
+                                <span>{spkDate.time}</span>
+                                {spkDate.relative && <span className="text-slate-400">({spkDate.relative})</span>}
+                              </div>
+                              <div className="flex items-center gap-1 mt-1 text-[9px] text-slate-400 font-mono truncate">
+                                <span className={`w-1.5 h-1.5 rounded-full ${wo.mechanicId ? 'bg-cyan-400' : 'bg-slate-500'} shrink-0`}></span>
+                                <span className="truncate max-w-[120px]" title={`Mekanik: ${assignedMech}`}>
+                                  {wo.mechanicId ? assignedMech : 'Queue Antrean'}
+                                </span>
                               </div>
                             </div>
-                            <div>
+                            <div className="min-w-0 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-slate-800/40">
                               <span className="text-[8.5px] text-slate-400 uppercase font-mono font-bold block mb-1">Status Kerja</span>
                               <select
                                 value={wo.status}
@@ -1434,14 +1796,14 @@ const SADashboard: React.FC = () => {
                                     updateWorkOrder(wo.id, { status: nextStatus });
                                   }
                                 }}
-                                className={`w-full h-7 px-2 text-[10px] font-black font-mono rounded-lg border uppercase tracking-wider outline-none cursor-pointer transition-all shadow-xs ${
+                                className={`w-full h-8 sm:h-7 px-2 text-[10px] font-black font-mono rounded-lg border uppercase tracking-wider outline-none cursor-pointer transition-all shadow-xs ${
                                   wo.status === 'QUEUE' ? 'bg-slate-900 text-slate-300 border-slate-700' :
                                   wo.status === 'IN_PROGRESS' ? 'bg-cyan-950 text-cyan-300 border-cyan-700' :
                                   wo.status === 'PENDING_APPROVAL' ? 'bg-rose-950 text-rose-300 border-rose-700' :
                                   wo.status === 'PENDING_PARTS' ? 'bg-amber-950 text-amber-300 border-amber-700' :
                                   wo.status === 'CANCELLED' ? 'bg-rose-950 text-rose-300 border-rose-800' :
                                   'bg-emerald-950 text-emerald-300 border-emerald-700'
-                                }`}
+                                } ${overdueInfo.isOverdue ? 'ring-1 ring-rose-700/60' : ''}`}
                               >
                                 <option value="QUEUE" className="bg-slate-900 text-slate-200">Antrean</option>
                                 <option value="IN_PROGRESS" className="bg-slate-900 text-slate-200">Sedang Kerja</option>
@@ -1450,6 +1812,11 @@ const SADashboard: React.FC = () => {
                                 <option value="COMPLETED" className="bg-slate-900 text-slate-200">Selesai / Siap QC</option>
                                 <option value="CANCELLED" className="bg-slate-900 text-slate-200">Dibatalkan (Cancel)</option>
                               </select>
+                              {overdueInfo.isOverdue && (
+                                <div className="text-[8.5px] text-rose-300/90 font-mono mt-1 text-center truncate" title={`Estimasi: ${wo.estimasiPengerjaan || '-'}`}>
+                                  Lewat Est. ({wo.estimasiPengerjaan})
+                                </div>
+                              )}
                             </div>
                           </div>
 
@@ -1646,21 +2013,21 @@ const SADashboard: React.FC = () => {
                   </div>
 
                   {/* Pagination Controls */}
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-slate-850 bg-slate-900/40 p-4 rounded-xl">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-slate-850 bg-slate-900/40 p-3 sm:p-4 rounded-xl">
                     {/* Items status */}
-                    <div className="flex flex-col sm:flex-row items-center gap-3">
-                      <span className="text-xs text-slate-400 font-medium text-center sm:text-left">
-                        Menampilkan <strong className="text-slate-200">{totalItems === 0 ? 0 : startIndex + 1}</strong> - <strong className="text-slate-200">{Math.min(startIndex + woListLimit, totalItems)}</strong> dari <strong className="text-slate-200">{totalItems}</strong> SPK Aktif
+                    <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                      <span className="text-[11px] sm:text-xs text-slate-400 font-medium text-center sm:text-left">
+                        Menampilkan <strong className="text-slate-200">{totalItems === 0 ? 0 : startIndex + 1}</strong> - <strong className="text-slate-200">{Math.min(startIndex + woListLimit, totalItems)}</strong> dari <strong className="text-slate-200">{totalItems}</strong> SPK
                       </span>
-                      <div className="flex items-center gap-1.5 text-xs">
-                        <span className="text-slate-500 text-[11px] uppercase tracking-wider font-bold">Baris per Halaman:</span>
+                      <div className="flex items-center justify-center gap-1.5 text-xs">
+                        <span className="text-slate-500 text-[10.5px] uppercase tracking-wider font-bold">Baris:</span>
                         <select
                           value={woListLimit}
                           onChange={(e) => {
                             setWoListLimit(Number(e.target.value));
                             setWoListPage(1);
                           }}
-                          className="bg-slate-950 border border-slate-800 text-slate-200 py-1 px-2.5 rounded-lg text-xs font-bold outline-none cursor-pointer focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all"
+                          className="bg-slate-950 border border-slate-800 text-slate-200 py-0.5 px-2 rounded-lg text-xs font-bold outline-none cursor-pointer focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all"
                         >
                           <option value="5">5</option>
                           <option value="10">10</option>
@@ -1673,12 +2040,12 @@ const SADashboard: React.FC = () => {
 
                     {/* Page buttons */}
                     {totalPages > 1 && (
-                      <div className="flex items-center gap-1.5 select-none">
+                      <div className="flex items-center justify-center gap-1 select-none w-full sm:w-auto overflow-x-auto py-1">
                         <button
                           type="button"
                           disabled={woListPage === 1}
                           onClick={() => setWoListPage(1)}
-                          className={`w-8 h-8 rounded-lg border text-xs font-bold transition-all flex items-center justify-center ${
+                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg border text-xs font-bold transition-all flex items-center justify-center shrink-0 ${
                             woListPage === 1
                               ? 'bg-slate-900/20 text-slate-600 border-slate-900/40 cursor-not-allowed'
                               : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer'
@@ -1691,7 +2058,7 @@ const SADashboard: React.FC = () => {
                           type="button"
                           disabled={woListPage === 1}
                           onClick={() => setWoListPage(prev => Math.max(prev - 1, 1))}
-                          className={`w-8 h-8 rounded-lg border text-xs font-bold transition-all flex items-center justify-center ${
+                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg border text-xs font-bold transition-all flex items-center justify-center shrink-0 ${
                             woListPage === 1
                               ? 'bg-slate-900/20 text-slate-600 border-slate-900/40 cursor-not-allowed'
                               : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer'
@@ -1701,37 +2068,44 @@ const SADashboard: React.FC = () => {
                           <ChevronLeft className="w-3.5 h-3.5" />
                         </button>
 
-                        {/* Page number buttons */}
-                        {(() => {
-                          const pages = [];
-                          const startPage = Math.max(1, woListPage - 2);
-                          const endPage = Math.min(totalPages, startPage + 4);
-                          const adjustedStart = Math.max(1, endPage - 4);
-                          
-                          for (let i = adjustedStart; i <= endPage; i++) {
-                            pages.push(
-                              <button
-                                key={i}
-                                type="button"
-                                onClick={() => setWoListPage(i)}
-                                className={`w-8 h-8 rounded-lg border text-xs font-bold transition-all ${
-                                  woListPage === i
-                                    ? 'bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-900/30 font-black scale-105'
-                                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer'
-                                }`}
-                              >
-                                {i}
-                              </button>
-                            );
-                          }
-                          return pages;
-                        })()}
+                        {/* Mobile compact current page indicator */}
+                        <div className="flex sm:hidden items-center px-2 py-1 bg-slate-950 border border-slate-800 rounded-lg text-[10.5px] font-mono font-bold text-slate-300 shrink-0">
+                          {woListPage} / {totalPages}
+                        </div>
+
+                        {/* Desktop page number buttons */}
+                        <div className="hidden sm:flex items-center gap-1">
+                          {(() => {
+                            const pages = [];
+                            const startPage = Math.max(1, woListPage - 2);
+                            const endPage = Math.min(totalPages, startPage + 4);
+                            const adjustedStart = Math.max(1, endPage - 4);
+                            
+                            for (let i = adjustedStart; i <= endPage; i++) {
+                              pages.push(
+                                <button
+                                  key={i}
+                                  type="button"
+                                  onClick={() => setWoListPage(i)}
+                                  className={`w-8 h-8 rounded-lg border text-xs font-bold transition-all shrink-0 ${
+                                    woListPage === i
+                                      ? 'bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-900/30 font-black scale-105'
+                                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer'
+                                  }`}
+                                >
+                                  {i}
+                                </button>
+                              );
+                            }
+                            return pages;
+                          })()}
+                        </div>
 
                         <button
                           type="button"
                           disabled={woListPage === totalPages}
                           onClick={() => setWoListPage(prev => Math.min(prev + 1, totalPages))}
-                          className={`w-8 h-8 rounded-lg border text-xs font-bold transition-all flex items-center justify-center ${
+                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg border text-xs font-bold transition-all flex items-center justify-center shrink-0 ${
                             woListPage === totalPages
                               ? 'bg-slate-900/20 text-slate-600 border-slate-900/40 cursor-not-allowed'
                               : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer'
@@ -1744,7 +2118,7 @@ const SADashboard: React.FC = () => {
                           type="button"
                           disabled={woListPage === totalPages}
                           onClick={() => setWoListPage(totalPages)}
-                          className={`w-8 h-8 rounded-lg border text-xs font-bold transition-all flex items-center justify-center ${
+                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg border text-xs font-bold transition-all flex items-center justify-center shrink-0 ${
                             woListPage === totalPages
                               ? 'bg-slate-900/20 text-slate-600 border-slate-900/40 cursor-not-allowed'
                               : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer'
@@ -2006,13 +2380,13 @@ const SADashboard: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
                 {/* Data Pemilik */}
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4">
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3.5 sm:p-4 space-y-3.5 sm:space-y-4">
                   <h4 className="font-bold text-[11px] uppercase text-blue-900 border-b border-slate-200 pb-2">A. Data Pemilik (Owner Details)</h4>
                   
                   <div className="flex flex-col relative">
                     <label className="text-[10px] font-black uppercase text-slate-700">Nama Lengkap Pemilik <span className="text-red-500">*</span></label>
                     <span className="text-[9px] text-slate-400 italic mb-1">Sesuai KTP / STNK</span>
-                    <input required={wizardStep === 1} type="text" placeholder="Masukkan nama pemilik" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
+                    <input required={wizardStep === 1} type="text" placeholder="Masukkan nama pemilik" className="text-[15px] sm:text-xs p-2.5 min-h-[42px] border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
                     {customerName.trim().length >= 2 && customers.filter(c => c.name.toLowerCase().includes(customerName.toLowerCase())).length > 0 && (
                       <div className="bg-white border border-slate-200 mt-1 rounded-lg shadow-lg max-h-40 overflow-y-auto z-50 absolute w-full top-full left-0">
                         {customers.filter(c => c.name.toLowerCase().includes(customerName.toLowerCase())).slice(0, 5).map(c => (
@@ -2037,7 +2411,7 @@ const SADashboard: React.FC = () => {
                   <div className="flex flex-col relative">
                     <label className="text-[10px] font-black uppercase text-slate-700">Nomor Telepon / WhatsApp <span className="text-red-500">*</span></label>
                     <span className="text-[9px] text-slate-400 italic mb-1">Untuk mengirimkan update foto perbaikan</span>
-                    <input required={wizardStep === 1} type="tel" placeholder="Contoh: 081234567890" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
+                    <input required={wizardStep === 1} type="tel" inputMode="tel" placeholder="Contoh: 081234567890" className="text-[15px] sm:text-xs p-2.5 min-h-[42px] border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm font-mono" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
                     {customerPhone.trim().length >= 3 && customers.filter(c => c.phone.includes(customerPhone.trim())).length > 0 && (
                       <div className="bg-white border border-slate-200 mt-1 rounded-lg shadow-lg max-h-40 overflow-y-auto z-50 absolute w-full top-full left-0">
                         {customers.filter(c => c.phone.includes(customerPhone.trim())).slice(0, 5).map(c => (
@@ -2062,49 +2436,52 @@ const SADashboard: React.FC = () => {
                   <div className="flex flex-col">
                     <label className="text-[10px] font-black uppercase text-slate-700">Alamat Lengkap <span className="text-red-500">*</span></label>
                     <span className="text-[9px] text-slate-400 italic mb-1">Alamat rumah atau kantor pemilik</span>
-                    <input required={wizardStep === 1} type="text" placeholder="e.g. Jl. HR Soebrantas No. 12" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} />
+                    <input required={wizardStep === 1} type="text" placeholder="e.g. Jl. HR Soebrantas No. 12" className="text-[15px] sm:text-xs p-2.5 min-h-[42px] border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} />
                   </div>
                   
                   <div className="flex flex-col">
                     <label className="text-[10px] font-black uppercase text-slate-700">Alamat Email Aktif</label>
                     <span className="text-[9px] text-slate-400 italic mb-1">Opsional (Bisa dikosongkan)</span>
-                    <input type="email" placeholder="contoh: pelanggan@gmail.com" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-medium text-slate-800 shadow-sm" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} />
+                    <input type="email" placeholder="contoh: pelanggan@gmail.com" className="text-[15px] sm:text-xs p-2.5 min-h-[42px] border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-medium text-slate-800 shadow-sm" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} />
                   </div>
                 </div>
 
                 {/* Data Pembawa */}
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4">
-                  <h4 className="font-bold text-[11px] uppercase text-blue-900 border-b border-slate-200 pb-2 flex items-center justify-between">
-                    B. Data Pembawa (Bringer Details)
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3.5 sm:p-4 space-y-3.5 sm:space-y-4">
+                  <div className="border-b border-slate-200 pb-2 flex items-center justify-between gap-2">
+                    <h4 className="font-bold text-[11px] uppercase text-blue-900">
+                      B. Data Pembawa (Bringer Details)
+                    </h4>
                     <button 
                       type="button"
-                      className="text-[9px] font-medium bg-blue-100 text-blue-800 px-2 py-0.5 rounded cursor-pointer hover:bg-blue-200"
+                      className="text-[10px] sm:text-[9px] font-bold bg-blue-100 hover:bg-blue-200 text-blue-800 px-2.5 py-1 rounded-md cursor-pointer transition-all active:scale-95 shadow-2xs shrink-0"
                       onClick={() => {
                         setBringerName(customerName);
                         setBringerPhone(customerPhone);
                         setBringerAddress(customerAddress);
                       }}
+                      title="Salin data pemilik kendaraan ke data pembawa"
                     >
-                      Sama dengan Pemilik
+                      ⚡ Sama dgn Pemilik
                     </button>
-                  </h4>
+                  </div>
 
                   <div className="flex flex-col">
                     <label className="text-[10px] font-black uppercase text-slate-700">Nama Lengkap Pembawa</label>
                     <span className="text-[9px] text-slate-400 italic mb-1">Nama orang yang mengantar</span>
-                    <input type="text" placeholder="Masukkan nama pembawa" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-medium text-slate-800 shadow-sm" value={bringerName} onChange={(e) => setBringerName(e.target.value)} />
+                    <input type="text" placeholder="Masukkan nama pembawa" className="text-[15px] sm:text-xs p-2.5 min-h-[42px] border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-medium text-slate-800 shadow-sm" value={bringerName} onChange={(e) => setBringerName(e.target.value)} />
                   </div>
 
                   <div className="flex flex-col">
                     <label className="text-[10px] font-black uppercase text-slate-700">Nomor Telepon / WhatsApp</label>
                     <span className="text-[9px] text-slate-400 italic mb-1">Opsional (Bisa dikosongkan)</span>
-                    <input type="tel" placeholder="Contoh: 081234567890" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-medium text-slate-800 shadow-sm" value={bringerPhone} onChange={(e) => setBringerPhone(e.target.value)} />
+                    <input type="tel" inputMode="tel" placeholder="Contoh: 081234567890" className="text-[15px] sm:text-xs p-2.5 min-h-[42px] border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-medium text-slate-800 shadow-sm font-mono" value={bringerPhone} onChange={(e) => setBringerPhone(e.target.value)} />
                   </div>
 
                   <div className="flex flex-col">
                     <label className="text-[10px] font-black uppercase text-slate-700">Alamat Lengkap</label>
                     <span className="text-[9px] text-slate-400 italic mb-1">Opsional (Bisa dikosongkan)</span>
-                    <input type="text" placeholder="e.g. Jl. HR Soebrantas No. 12" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-medium text-slate-800 shadow-sm" value={bringerAddress} onChange={(e) => setBringerAddress(e.target.value)} />
+                    <input type="text" placeholder="e.g. Jl. HR Soebrantas No. 12" className="text-[15px] sm:text-xs p-2.5 min-h-[42px] border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-medium text-slate-800 shadow-sm" value={bringerAddress} onChange={(e) => setBringerAddress(e.target.value)} />
                   </div>
                 </div>
               </div>
@@ -2152,22 +2529,42 @@ const SADashboard: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {dropMethod === 'WHOLE' && (
                     <>
-                      <div className="flex flex-col bg-slate-50/50 p-3 rounded-lg border border-slate-100">
-                        <label className="text-[10px] font-black uppercase text-slate-700">Merek / Tipe / Tahun Mobil <span className="text-red-500">*</span></label>
-                        <span className="text-[9px] text-slate-400 italic mb-1">Merek & model kendaraan (e.g. Toyota Fortuner 2020)</span>
-                        <input required={wizardStep === 2 && dropMethod === 'WHOLE'} type="text" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm" placeholder="e.g. Toyota Fortuner 2020" value={vehicleBrand} onChange={(e) => setVehicleBrand(e.target.value)} />
+                      <div className="flex flex-col bg-slate-50/50 p-3.5 rounded-lg border border-slate-100">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-black uppercase text-slate-700">Merek / Tipe / Tahun Mobil <span className="text-red-500">*</span></label>
+                          <span className="text-[9px] text-blue-600 font-bold hidden xs:inline">Sentuh chip untuk isi cepat</span>
+                        </div>
+                        <span className="text-[9px] text-slate-400 italic mb-1">Merek & model kendaraan (e.g. Toyota Hilux 2021)</span>
+                        <input required={wizardStep === 2 && dropMethod === 'WHOLE'} type="text" className="text-[15px] sm:text-xs p-2.5 min-h-[42px] border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm" placeholder="e.g. Toyota Hilux 2021" value={vehicleBrand} onChange={(e) => setVehicleBrand(e.target.value)} />
+                        {/* Mobile Quick Brand Chips */}
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {['Toyota Hilux', 'Mitsubishi Triton', 'Pajero Sport', 'Isuzu D-Max', 'Canter / PS125', 'Innova Reborn', 'Fortuner', 'Hino Dutro'].map(brandPreset => (
+                            <button
+                              key={brandPreset}
+                              type="button"
+                              onClick={() => setVehicleBrand(brandPreset)}
+                              className={`text-[9.5px] font-bold px-2 py-1 rounded-md border transition-all cursor-pointer ${
+                                vehicleBrand === brandPreset 
+                                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
+                                  : 'bg-white text-slate-700 border-slate-200 hover:border-blue-400 hover:text-blue-700'
+                              }`}
+                            >
+                              {brandPreset}
+                            </button>
+                          ))}
+                        </div>
                       </div>
 
-                      <div className="flex flex-col bg-slate-50/50 p-3 rounded-lg border border-slate-100">
+                      <div className="flex flex-col bg-slate-50/50 p-3.5 rounded-lg border border-slate-100">
                         <label className="text-[10px] font-black uppercase text-slate-700">Nomor Rangka / VIN</label>
                         <span className="text-[9px] text-slate-400 italic mb-1">Opsional (Bisa dikosongkan jika tidak ada)</span>
-                        <input type="text" placeholder="Masukkan nomor rangka kendaraan" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-medium text-slate-800 shadow-sm" value={vin} onChange={(e) => setVin(e.target.value)} />
+                        <input type="text" placeholder="Masukkan nomor rangka kendaraan" className="text-[15px] sm:text-xs p-2.5 min-h-[42px] border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-medium text-slate-800 shadow-sm font-mono" value={vin} onChange={(e) => setVin(e.target.value)} />
                       </div>
 
-                      <div className="flex flex-col bg-slate-50/50 p-3 rounded-lg border border-slate-100 relative">
+                      <div className="flex flex-col bg-slate-50/50 p-3.5 rounded-lg border border-slate-100 relative">
                         <label className="text-[10px] font-black uppercase text-slate-700">Nomor Plat Kendaraan <span className="text-red-500">*</span></label>
                         <span className="text-[9px] text-slate-400 italic mb-1">Plat nomor polisi (e.g. BM 1234 AB)</span>
-                        <input required={wizardStep === 2 && dropMethod === 'WHOLE'} type="text" placeholder="Masukkan nomor plat" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 font-bold text-blue-800 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none shadow-sm uppercase" value={plateNumber} onChange={(e) => setPlateNumber(e.target.value)} />
+                        <input required={wizardStep === 2 && dropMethod === 'WHOLE'} type="text" placeholder="Contoh: BM 1234 AB" className="text-[15px] sm:text-xs p-2.5 min-h-[42px] border border-slate-200 rounded-lg mt-1 font-bold text-blue-800 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none shadow-sm uppercase font-mono" value={plateNumber} onChange={(e) => setPlateNumber(e.target.value.toUpperCase())} />
                         {plateNumber.trim().length >= 2 && vehicles.filter(v => v.plateNumber.toUpperCase().includes(plateNumber.toUpperCase())).length > 0 && (
                           <div className="bg-white border border-slate-200 mt-1 rounded-lg shadow-lg max-h-40 overflow-y-auto z-50 absolute w-full top-full left-0">
                             {vehicles.filter(v => v.plateNumber.toUpperCase().includes(plateNumber.toUpperCase())).slice(0, 5).map(v => {
@@ -2186,7 +2583,7 @@ const SADashboard: React.FC = () => {
                                       if (owner.email) setCustomerEmail(owner.email);
                                     }
                                   }}
-                                  className="p-2 hover:bg-blue-50 text-xs font-semibold text-slate-800 cursor-pointer border-b border-slate-100 last:border-none flex flex-col"
+                                  className="p-2.5 hover:bg-blue-50 text-xs font-semibold text-slate-800 cursor-pointer border-b border-slate-100 last:border-none flex flex-col"
                                 >
                                   <div className="flex justify-between">
                                     <span className="font-bold text-blue-700">🚗 {v.plateNumber}</span>
@@ -2202,18 +2599,18 @@ const SADashboard: React.FC = () => {
                         )}
                       </div>
 
-                      <div className="flex flex-col bg-slate-50/50 p-3 rounded-lg border border-slate-100">
+                      <div className="flex flex-col bg-slate-50/50 p-3.5 rounded-lg border border-slate-100">
                         <label className="text-[10px] font-black uppercase text-slate-700">Kilometer (KM) / Hour Meter (HM) <span className="text-red-500">*</span></label>
                         <span className="text-[9px] text-slate-400 italic mb-1">Angka odometer saat ini (e.g. 150.000 KM)</span>
-                        <input required={wizardStep === 2 && dropMethod === 'WHOLE'} type="text" placeholder="e.g. 150.000 KM / 2.500 HM" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm" value={odometer} onChange={(e) => setOdometer(e.target.value)} />
+                        <input required={wizardStep === 2 && dropMethod === 'WHOLE'} type="text" inputMode="numeric" placeholder="e.g. 150.000 KM / 2.500 HM" className="text-[15px] sm:text-xs p-2.5 min-h-[42px] border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm" value={odometer} onChange={(e) => setOdometer(e.target.value)} />
                       </div>
                     </>
                   )}
 
-                  <div className="flex flex-col bg-slate-50/50 p-3 rounded-lg border border-slate-100">
+                  <div className="flex flex-col bg-slate-50/50 p-3.5 rounded-lg border border-slate-100">
                     <label className="text-[10px] font-black uppercase text-slate-700">Waktu Masuk Unit/Komponen <span className="text-red-500">*</span></label>
                     <span className="text-[9px] text-slate-400 italic mb-1">Waktu serah terima komponen / kendaraan</span>
-                    <input required={wizardStep === 2} type="datetime-local" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-slate-800 font-semibold shadow-sm" value={intakeDate} onChange={(e) => setIntakeDate(e.target.value)} />
+                    <input required={wizardStep === 2} type="datetime-local" className="text-[15px] sm:text-xs p-2.5 min-h-[42px] border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-slate-800 font-semibold shadow-sm" value={intakeDate} onChange={(e) => setIntakeDate(e.target.value)} />
                   </div>
 
                   {dropMethod === 'WHOLE' && (
@@ -2246,8 +2643,25 @@ const SADashboard: React.FC = () => {
 
                   <div className="flex flex-col bg-slate-50/50 p-3 rounded-lg border border-slate-100">
                     <label className="text-[10px] font-black uppercase text-slate-700">Estimasi Waktu Pengerjaan <span className="text-red-500">*</span></label>
-                    <span className="text-[9px] text-slate-400 italic mb-1">Berapa lama estimasi selesai?</span>
+                    <span className="text-[9px] text-slate-400 italic mb-1">Pilih tombol cepat atau ketik manual</span>
                     <input required={wizardStep === 2} type="text" list="estimasi-suggestions" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm" placeholder="e.g. 3 Hari / 24 Jam" value={estimasiPengerjaan} onChange={(e) => setEstimasiPengerjaan(e.target.value)} />
+                    {/* Quick Preset Buttons */}
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {['12 Jam', '24 Jam (1 Hari)', '2 Hari', '3 Hari', '5 Hari'].map(preset => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setEstimasiPengerjaan(preset)}
+                          className={`text-[9.5px] font-mono font-bold px-2 py-1 rounded-md border transition-all cursor-pointer ${
+                            estimasiPengerjaan === preset
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                              : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-700'
+                          }`}
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
                     <datalist id="estimasi-suggestions">
                       <option value="12 Jam" />
                       <option value="24 Jam" />
@@ -2262,8 +2676,25 @@ const SADashboard: React.FC = () => {
 
                   <div className="flex flex-col bg-slate-50/50 p-3 rounded-lg border border-slate-100">
                     <label className="text-[10px] font-black uppercase text-slate-700">Masa Garansi <span className="text-red-500">*</span></label>
-                    <span className="text-[9px] text-slate-400 italic mb-1">Masa garansi yang diberikan</span>
+                    <span className="text-[9px] text-slate-400 italic mb-1">Pilih tombol cepat atau ketik manual</span>
                     <input required={wizardStep === 2} type="text" list="garansi-suggestions" className="text-xs p-2.5 border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm" placeholder="e.g. 3 Bulan / 1000 Jam Kerja (HM)" value={garansi} onChange={(e) => setGaransi(e.target.value)} />
+                    {/* Quick Preset Buttons */}
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {['1 Bulan', '3 Bulan', '6 Bulan', 'Tanpa Garansi'].map(preset => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setGaransi(preset)}
+                          className={`text-[9.5px] font-mono font-bold px-2 py-1 rounded-md border transition-all cursor-pointer ${
+                            garansi === preset
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                              : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-700'
+                          }`}
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
                     <datalist id="garansi-suggestions">
                       <option value="1 Bulan" />
                       <option value="3 Bulan" />
@@ -2394,21 +2825,92 @@ const SADashboard: React.FC = () => {
                 <span className="text-[10px] bg-blue-50 text-blue-800 font-bold px-2 py-1 rounded">Langkah 3 dari 3</span>
               </div>
 
-              <div className="flex flex-col space-y-2">
-                <div className="flex justify-between items-center bg-slate-50 p-2 rounded border border-slate-150">
-                  <label className="text-[10px] font-black uppercase text-slate-700 tracking-wider">
-                    Customer Voice (Daftar Keluhan Pelanggan)
-                  </label>
+              <div className="flex flex-col space-y-3">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-slate-700 tracking-wider block">
+                      Customer Voice (Daftar Keluhan Pelanggan) <span className="text-red-500">*</span>
+                    </label>
+                    <span className="text-[9px] text-slate-500 italic">Sentuh tombol cepat di bawah atau ketik langsung</span>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setComplaintPoints([...complaintPoints, ''])}
-                    className="px-3.5 py-1.5 bg-[#1e3a8a] text-white text-[10px] font-black uppercase rounded-lg hover:bg-blue-800 transition-colors flex items-center gap-1 shadow-sm"
+                    className="w-full sm:w-auto px-3.5 py-2 sm:py-1.5 bg-[#1e3a8a] text-white text-[10px] font-black uppercase rounded-lg hover:bg-blue-800 transition-colors flex items-center justify-center gap-1 shadow-sm cursor-pointer active:scale-95"
                   >
-                    <Plus className="w-3.5 h-3.5" /> Tambah Keluhan
+                    <Plus className="w-3.5 h-3.5" /> Tambah Baris Keluhan
                   </button>
                 </div>
 
-                <div className="border border-slate-200 rounded overflow-x-auto">
+                {/* Mobile Quick Diesel Symptoms Chips */}
+                <div className="bg-blue-50/70 p-2.5 rounded-xl border border-blue-100">
+                  <span className="text-[9.5px] font-black text-blue-900 uppercase block mb-1.5 flex items-center gap-1">
+                    ⚡ Sentuh Untuk Tambah Cepat Gejala Mesin Diesel:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      'Asap Hitam Pekat',
+                      'Mesin Pincang / Hunting',
+                      'Susah Starter Pagi',
+                      'Tenaga Lemah / Drop',
+                      'Check Engine Menyala',
+                      'Konsumsi Solar Boros',
+                      'Suara Mesin Kasar / Ngelitik',
+                      'Kalibrasi Nozzle Injector'
+                    ].map(preset => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => {
+                          if (complaintPoints.length === 1 && complaintPoints[0].trim() === '') {
+                            setComplaintPoints([preset]);
+                          } else if (!complaintPoints.includes(preset)) {
+                            setComplaintPoints([...complaintPoints, preset]);
+                          }
+                        }}
+                        className="text-[9.5px] font-bold px-2.5 py-1 bg-white hover:bg-blue-100 text-blue-900 border border-blue-200 rounded-md transition-all active:scale-95 shadow-2xs cursor-pointer"
+                      >
+                        + {preset}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* MOBILE VIEW: CARDS (< sm) */}
+                <div className="space-y-2 sm:hidden">
+                  {complaintPoints.map((point, idx) => (
+                    <div key={idx} className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-xs flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-800 font-mono text-[10px] font-bold flex items-center justify-center shrink-0">
+                        #{idx + 1}
+                      </span>
+                      <input
+                        type="text"
+                        required={wizardStep === 3}
+                        placeholder={`Keluhan #${idx + 1} (e.g. Asap hitam)`}
+                        value={point}
+                        onChange={(e) => {
+                          const newList = [...complaintPoints];
+                          newList[idx] = e.target.value;
+                          setComplaintPoints(newList);
+                        }}
+                        className="flex-1 text-[15px] sm:text-xs p-2 min-h-[40px] bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:border-blue-600 outline-none font-semibold text-slate-800"
+                      />
+                      {complaintPoints.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setComplaintPoints(complaintPoints.filter((_, i) => i !== idx))}
+                          className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg shrink-0"
+                          title="Hapus keluhan ini"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* DESKTOP VIEW: TABLE (>= sm) */}
+                <div className="hidden sm:block border border-slate-200 rounded-lg overflow-x-auto">
                   <table className="w-full text-left border-collapse bg-slate-50 text-xs">
                     <thead>
                       <tr className="bg-slate-100 border-b border-slate-200 text-slate-600">
@@ -2446,7 +2948,7 @@ const SADashboard: React.FC = () => {
                                   setComplaintPoints(complaintPoints.filter((_, i) => i !== idx));
                                 }
                               }}
-                              className={`px-2.5 py-1.5 rounded text-[10px] font-bold uppercase transition-colors ${
+                              className={`px-2.5 py-1.5 rounded text-[10px] font-bold uppercase transition-colors cursor-pointer ${
                                 complaintPoints.length === 1
                                   ? 'text-slate-300 cursor-not-allowed'
                                   : 'text-rose-600 hover:bg-rose-50'
@@ -2665,7 +3167,88 @@ const SADashboard: React.FC = () => {
                   return null;
                 })()}
                 
-                <div className="overflow-x-auto border border-slate-200 rounded-lg bg-white">
+                {/* MOBILE VIEW: LOOSE PARTS CARDS (< sm) */}
+                <div className="space-y-3 sm:hidden">
+                  {looseParts.map((part, index) => {
+                    const matches = part.partNumber ? getHistoricalWorkOrders(part.partNumber) : [];
+                    return (
+                      <div key={part.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs space-y-2.5">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                          <span className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                            <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-mono font-bold flex items-center justify-center">
+                              {index + 1}
+                            </span>
+                            Komponen #{index + 1}
+                          </span>
+                          {looseParts.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeLoosePart(index)}
+                              className="text-rose-600 text-xs font-bold flex items-center gap-1 hover:bg-rose-50 px-2 py-1 rounded-md"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" /> Hapus
+                            </button>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="text-[9.5px] font-black uppercase text-slate-600 block mb-1">
+                            Nama Komponen / Nozzle / Pump <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Contoh: Injector Nozzle 1 / Fuel Pump"
+                            className="w-full p-2.5 border border-slate-200 rounded-lg text-[15px] sm:text-xs font-semibold text-slate-800 bg-slate-50 focus:bg-white focus:border-blue-500 outline-none"
+                            value={part.description}
+                            onChange={(e) => updateLoosePart(index, 'description', e.target.value)}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[9.5px] font-black uppercase text-slate-600 block mb-1">
+                            Part Number (P/N)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Contoh: 0445120007"
+                            className="w-full p-2.5 border border-slate-200 rounded-lg text-[15px] sm:text-xs font-mono font-bold text-slate-800 bg-slate-50 focus:bg-white focus:border-blue-500 outline-none"
+                            value={part.partNumber}
+                            onChange={(e) => updateLoosePart(index, 'partNumber', e.target.value)}
+                          />
+                          {matches.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedHistoryPn(part.partNumber);
+                                setShowHistoryModal(true);
+                              }}
+                              className="mt-1.5 flex items-center justify-center gap-1 text-[10px] bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold border border-rose-200 px-2.5 py-1.5 rounded-lg w-full cursor-pointer"
+                            >
+                              <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
+                              Pernah Diservis ({matches.length}x) - Buka Riwayat
+                            </button>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="text-[9.5px] font-black uppercase text-slate-600 block mb-1">
+                            Kondisi Fisik Komponen
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Drat Slek, Soket Retak, OK"
+                            className="w-full p-2.5 border border-slate-200 rounded-lg text-[15px] sm:text-xs text-slate-800 bg-slate-50 focus:bg-white focus:border-blue-500 outline-none"
+                            value={part.physicalCondition}
+                            onChange={(e) => updateLoosePart(index, 'physicalCondition', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* DESKTOP VIEW: LOOSE PARTS TABLE (>= sm) */}
+                <div className="hidden sm:block overflow-x-auto border border-slate-200 rounded-lg bg-white">
                   <table className="w-full border-collapse text-xs">
                     <thead className="bg-slate-100 text-slate-700 border-b border-slate-200">
                       <tr>
@@ -2730,7 +3313,7 @@ const SADashboard: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => removeLoosePart(index)}
-                                className="p-2 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors mx-auto block"
+                                className="p-2 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors mx-auto block cursor-pointer"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -2747,8 +3330,8 @@ const SADashboard: React.FC = () => {
               )}
 
               {/* Action Builder */}
-              <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+              <div className="bg-slate-50/50 p-3.5 sm:p-4 rounded-xl border border-slate-100 space-y-3">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                   <div>
                     <h4 className="text-[11px] font-black uppercase text-[#1e3a8a] tracking-wider">B. Daftar Pengerjaan & Estimasi Harga (Action & Parts Builder)</h4>
                     <p className="text-[9px] text-slate-500 italic">Tambahkan tindakan pengerjaan dan estimasi biaya perbaikan.</p>
@@ -2756,13 +3339,137 @@ const SADashboard: React.FC = () => {
                   <button 
                     type="button" 
                     onClick={addTodoAction} 
-                    className="px-3 py-1.5 bg-blue-600 text-white text-[10px] font-black uppercase rounded-lg hover:bg-blue-700 transition-colors flex items-center shadow-xs"
+                    className="w-full sm:w-auto px-3.5 py-2 sm:py-1.5 bg-blue-600 text-white text-[10px] font-black uppercase rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center shadow-xs cursor-pointer active:scale-95"
                   >
                     <Plus className="w-3.5 h-3.5 mr-1" /> Tambah Pengerjaan
                   </button>
                 </div>
+
+                {/* Quick Common Action Chips */}
+                <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                  <span className="text-[9.5px] font-black text-slate-700 uppercase block mb-1.5 flex items-center gap-1">
+                    ⚡ Sentuh Untuk Tambah Cepat Tindakan Servis:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      'Kalibrasi Injector Nozzle',
+                      'Ganti Nozzle Tip',
+                      'Overhaul Supply Pump',
+                      'Tes Debit Return / Backleak',
+                      'Pembersihan Common Rail',
+                      'Service Turbocharger'
+                    ].map(actPreset => (
+                      <button
+                        key={actPreset}
+                        type="button"
+                        onClick={() => {
+                          if (todoActions.length === 1 && todoActions[0].jenisPengerjaan.trim() === '') {
+                            updateTodoAction(0, 'jenisPengerjaan', actPreset);
+                          } else {
+                            setTodoActions([
+                              ...todoActions,
+                              { id: `t_${Date.now()}`, jenisPengerjaan: actPreset, qty: 1, catatanMekanik: '', estimasiHarga: '', estimasiHargaMin: '', estimasiHargaMax: '' }
+                            ]);
+                          }
+                        }}
+                        className="text-[9.5px] font-bold px-2.5 py-1 bg-slate-50 hover:bg-blue-50 text-blue-900 border border-slate-200 hover:border-blue-300 rounded-md transition-all active:scale-95 shadow-2xs cursor-pointer"
+                      >
+                        + {actPreset}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* MOBILE VIEW: TODO ACTIONS CARDS (< sm) */}
+                <div className="space-y-3 sm:hidden">
+                  {todoActions.map((action, index) => (
+                    <div key={action.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs space-y-2.5">
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                        <span className="text-[11px] font-black uppercase text-blue-900 flex items-center gap-1.5">
+                          <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-mono font-bold flex items-center justify-center">
+                            {index + 1}
+                          </span>
+                          Tindakan #{index + 1}
+                        </span>
+                        {todoActions.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeTodoAction(index)}
+                            className="text-rose-600 text-xs font-bold flex items-center gap-1 hover:bg-rose-50 px-2 py-1 rounded-md cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Hapus
+                          </button>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="text-[9.5px] font-black uppercase text-slate-600 block mb-1">
+                          Jenis Pengerjaan / Tindakan <span className="text-red-500">*</span>
+                        </label>
+                        <input 
+                          type="text" 
+                          required={wizardStep === 3}
+                          placeholder="Contoh: Kalibrasi Injector Nozzle" 
+                          className="w-full p-2.5 border border-slate-200 rounded-lg text-[15px] sm:text-xs font-semibold text-slate-800 bg-slate-50 focus:bg-white focus:border-blue-500 outline-none" 
+                          value={action.jenisPengerjaan} 
+                          onChange={(e) => updateTodoAction(index, 'jenisPengerjaan', e.target.value)} 
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="col-span-1">
+                          <label className="text-[9.5px] font-black uppercase text-slate-600 block mb-1">Qty</label>
+                          <input 
+                            type="number" 
+                            min="1" 
+                            inputMode="numeric"
+                            className="w-full text-center p-2.5 border border-slate-200 rounded-lg text-[15px] sm:text-xs font-bold text-slate-800 bg-slate-50 focus:bg-white focus:border-blue-500 outline-none" 
+                            value={action.qty} 
+                            onChange={(e) => updateTodoAction(index, 'qty', parseInt(e.target.value) || 1)} 
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="text-[9.5px] font-black uppercase text-slate-600 block mb-1">Catatan</label>
+                          <input 
+                            type="text" 
+                            placeholder="e.g. Silinder 1 & 4" 
+                            className="w-full p-2.5 border border-slate-200 rounded-lg text-[15px] sm:text-xs text-slate-700 bg-slate-50 focus:bg-white focus:border-blue-500 outline-none" 
+                            value={action.catatanMekanik} 
+                            onChange={(e) => updateTodoAction(index, 'catatanMekanik', e.target.value)} 
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[9.5px] font-black uppercase text-slate-600 block mb-1">
+                          Rentang Estimasi Biaya (Rp)
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input 
+                            type="text" 
+                            inputMode="numeric"
+                            placeholder="Min (Rp)" 
+                            className="w-1/2 p-2.5 border border-slate-200 rounded-lg text-[15px] sm:text-xs font-mono font-bold text-blue-800 bg-slate-50 focus:bg-white focus:border-blue-500 outline-none" 
+                            value={formatRupiah(action.estimasiHargaMin)} 
+                            onChange={(e) => updateTodoAction(index, 'estimasiHargaMin', e.target.value)} 
+                          />
+                          <span className="text-slate-400 font-bold text-xs shrink-0">s/d</span>
+                          <input 
+                            type="text" 
+                            inputMode="numeric"
+                            placeholder="Max (Rp)" 
+                            className="w-1/2 p-2.5 border border-slate-200 rounded-lg text-[15px] sm:text-xs font-mono font-bold text-blue-800 bg-slate-50 focus:bg-white focus:border-blue-500 outline-none" 
+                            value={formatRupiah(action.estimasiHargaMax)} 
+                            onChange={(e) => updateTodoAction(index, 'estimasiHargaMax', e.target.value)} 
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
                 
-                <div className="overflow-x-auto border border-slate-200 rounded-lg bg-white">
+                {/* DESKTOP VIEW: TODO ACTIONS TABLE (>= sm) */}
+                <div className="hidden sm:block overflow-x-auto border border-slate-200 rounded-lg bg-white">
                   <table className="w-full border-collapse text-xs">
                     <thead className="bg-slate-100 text-slate-700 border-b border-slate-200">
                       <tr>
@@ -2827,7 +3534,7 @@ const SADashboard: React.FC = () => {
                             <button 
                               type="button" 
                               onClick={() => removeTodoAction(index)} 
-                              className="p-2 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors mx-auto block"
+                              className="p-2 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors mx-auto block cursor-pointer"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -2899,23 +3606,23 @@ const SADashboard: React.FC = () => {
         )}
 
         {/* WIZARD NAVIGATION BAR */}
-        <div className="flex items-center justify-between pt-6 border-t border-slate-100 bg-slate-50 p-4 rounded-xl border border-slate-200 mt-6 shadow-xs">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-slate-50 mt-6 shadow-xs">
           <div>
             {wizardStep > 1 ? (
               <button
                 type="button"
                 onClick={handlePrevStep}
-                className="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-xl text-xs font-black uppercase transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                className="w-full sm:w-auto px-4 sm:px-5 py-2.5 bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 rounded-xl text-xs font-black uppercase transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" /> Kembali
               </button>
             ) : (
-              <div className="w-10" />
+              <div className="hidden sm:block w-10" />
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:block">
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
               Langkah {wizardStep} dari 3
             </span>
           </div>
@@ -2925,17 +3632,18 @@ const SADashboard: React.FC = () => {
               <button
                 type="button"
                 onClick={handleNextStep}
-                className="px-6 py-2.5 bg-[#1e3a8a] hover:bg-blue-800 text-white rounded-xl text-xs font-black uppercase transition-all flex items-center gap-1.5 shadow-md shadow-blue-100 active:scale-95 cursor-pointer"
+                className="w-full sm:w-auto px-5 sm:px-6 py-2.5 bg-[#1e3a8a] hover:bg-blue-800 text-white rounded-xl text-xs font-black uppercase transition-all flex items-center justify-center gap-1.5 shadow-md shadow-blue-100 active:scale-95 cursor-pointer"
               >
-                Lanjutkan <ChevronRight className="w-4 h-4" />
+                <span>Lanjutkan</span>
+                <ChevronRight className="w-4 h-4" />
               </button>
             ) : (
               <button 
                 type="submit" 
-                className="px-6 py-2.5 bg-[#dc2626] hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase shadow-md shadow-red-100 transition-all flex items-center gap-1.5 transform active:scale-95 border border-transparent cursor-pointer"
+                className="w-full sm:w-auto px-4 sm:px-6 py-2.5 bg-[#dc2626] hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase shadow-md shadow-red-100 transition-all flex items-center justify-center gap-1.5 transform active:scale-95 border border-transparent cursor-pointer"
               >
-                <Printer className="w-4 h-4" />
-                Simpan & Cetak SPK Awal
+                <Printer className="w-4 h-4 shrink-0" />
+                <span className="truncate">Simpan & Cetak SPK</span>
               </button>
             )}
           </div>

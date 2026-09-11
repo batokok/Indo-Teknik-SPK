@@ -250,7 +250,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return localStorage.getItem('itech_erp_tracking_base_url') || '';
   });
 
+  const getTodayDateKey = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [notifications, setNotifications] = useState<AppNotification[]>(() => {
+    const todayKey = getTodayDateKey();
+    const storedDate = localStorage.getItem('itech_erp_feed_date');
+    if (storedDate !== todayKey) {
+      // Auto-clear workshop feed on new calendar day
+      localStorage.removeItem('itech_erp_notifications');
+      localStorage.setItem('itech_erp_feed_date', todayKey);
+      return [];
+    }
     const stored = localStorage.getItem('itech_erp_notifications');
     return stored ? JSON.parse(stored) : [];
   });
@@ -269,6 +285,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem('itech_erp_notifications', JSON.stringify(notifications));
   }, [notifications]);
+
+  // Periodic check to auto-clear workshop feed when the calendar date flips to a new day (e.g. at midnight)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const todayKey = getTodayDateKey();
+      const storedDate = localStorage.getItem('itech_erp_feed_date');
+      if (storedDate && storedDate !== todayKey) {
+        localStorage.setItem('itech_erp_feed_date', todayKey);
+        setNotifications([]);
+        localStorage.removeItem('itech_erp_notifications');
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const addNotification = (title: string, message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info', woId?: string) => {
     const newNotification: AppNotification = {

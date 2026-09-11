@@ -49,19 +49,19 @@ export const CarInspectionMap: React.FC<CarInspectionMapProps> = ({
   return (
     <div className={`flex flex-col bg-white rounded-xl ring-1 ring-slate-200/80 shadow-xs overflow-hidden ${className}`}>
       {/* Header Info */}
-      <div className="bg-[#0B132B] text-white px-3.5 py-2.5 flex items-center justify-between border-b border-slate-800">
-        <div className="flex items-center gap-2">
+      <div className="bg-[#0B132B] text-white px-3 sm:px-3.5 py-2 sm:py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 border-b border-slate-800">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
           <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span className="text-[11px] font-black uppercase tracking-wider">
-            Vehicle Body & Interior Visual Map
+          <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider truncate">
+            Vehicle Body Visual Map
           </span>
           {isInteractive && (
-            <span className="hidden sm:inline-flex items-center gap-1 text-[9px] bg-blue-500/20 text-blue-300 border border-blue-400/30 px-1.5 py-0.2 rounded font-medium">
+            <span className="hidden sm:inline-flex items-center gap-1 text-[9px] bg-blue-500/20 text-blue-300 border border-blue-400/30 px-1.5 py-0.2 rounded font-medium shrink-0">
               <Sparkles className="w-2.5 h-2.5" /> Interaktif
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           <AnimatePresence mode="wait">
             {defectCount > 0 ? (
               <motion.span
@@ -70,9 +70,9 @@ export const CarInspectionMap: React.FC<CarInspectionMapProps> = ({
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.85, opacity: 0 }}
                 transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                className="bg-rose-600 text-white text-[9.5px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs ring-1 ring-rose-300/40"
+                className="bg-rose-600 text-white text-[9px] sm:text-[9.5px] font-black px-2 sm:px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs ring-1 ring-rose-300/40"
               >
-                <AlertCircle className="w-3 h-3 shrink-0" /> {defectCount} Titik Kerusakan / Baret
+                <AlertCircle className="w-3 h-3 shrink-0" /> {defectCount} Titik Kerusakan
               </motion.span>
             ) : (
               <motion.span
@@ -81,16 +81,16 @@ export const CarInspectionMap: React.FC<CarInspectionMapProps> = ({
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.85, opacity: 0 }}
                 transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                className="bg-emerald-600 text-white text-[9.5px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs ring-1 ring-emerald-300/40"
+                className="bg-emerald-600 text-white text-[9px] sm:text-[9.5px] font-black px-2 sm:px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs ring-1 ring-emerald-300/40"
               >
-                <CheckCircle2 className="w-3 h-3 shrink-0" /> Kondisi Fisik Mulus (100% OK)
+                <CheckCircle2 className="w-3 h-3 shrink-0" /> Bodi Mulus (100% OK)
               </motion.span>
             )}
           </AnimatePresence>
         </div>
       </div>
 
-      <div className="p-3.5 grid grid-cols-12 gap-3.5 items-center">
+      <div className="p-2.5 sm:p-3.5 grid grid-cols-12 gap-2.5 sm:gap-3.5 items-center">
         {/* SVG Blueprint Canvas */}
         <div className="col-span-12 sm:col-span-7 relative flex items-center justify-center p-3 bg-gradient-to-b from-slate-50/90 to-slate-100/60 rounded-xl border border-slate-200/90 min-h-[210px] overflow-hidden">
           <svg

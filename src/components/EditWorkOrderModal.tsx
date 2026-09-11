@@ -313,49 +313,50 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200 my-auto flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200 my-auto flex flex-col max-h-[94vh]">
         
         {/* MODAL HEADER */}
-        <div className="bg-[#0F2D59] text-white p-4 sm:p-5 flex items-center justify-between shrink-0 border-b border-blue-900">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-600/30 rounded-xl border border-blue-400/30">
-              <ClipboardList className="w-5 h-5 text-blue-300" />
+        <div className="bg-[#0F2D59] text-white p-3 sm:p-5 flex items-center justify-between shrink-0 border-b border-blue-900 gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="p-1.5 sm:p-2 bg-blue-600/30 rounded-xl border border-blue-400/30 shrink-0">
+              <ClipboardList className="w-4 h-4 sm:w-5 sm:h-5 text-blue-300" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm sm:text-base font-black uppercase tracking-wider">
-                  Edit Dokumen SPK (Koreksi Data)
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <h3 className="text-xs sm:text-base font-black uppercase tracking-wider truncate">
+                  Edit Dokumen SPK
                 </h3>
-                <span className="bg-blue-400/20 text-blue-200 border border-blue-300/30 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full">
+                <span className="bg-blue-400/20 text-blue-200 border border-blue-300/30 text-[9px] sm:text-[10px] font-mono font-bold px-1.5 sm:px-2 py-0.5 rounded-full">
                   {wo.id}
                 </span>
                 {isArchived && (
-                  <span className="bg-amber-500/20 text-amber-300 border border-amber-400/40 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <span className="bg-amber-500/20 text-amber-300 border border-amber-400/40 text-[9px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full flex items-center gap-1">
                     <Archive className="w-3 h-3 text-amber-400" />
-                    DIARSIPKAN
+                    ARSIP
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-blue-200/80 mt-0.5">
-                Koreksi kesalahan input data pelanggan, unit kendaraan, komponen, atau rincian pengerjaan.
+              <p className="text-[10px] sm:text-[11px] text-blue-200/80 mt-0.5 truncate hidden sm:block">
+                Koreksi data pelanggan, unit kendaraan, komponen, atau rincian pengerjaan.
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               type="button"
               onClick={handleCopyWADraft}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+              className="px-2.5 sm:px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1 sm:gap-1.5 cursor-pointer shadow-md"
               title="Salin template pesan status pengerjaan siap kirim ke WhatsApp pelanggan"
             >
               <MessageSquare className="w-3.5 h-3.5" />
-              <span>Draft WA</span>
+              <span className="hidden xs:inline">Draft WA</span>
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              className="p-1.5 sm:p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer min-h-[40px] min-w-[40px] flex items-center justify-center"
+              title="Tutup Modal"
             >
               <X className="w-5 h-5" />
             </button>
@@ -363,7 +364,7 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
         </div>
 
         {/* TAB NAVIGATION */}
-        <div className="flex bg-slate-100 border-b border-slate-200 p-1.5 gap-1 shrink-0 overflow-x-auto custom-scrollbar">
+        <div className="flex bg-slate-100 border-b border-slate-200 p-1 sm:p-1.5 gap-1 shrink-0 overflow-x-auto custom-scrollbar select-none">
           <button
             type="button"
             onClick={() => setActiveTab('CUSTOMER_VEHICLE')}
@@ -448,7 +449,7 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                       required
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
-                      className="w-full p-2.5 text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full p-2.5 min-h-[42px] text-[15px] sm:text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none shadow-xs"
                     />
                   </div>
                   <div>
@@ -456,11 +457,12 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                       Nomor Telepon / WhatsApp <span className="text-rose-500">*</span>
                     </label>
                     <input
-                      type="text"
+                      type="tel"
+                      inputMode="tel"
                       required
                       value={customerPhone}
                       onChange={(e) => setCustomerPhone(e.target.value)}
-                      className="w-full p-2.5 text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono"
+                      className="w-full p-2.5 min-h-[42px] text-[15px] sm:text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono shadow-xs"
                     />
                   </div>
                   <div>
@@ -471,7 +473,7 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                       type="email"
                       value={customerEmail}
                       onChange={(e) => setCustomerEmail(e.target.value)}
-                      className="w-full p-2.5 text-xs text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full p-2.5 min-h-[42px] text-[15px] sm:text-xs text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none shadow-xs"
                     />
                   </div>
                   <div>
@@ -482,18 +484,31 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                       type="text"
                       value={customerAddress}
                       onChange={(e) => setCustomerAddress(e.target.value)}
-                      className="w-full p-2.5 text-xs text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full p-2.5 min-h-[42px] text-[15px] sm:text-xs text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none shadow-xs"
                     />
                   </div>
                 </div>
               </div>
 
               {/* SECTION: DATA PEMBAWA (OPSIONAL) */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                <h4 className="text-xs font-black uppercase text-slate-700 tracking-wider flex items-center gap-2">
-                  <UserIcon className="w-4 h-4 text-slate-500" />
-                  2. Informasi Pembawa Unit / Sopir / PIC Lapangan (Opsional)
-                </h4>
+              <div className="bg-slate-50 p-3.5 sm:p-4 rounded-xl border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black uppercase text-slate-700 tracking-wider flex items-center gap-2">
+                    <UserIcon className="w-4 h-4 text-slate-500" />
+                    2. Data Pembawa / Sopir (Opsional)
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBringerName(customerName);
+                      setBringerPhone(customerPhone);
+                      setBringerAddress(customerAddress);
+                    }}
+                    className="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-800 font-bold px-2 py-1 rounded-md cursor-pointer transition-colors active:scale-95"
+                  >
+                    ⚡ Sama dgn Pemilik
+                  </button>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="text-[10px] font-black uppercase text-slate-600 block mb-1">
@@ -504,7 +519,7 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                       value={bringerName}
                       onChange={(e) => setBringerName(e.target.value)}
                       placeholder="e.g. Budi (Sopir)"
-                      className="w-full p-2.5 text-xs text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full p-2.5 min-h-[42px] text-[15px] sm:text-xs text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none shadow-xs"
                     />
                   </div>
                   <div>
@@ -512,11 +527,12 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                       No. Telp Pembawa
                     </label>
                     <input
-                      type="text"
+                      type="tel"
+                      inputMode="tel"
                       value={bringerPhone}
                       onChange={(e) => setBringerPhone(e.target.value)}
                       placeholder="08xxxxxxxx"
-                      className="w-full p-2.5 text-xs text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono"
+                      className="w-full p-2.5 min-h-[42px] text-[15px] sm:text-xs text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono shadow-xs"
                     />
                   </div>
                   <div>
@@ -528,14 +544,14 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                       value={bringerAddress}
                       onChange={(e) => setBringerAddress(e.target.value)}
                       placeholder="Alamat PIC pembawa"
-                      className="w-full p-2.5 text-xs text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full p-2.5 min-h-[42px] text-[15px] sm:text-xs text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none shadow-xs"
                     />
                   </div>
                 </div>
               </div>
 
               {/* SECTION: DATA UNIT / KENDARAAN */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+              <div className="bg-slate-50 p-3.5 sm:p-4 rounded-xl border border-slate-200 space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-black uppercase text-[#0F2D59] tracking-wider flex items-center gap-2">
                     <Car className="w-4 h-4 text-blue-600" />
@@ -546,7 +562,7 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setDropMethod(dropMethod === 'WHOLE' ? 'PARTS' : 'WHOLE')}
-                      className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider transition-colors ${
+                      className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider transition-colors cursor-pointer ${
                         dropMethod === 'WHOLE' ? 'bg-blue-600 text-white' : 'bg-amber-600 text-white'
                       }`}
                     >
@@ -568,10 +584,10 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                           value={plateNumber}
                           onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
                           placeholder="BM 1234 XY"
-                          className="w-full p-2.5 text-xs font-black font-mono text-slate-900 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                          className="w-full p-2.5 min-h-[42px] text-[15px] sm:text-xs font-black font-mono text-slate-900 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none shadow-xs uppercase"
                         />
                       </div>
-                      <div>
+                      <div className="sm:col-span-2">
                         <label className="text-[10px] font-black uppercase text-slate-600 block mb-1">
                           Merek / Model Kendaraan
                         </label>
@@ -580,8 +596,23 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                           value={vehicleBrand}
                           onChange={(e) => setVehicleBrand(e.target.value)}
                           placeholder="Toyota Hilux 2.5D"
-                          className="w-full p-2.5 text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                          className="w-full p-2.5 min-h-[42px] text-[15px] sm:text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none shadow-xs"
                         />
+                        {/* Quick brand chips */}
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          {['Toyota Hilux', 'Mitsubishi Triton', 'Pajero Sport', 'Isuzu D-Max', 'Canter / PS125', 'Innova Reborn'].map(bp => (
+                            <button
+                              key={bp}
+                              type="button"
+                              onClick={() => setVehicleBrand(bp)}
+                              className={`text-[9px] font-bold px-2 py-0.5 rounded border transition-colors cursor-pointer ${
+                                vehicleBrand === bp ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                              }`}
+                            >
+                              {bp}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                       <div>
                         <label className="text-[10px] font-black uppercase text-slate-600 block mb-1">
@@ -592,7 +623,7 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                           value={vin}
                           onChange={(e) => setVin(e.target.value.toUpperCase())}
                           placeholder="MHF123..."
-                          className="w-full p-2.5 text-xs font-mono text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                          className="w-full p-2.5 min-h-[42px] text-[15px] sm:text-xs font-mono text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none shadow-xs uppercase"
                         />
                       </div>
                       <div>
@@ -601,10 +632,11 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                         </label>
                         <input
                           type="text"
+                          inputMode="numeric"
                           value={odometer}
                           onChange={(e) => setOdometer(e.target.value)}
                           placeholder="120.000 KM"
-                          className="w-full p-2.5 text-xs text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                          className="w-full p-2.5 min-h-[42px] text-[15px] sm:text-xs text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none shadow-xs"
                         />
                       </div>
                       <div>
@@ -614,7 +646,7 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                         <select
                           value={fuelLevel}
                           onChange={(e) => setFuelLevel(e.target.value as any)}
-                          className="w-full p-2.5 text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
+                          className="w-full p-2.5 min-h-[42px] text-[15px] sm:text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer shadow-xs"
                         >
                           <option value="E">E (Kosong / Empty)</option>
                           <option value="1/4">1/4 Tangki</option>
@@ -623,13 +655,13 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                           <option value="F">F (Penuh / Full)</option>
                         </select>
                       </div>
-                      <div className="flex items-center pt-5">
+                      <div className="flex items-center pt-2 sm:pt-5">
                         <label className="flex items-center gap-2 cursor-pointer select-none">
                           <input
                             type="checkbox"
                             checked={fuelContaminated}
                             onChange={(e) => setFuelContaminated(e.target.checked)}
-                            className="w-4 h-4 text-rose-600 rounded border-slate-300 focus:ring-rose-500"
+                            className="w-4 h-4 text-rose-600 rounded border-slate-300 focus:ring-rose-500 cursor-pointer"
                           />
                           <span className="text-xs font-bold text-rose-700">Solar Terindikasi Tercampur Air / Kotor</span>
                         </label>
@@ -650,7 +682,7 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                       value={assyNo}
                       onChange={(e) => setAssyNo(e.target.value)}
                       placeholder="e.g. 294000-0380"
-                      className="w-full p-2.5 text-xs font-mono text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full p-2.5 min-h-[42px] text-[15px] sm:text-xs font-mono text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none shadow-xs"
                     />
                   </div>
                   <div>
@@ -661,7 +693,7 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                       type="datetime-local"
                       value={intakeDate}
                       onChange={(e) => setIntakeDate(e.target.value)}
-                      className="w-full p-2.5 text-xs text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full p-2.5 min-h-[42px] text-[15px] sm:text-xs text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none shadow-xs"
                     />
                   </div>
                   <div>
@@ -673,7 +705,7 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                       value={estimasiPengerjaan}
                       onChange={(e) => setEstimasiPengerjaan(e.target.value)}
                       placeholder="e.g. 1 Hari Kerja"
-                      className="w-full p-2.5 text-xs text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full p-2.5 min-h-[42px] text-[15px] sm:text-xs text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none shadow-xs"
                     />
                   </div>
                   <div>
@@ -685,7 +717,7 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                       value={garansi}
                       onChange={(e) => setGaransi(e.target.value)}
                       placeholder="e.g. 1 Bulan / 1.000 KM"
-                      className="w-full p-2.5 text-xs text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="w-full p-2.5 min-h-[42px] text-[15px] sm:text-xs text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none shadow-xs"
                     />
                   </div>
                   <div>
@@ -695,7 +727,7 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                     <select
                       value={priority}
                       onChange={(e) => setPriority(Number(e.target.value) as Priority)}
-                      className="w-full p-2.5 text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
+                      className="w-full p-2.5 min-h-[42px] text-[15px] sm:text-xs font-bold text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer shadow-xs"
                     >
                       <option value={1}>🔴 Prioritas 1 (Urgent / Express)</option>
                       <option value={2}>🟡 Prioritas 2 (Standard)</option>
@@ -713,8 +745,8 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
             <div className="space-y-6">
 
               {/* LOOSE PARTS SECTION */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                <div className="flex items-center justify-between">
+              <div className="bg-slate-50 p-3.5 sm:p-4 rounded-xl border border-slate-200 space-y-3">
+                <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2">
                   <div>
                     <h4 className="text-xs font-black uppercase text-[#0F2D59] tracking-wider flex items-center gap-2">
                       <Wrench className="w-4 h-4 text-amber-600" />
@@ -727,9 +759,9 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                   <button
                     type="button"
                     onClick={handleAddLoosePart}
-                    className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-black uppercase rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                    className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white text-[11px] sm:text-[10px] font-black uppercase rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer min-h-[38px] active:scale-95"
                   >
-                    <Plus className="w-3.5 h-3.5" /> Tambah Baris Komponen
+                    <Plus className="w-4 h-4 sm:w-3.5 sm:h-3.5" /> Tambah Baris Komponen
                   </button>
                 </div>
 
@@ -739,106 +771,214 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                     <button
                       type="button"
                       onClick={handleAddLoosePart}
-                      className="mt-2 text-xs font-bold text-blue-600 hover:underline cursor-pointer"
+                      className="mt-2 text-xs font-bold text-blue-600 hover:underline cursor-pointer min-h-[36px] px-3 py-1"
                     >
                       + Tambah Komponen Pertama
                     </button>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white">
-                    <table className="w-full border-collapse text-xs">
-                      <thead className="bg-slate-100 text-slate-700 border-b border-slate-200">
-                        <tr>
-                          <th className="p-2.5 text-left font-bold uppercase tracking-wider w-1/3">Nama Komponen</th>
-                          <th className="p-2.5 text-left font-bold uppercase tracking-wider w-1/3">Part Number (P/N)</th>
-                          <th className="p-2.5 text-left font-bold uppercase tracking-wider">Kondisi Fisik</th>
-                          <th className="p-2.5 text-center font-bold uppercase tracking-wider w-12">Hapus</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-150">
-                        {looseParts.map((part, index) => {
-                          const matches = part.partNumber ? getHistoricalWorkOrders(part.partNumber) : [];
-                          return (
-                            <tr key={part.id || index} className="hover:bg-slate-50/50">
-                              <td className="p-2.5">
-                                <input
-                                  type="text"
-                                  placeholder="e.g. Injector Silinder 1 / Supply Pump"
-                                  value={part.description}
-                                  onChange={(e) => handleUpdateLoosePart(index, 'description', e.target.value)}
-                                  className="w-full p-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none"
-                                />
-                              </td>
-                              <td className="p-2.5">
-                                <input
-                                  type="text"
-                                  placeholder="e.g. 0445120007"
-                                  value={part.partNumber}
-                                  onChange={(e) => handleUpdateLoosePart(index, 'partNumber', e.target.value)}
-                                  className="w-full p-2 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none"
-                                />
-                                {matches.length > 0 && (
-                                  <div className="mt-1 flex items-center justify-between bg-amber-50 border border-amber-200 text-amber-900 px-2 py-1 rounded text-[10px]">
-                                    <span className="font-bold flex items-center gap-1">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse"></span>
-                                      Pernah diservis ({matches.length}x)
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() => setPreviewPn(part.partNumber)}
-                                      className="text-blue-700 underline font-black hover:text-blue-900 cursor-pointer"
-                                    >
-                                      Lihat Histori
-                                    </button>
-                                  </div>
-                                )}
-                              </td>
-                              <td className="p-2.5">
-                                <input
-                                  type="text"
-                                  placeholder="e.g. Drat OK, Soket Utuh"
-                                  value={part.physicalCondition}
-                                  onChange={(e) => handleUpdateLoosePart(index, 'physicalCondition', e.target.value)}
-                                  className="w-full p-2 border border-slate-200 rounded-lg text-xs text-slate-700 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none"
-                                />
-                              </td>
-                              <td className="p-2.5 text-center">
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveLoosePart(index)}
-                                  className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                                >
-                                  <Trash2 className="w-4 h-4 mx-auto" />
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                  <>
+                    {/* Mobile Card Layout (< sm) */}
+                    <div className="sm:hidden space-y-3">
+                      {looseParts.map((part, index) => {
+                        const matches = part.partNumber ? getHistoricalWorkOrders(part.partNumber) : [];
+                        return (
+                          <div key={part.id || index} className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs space-y-2.5">
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                              <span className="text-[11px] font-black text-slate-600 uppercase">Komponen #{index + 1}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveLoosePart(index)}
+                                className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer flex items-center gap-1 text-[11px] font-bold"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" /> Hapus
+                              </button>
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1">Nama Komponen</label>
+                              <input
+                                type="text"
+                                placeholder="e.g. Injector Silinder 1 / Supply Pump"
+                                value={part.description}
+                                onChange={(e) => handleUpdateLoosePart(index, 'description', e.target.value)}
+                                className="w-full p-2.5 min-h-[42px] text-[15px] font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1">Part Number (P/N)</label>
+                              <input
+                                type="text"
+                                placeholder="e.g. 0445120007"
+                                value={part.partNumber}
+                                onChange={(e) => handleUpdateLoosePart(index, 'partNumber', e.target.value)}
+                                className="w-full p-2.5 min-h-[42px] text-[15px] font-mono font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none"
+                              />
+                              {matches.length > 0 && (
+                                <div className="mt-1.5 flex items-center justify-between bg-amber-50 border border-amber-200 text-amber-900 px-2 py-1.5 rounded text-[10px]">
+                                  <span className="font-bold flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse"></span>
+                                    Pernah diservis ({matches.length}x)
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setPreviewPn(part.partNumber)}
+                                    className="text-blue-700 underline font-black cursor-pointer py-0.5 px-1"
+                                  >
+                                    Lihat Histori
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1">Kondisi Fisik</label>
+                              <input
+                                type="text"
+                                placeholder="e.g. Drat OK, Soket Utuh"
+                                value={part.physicalCondition}
+                                onChange={(e) => handleUpdateLoosePart(index, 'physicalCondition', e.target.value)}
+                                className="w-full p-2.5 min-h-[42px] text-[14px] text-slate-700 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Desktop Table Layout (sm+) */}
+                    <div className="hidden sm:block overflow-x-auto border border-slate-200 rounded-xl bg-white">
+                      <table className="w-full border-collapse text-xs">
+                        <thead className="bg-slate-100 text-slate-700 border-b border-slate-200">
+                          <tr>
+                            <th className="p-2.5 text-left font-bold uppercase tracking-wider w-1/3">Nama Komponen</th>
+                            <th className="p-2.5 text-left font-bold uppercase tracking-wider w-1/3">Part Number (P/N)</th>
+                            <th className="p-2.5 text-left font-bold uppercase tracking-wider">Kondisi Fisik</th>
+                            <th className="p-2.5 text-center font-bold uppercase tracking-wider w-12">Hapus</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-150">
+                          {looseParts.map((part, index) => {
+                            const matches = part.partNumber ? getHistoricalWorkOrders(part.partNumber) : [];
+                            return (
+                              <tr key={part.id || index} className="hover:bg-slate-50/50">
+                                <td className="p-2.5">
+                                  <input
+                                    type="text"
+                                    placeholder="e.g. Injector Silinder 1 / Supply Pump"
+                                    value={part.description}
+                                    onChange={(e) => handleUpdateLoosePart(index, 'description', e.target.value)}
+                                    className="w-full p-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none"
+                                  />
+                                </td>
+                                <td className="p-2.5">
+                                  <input
+                                    type="text"
+                                    placeholder="e.g. 0445120007"
+                                    value={part.partNumber}
+                                    onChange={(e) => handleUpdateLoosePart(index, 'partNumber', e.target.value)}
+                                    className="w-full p-2 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none"
+                                  />
+                                  {matches.length > 0 && (
+                                    <div className="mt-1 flex items-center justify-between bg-amber-50 border border-amber-200 text-amber-900 px-2 py-1 rounded text-[10px]">
+                                      <span className="font-bold flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse"></span>
+                                        Pernah diservis ({matches.length}x)
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => setPreviewPn(part.partNumber)}
+                                        className="text-blue-700 underline font-black hover:text-blue-900 cursor-pointer"
+                                      >
+                                        Lihat Histori
+                                      </button>
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="p-2.5">
+                                  <input
+                                    type="text"
+                                    placeholder="e.g. Drat OK, Soket Utuh"
+                                    value={part.physicalCondition}
+                                    onChange={(e) => handleUpdateLoosePart(index, 'physicalCondition', e.target.value)}
+                                    className="w-full p-2 border border-slate-200 rounded-lg text-xs text-slate-700 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none"
+                                  />
+                                </td>
+                                <td className="p-2.5 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveLoosePart(index)}
+                                    className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                  >
+                                    <Trash2 className="w-4 h-4 mx-auto" />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
                 )}
               </div>
 
               {/* TODO ACTIONS & ESTIMATED PRICING */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                <div className="flex items-center justify-between">
+              <div className="bg-slate-50 p-3.5 sm:p-4 rounded-xl border border-slate-200 space-y-3">
+                <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2">
                   <div>
                     <h4 className="text-xs font-black uppercase text-[#0F2D59] tracking-wider flex items-center gap-2">
                       <ClipboardList className="w-4 h-4 text-blue-600" />
-                      Daftar Tindakan & Estimasi Harga (Action Builder)
+                      Daftar Tindakan & Estimasi Biaya (Action Builder)
                     </h4>
                     <p className="text-[10px] text-slate-500 mt-0.5">
-                      Rincian jenis pengerjaan, kuantitas, dan rentang estimasi biaya pengerjaan.
+                      Rincian jenis pengerjaan, kuantitas, dan estimasi biaya pengerjaan.
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={handleAddTodoAction}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[11px] sm:text-[10px] font-black uppercase rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer min-h-[38px] active:scale-95"
                   >
-                    <Plus className="w-3.5 h-3.5" /> Tambah Pengerjaan
+                    <Plus className="w-4 h-4 sm:w-3.5 sm:h-3.5" /> Tambah Pengerjaan
                   </button>
+                </div>
+
+                {/* Quick Action Presets */}
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-1.5">
+                    Preset Cepat Pengerjaan:
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { text: 'Kalibrasi Injector Common Rail', defaultPrice: '250.000' },
+                      { text: 'Overhaul Supply Pump', defaultPrice: '1.500.000' },
+                      { text: 'Ganti Nozzle Tip & Valve', defaultPrice: '850.000' },
+                      { text: 'Uji Test Bench & Balancing', defaultPrice: '300.000' },
+                      { text: 'Kuras Tangki & Jalur Solar', defaultPrice: '450.000' }
+                    ].map((preset) => (
+                      <button
+                        key={preset.text}
+                        type="button"
+                        onClick={() => {
+                          setTodoActions([
+                            ...todoActions,
+                            {
+                              id: `act_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+                              jenisPengerjaan: preset.text,
+                              qty: 1,
+                              catatanMekanik: '',
+                              estimasiHarga: preset.defaultPrice,
+                              estimasiHargaMin: preset.defaultPrice,
+                              estimasiHargaMax: preset.defaultPrice
+                            }
+                          ]);
+                        }}
+                        className="text-[10px] bg-white hover:bg-blue-50 text-slate-700 border border-slate-200 rounded-lg px-2.5 py-1.5 font-bold transition-all flex items-center gap-1 active:scale-95 shadow-2xs cursor-pointer"
+                      >
+                        <Plus className="w-3 h-3 text-blue-600" />
+                        {preset.text}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {todoActions.length === 0 ? (
@@ -847,86 +987,162 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                     <button
                       type="button"
                       onClick={handleAddTodoAction}
-                      className="mt-2 text-xs font-bold text-blue-600 hover:underline cursor-pointer"
+                      className="mt-2 text-xs font-bold text-blue-600 hover:underline cursor-pointer min-h-[36px] px-3 py-1"
                     >
                       + Tambah Pengerjaan Pertama
                     </button>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white">
-                    <table className="w-full border-collapse text-xs">
-                      <thead className="bg-slate-100 text-slate-700 border-b border-slate-200">
-                        <tr>
-                          <th className="p-2.5 text-left font-bold uppercase tracking-wider">Jenis Pengerjaan</th>
-                          <th className="p-2.5 text-center font-bold uppercase tracking-wider w-16">Qty</th>
-                          <th className="p-2.5 text-left font-bold uppercase tracking-wider">Catatan Teknis</th>
-                          <th className="p-2.5 text-left font-bold uppercase tracking-wider w-64">Rentang Estimasi Biaya (Rp)</th>
-                          <th className="p-2.5 text-center font-bold uppercase tracking-wider w-12">Hapus</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-150">
-                        {todoActions.map((action, index) => (
-                          <tr key={action.id || index} className="hover:bg-slate-50/50">
-                            <td className="p-2.5">
-                              <input
-                                type="text"
-                                placeholder="e.g. Kalibrasi Common Rail / Ganti Nozzle Tip"
-                                value={action.jenisPengerjaan}
-                                onChange={(e) => handleUpdateTodoAction(index, 'jenisPengerjaan', e.target.value)}
-                                className="w-full p-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none"
-                              />
-                            </td>
-                            <td className="p-2.5 text-center">
+                  <>
+                    {/* Mobile Card Layout (< sm) */}
+                    <div className="sm:hidden space-y-3">
+                      {todoActions.map((action, index) => (
+                        <div key={action.id || index} className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs space-y-2.5">
+                          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                            <span className="text-[11px] font-black text-slate-600 uppercase">Pengerjaan #{index + 1}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveTodoAction(index)}
+                              className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer flex items-center gap-1 text-[11px] font-bold"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" /> Hapus
+                            </button>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1">Jenis Pengerjaan</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. Kalibrasi Common Rail"
+                              value={action.jenisPengerjaan}
+                              onChange={(e) => handleUpdateTodoAction(index, 'jenisPengerjaan', e.target.value)}
+                              className="w-full p-2.5 min-h-[42px] text-[15px] font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none"
+                            />
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1">Qty</label>
                               <input
                                 type="number"
+                                inputMode="numeric"
                                 min={1}
                                 value={action.qty || 1}
                                 onChange={(e) => handleUpdateTodoAction(index, 'qty', parseInt(e.target.value) || 1)}
-                                className="w-full p-2 border border-slate-200 rounded-lg text-xs font-bold text-center text-slate-800 bg-slate-50 focus:bg-white outline-none"
+                                className="w-full p-2.5 min-h-[42px] text-[15px] font-bold text-center text-slate-800 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white outline-none"
                               />
-                            </td>
-                            <td className="p-2.5">
+                            </div>
+                            <div className="col-span-2">
+                              <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1">Catatan Teknis</label>
                               <input
                                 type="text"
-                                placeholder="Catatan opsional mekanik"
+                                placeholder="Catatan opsional"
                                 value={action.catatanMekanik || ''}
                                 onChange={(e) => handleUpdateTodoAction(index, 'catatanMekanik', e.target.value)}
-                                className="w-full p-2 border border-slate-200 rounded-lg text-xs text-slate-700 bg-slate-50 focus:bg-white outline-none"
+                                className="w-full p-2.5 min-h-[42px] text-[14px] text-slate-700 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white outline-none"
                               />
-                            </td>
-                            <td className="p-2.5">
-                              <div className="flex items-center gap-1">
-                                <input
-                                  type="text"
-                                  placeholder="Min (Rp)"
-                                  value={action.estimasiHargaMin || action.estimasiHarga || ''}
-                                  onChange={(e) => handleUpdateTodoAction(index, 'estimasiHargaMin', e.target.value)}
-                                  className="w-1/2 p-2 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800 bg-slate-50 focus:bg-white outline-none"
-                                />
-                                <span className="text-slate-400 font-bold">-</span>
-                                <input
-                                  type="text"
-                                  placeholder="Max (Rp)"
-                                  value={action.estimasiHargaMax || ''}
-                                  onChange={(e) => handleUpdateTodoAction(index, 'estimasiHargaMax', e.target.value)}
-                                  className="w-1/2 p-2 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800 bg-slate-50 focus:bg-white outline-none"
-                                />
-                              </div>
-                            </td>
-                            <td className="p-2.5 text-center">
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveTodoAction(index)}
-                                className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                              >
-                                <Trash2 className="w-4 h-4 mx-auto" />
-                              </button>
-                            </td>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1">Estimasi Biaya (Min - Max Rp)</label>
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="Min (Rp)"
+                                value={action.estimasiHargaMin || action.estimasiHarga || ''}
+                                onChange={(e) => handleUpdateTodoAction(index, 'estimasiHargaMin', e.target.value)}
+                                className="w-1/2 p-2.5 min-h-[42px] text-[15px] font-mono font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white outline-none"
+                              />
+                              <span className="text-slate-400 font-bold">-</span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="Max (Rp)"
+                                value={action.estimasiHargaMax || ''}
+                                onChange={(e) => handleUpdateTodoAction(index, 'estimasiHargaMax', e.target.value)}
+                                className="w-1/2 p-2.5 min-h-[42px] text-[15px] font-mono font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white outline-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Desktop Table Layout (sm+) */}
+                    <div className="hidden sm:block overflow-x-auto border border-slate-200 rounded-xl bg-white">
+                      <table className="w-full border-collapse text-xs">
+                        <thead className="bg-slate-100 text-slate-700 border-b border-slate-200">
+                          <tr>
+                            <th className="p-2.5 text-left font-bold uppercase tracking-wider">Jenis Pengerjaan</th>
+                            <th className="p-2.5 text-center font-bold uppercase tracking-wider w-16">Qty</th>
+                            <th className="p-2.5 text-left font-bold uppercase tracking-wider">Catatan Teknis</th>
+                            <th className="p-2.5 text-left font-bold uppercase tracking-wider w-64">Rentang Estimasi Biaya (Rp)</th>
+                            <th className="p-2.5 text-center font-bold uppercase tracking-wider w-12">Hapus</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody className="divide-y divide-slate-150">
+                          {todoActions.map((action, index) => (
+                            <tr key={action.id || index} className="hover:bg-slate-50/50">
+                              <td className="p-2.5">
+                                <input
+                                  type="text"
+                                  placeholder="e.g. Kalibrasi Common Rail / Ganti Nozzle Tip"
+                                  value={action.jenisPengerjaan}
+                                  onChange={(e) => handleUpdateTodoAction(index, 'jenisPengerjaan', e.target.value)}
+                                  className="w-full p-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none"
+                                />
+                              </td>
+                              <td className="p-2.5 text-center">
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={action.qty || 1}
+                                  onChange={(e) => handleUpdateTodoAction(index, 'qty', parseInt(e.target.value) || 1)}
+                                  className="w-full p-2 border border-slate-200 rounded-lg text-xs font-bold text-center text-slate-800 bg-slate-50 focus:bg-white outline-none"
+                                />
+                              </td>
+                              <td className="p-2.5">
+                                <input
+                                  type="text"
+                                  placeholder="Catatan opsional mekanik"
+                                  value={action.catatanMekanik || ''}
+                                  onChange={(e) => handleUpdateTodoAction(index, 'catatanMekanik', e.target.value)}
+                                  className="w-full p-2 border border-slate-200 rounded-lg text-xs text-slate-700 bg-slate-50 focus:bg-white outline-none"
+                                />
+                              </td>
+                              <td className="p-2.5">
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="text"
+                                    placeholder="Min (Rp)"
+                                    value={action.estimasiHargaMin || action.estimasiHarga || ''}
+                                    onChange={(e) => handleUpdateTodoAction(index, 'estimasiHargaMin', e.target.value)}
+                                    className="w-1/2 p-2 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800 bg-slate-50 focus:bg-white outline-none"
+                                  />
+                                  <span className="text-slate-400 font-bold">-</span>
+                                  <input
+                                    type="text"
+                                    placeholder="Max (Rp)"
+                                    value={action.estimasiHargaMax || ''}
+                                    onChange={(e) => handleUpdateTodoAction(index, 'estimasiHargaMax', e.target.value)}
+                                    className="w-1/2 p-2 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800 bg-slate-50 focus:bg-white outline-none"
+                                  />
+                                </div>
+                              </td>
+                              <td className="p-2.5 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveTodoAction(index)}
+                                  className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                >
+                                  <Trash2 className="w-4 h-4 mx-auto" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -938,22 +1154,53 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
             <div className="space-y-6">
 
               {/* CUSTOMER VOICE / KELUHAN */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+              <div className="bg-slate-50 p-3.5 sm:p-4 rounded-xl border border-slate-200 space-y-3">
                 <h4 className="text-xs font-black uppercase text-[#0F2D59] tracking-wider flex items-center gap-2">
                   <FileText className="w-4 h-4 text-emerald-600" />
                   Keluhan / Gejala Awal Kendaraan (Customer Voice)
                 </h4>
+                {/* Quick Symptom Chips */}
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-1.5">
+                    Preset Cepat Gejala Diesel:
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      'Asap Hitam Tebal',
+                      'Asap Putih Pedih',
+                      'Mesin Pincang / Hunting',
+                      'Susah Start Saat Dingin',
+                      'Tarikan Berat / Tenaga Loyo',
+                      'Check Engine Menyala',
+                      'BBM Boros & Bau Solar'
+                    ].map((symptom) => (
+                      <button
+                        key={symptom}
+                        type="button"
+                        onClick={() => {
+                          const separator = customerVoice.trim().length > 0 ? ', ' : '';
+                          setCustomerVoice(customerVoice.trim() + separator + symptom);
+                        }}
+                        className="text-[10px] bg-white hover:bg-emerald-50 text-slate-700 border border-slate-200 rounded-lg px-2.5 py-1.5 font-bold transition-all flex items-center gap-1 active:scale-95 shadow-2xs cursor-pointer"
+                      >
+                        <Plus className="w-3 h-3 text-emerald-600" />
+                        {symptom}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <textarea
                   rows={4}
                   value={customerVoice}
                   onChange={(e) => setCustomerVoice(e.target.value)}
                   placeholder="Contoh: Asap hitam tebal saat tarikan awal, mesin pincang di rpm 1500, check engine menyala..."
-                  className="w-full p-3 text-xs text-slate-800 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none leading-relaxed"
+                  className="w-full p-3 text-[15px] sm:text-xs text-slate-800 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none leading-relaxed shadow-xs"
                 />
               </div>
 
               {/* INVENTORY CHECKLIST */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+              <div className="bg-slate-50 p-3.5 sm:p-4 rounded-xl border border-slate-200 space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-black uppercase text-[#0F2D59] tracking-wider flex items-center gap-2">
                     <CheckSquare className="w-4 h-4 text-blue-600" />
@@ -963,7 +1210,7 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setInventory(inventory.map(i => ({ ...i, checked: true })))}
-                      className="text-blue-600 font-bold hover:underline cursor-pointer"
+                      className="text-blue-600 font-bold hover:underline cursor-pointer py-1"
                     >
                       Pilih Semua
                     </button>
@@ -971,7 +1218,7 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setInventory(inventory.map(i => ({ ...i, checked: false })))}
-                      className="text-slate-500 font-bold hover:underline cursor-pointer"
+                      className="text-slate-500 font-bold hover:underline cursor-pointer py-1"
                     >
                       Kosongkan
                     </button>
@@ -982,7 +1229,7 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                   {inventory.map((item, index) => (
                     <label
                       key={index}
-                      className={`flex items-center gap-2.5 p-3 rounded-xl border transition-all cursor-pointer select-none ${
+                      className={`flex items-center gap-2.5 p-3 min-h-[44px] rounded-xl border transition-all cursor-pointer select-none ${
                         item.checked
                           ? 'bg-blue-50/70 border-blue-300 text-blue-900 font-bold shadow-xs'
                           : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100/60'
@@ -992,7 +1239,7 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                         type="checkbox"
                         checked={item.checked}
                         onChange={() => toggleInventoryItem(index)}
-                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
                       />
                       <span className="text-xs">{item.name}</span>
                     </label>
@@ -1022,7 +1269,7 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                     <select
                       value={status}
                       onChange={(e) => setStatus(e.target.value as WOStatus)}
-                      className="w-full p-2.5 text-xs font-black text-slate-900 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer uppercase tracking-wider"
+                      className="w-full p-2.5 min-h-[42px] text-[15px] sm:text-xs font-black text-slate-900 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer uppercase tracking-wider shadow-xs"
                     >
                       <option value="QUEUE">⏳ Antrean Masuk (Queue)</option>
                       <option value="IN_PROGRESS">⚡ Sedang Dikerjakan (In Progress)</option>
@@ -1040,7 +1287,7 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                     <select
                       value={mechanicId}
                       onChange={(e) => setMechanicId(e.target.value)}
-                      className="w-full p-2.5 text-xs font-bold text-slate-900 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
+                      className="w-full p-2.5 min-h-[42px] text-[15px] sm:text-xs font-bold text-slate-900 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer shadow-xs"
                     >
                       <option value="">-- Belum Ditugaskan (Antrean Bebas) --</option>
                       {users
@@ -1064,7 +1311,7 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                       value={cancelReason}
                       onChange={(e) => setCancelReason(e.target.value)}
                       placeholder="Contoh: Pelanggan Menolak Estimasi Biaya (Decline)"
-                      className="w-full p-2.5 text-xs text-slate-900 bg-white border border-rose-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none font-medium"
+                      className="w-full p-2.5 min-h-[42px] text-[15px] sm:text-xs text-slate-900 bg-white border border-rose-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none font-medium shadow-xs"
                     />
                   </div>
                 )}
@@ -1178,24 +1425,15 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
         </form>
 
         {/* MODAL FOOTER */}
-        <div className="bg-slate-100 p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200 shrink-0">
-          <div className="text-xs text-slate-500 font-medium text-center sm:text-left">
-            <span className="font-bold text-slate-700">Service Advisor:</span> Koreksi ini disimpan permanen ke database Firestore & NAS.
+        <div className="bg-slate-100 p-3 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3 border-t border-slate-200 shrink-0">
+          <div className="text-[10px] sm:text-xs text-slate-500 font-medium text-center sm:text-left hidden sm:block">
+            <span className="font-bold text-slate-700">Service Advisor:</span> Koreksi ini disimpan permanen ke database Firestore.
           </div>
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <button
-              type="button"
-              onClick={handleCopyWADraft}
-              className="flex-1 sm:flex-none px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
-              title="Salin template pesan WhatsApp status terkini siap kirim ke pelanggan"
-            >
-              <MessageSquare className="w-4 h-4" />
-              <span>Draft WA</span>
-            </button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 sm:flex-none px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              className="flex-1 sm:flex-none px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition-colors cursor-pointer min-h-[42px] flex items-center justify-center"
             >
               Batal
             </button>
@@ -1203,10 +1441,10 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
               type="button"
               onClick={handleSave}
               disabled={isSaving}
-              className="flex-1 sm:flex-none px-6 py-2.5 bg-[#0F2D59] hover:bg-blue-900 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="flex-[2] sm:flex-none px-4 sm:px-6 py-2.5 bg-[#0F2D59] hover:bg-blue-900 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 min-h-[42px]"
             >
               <Save className="w-4 h-4" />
-              {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
+              {isSaving ? 'Menyimpan...' : 'Simpan'}
             </button>
           </div>
         </div>

@@ -649,9 +649,9 @@ const SADashboard: React.FC = () => {
       bringerName,
       bringerPhone,
       bringerAddress,
-      vehicleBrand: dropMethod === 'PARTS' ? 'Copotan (Loose Parts)' : vehicleBrand,
-      vin: dropMethod === 'PARTS' ? '' : vin,
-      plateNumber: dropMethod === 'PARTS' ? '-' : plateNumber,
+      vehicleBrand: dropMethod === 'PARTS' ? (vehicleBrand.trim() || 'Copotan (Loose Parts)') : vehicleBrand,
+      vin: dropMethod === 'PARTS' ? (vin.trim() || '') : vin,
+      plateNumber: dropMethod === 'PARTS' ? (plateNumber.trim() || '-') : plateNumber,
       odometer: dropMethod === 'PARTS' ? '-' : odometer,
       fuelLevel: dropMethod === 'PARTS' ? '' : fuelLevel,
       estimasiPengerjaan,
@@ -2603,6 +2603,53 @@ const SADashboard: React.FC = () => {
                         <label className="text-[10px] font-black uppercase text-slate-700">Kilometer (KM) / Hour Meter (HM) <span className="text-red-500">*</span></label>
                         <span className="text-[9px] text-slate-400 italic mb-1">Angka odometer saat ini (e.g. 150.000 KM)</span>
                         <input required={wizardStep === 2 && dropMethod === 'WHOLE'} type="text" inputMode="numeric" placeholder="e.g. 150.000 KM / 2.500 HM" className="text-[15px] sm:text-xs p-2.5 min-h-[42px] border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm" value={odometer} onChange={(e) => setOdometer(e.target.value)} />
+                      </div>
+                    </>
+                  )}
+
+                  {dropMethod === 'PARTS' && (
+                    <>
+                      <div className="flex flex-col bg-slate-50/50 p-3.5 rounded-lg border border-slate-100">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-black uppercase text-slate-700">Asal Mesin / Unit Kendaraan Komponen</label>
+                          <span className="text-[9px] text-blue-600 font-bold hidden xs:inline">Sentuh chip jika tahu</span>
+                        </div>
+                        <span className="text-[9px] text-slate-400 italic mb-1">Merek & tipe mesin asal komponen copotan</span>
+                        <input 
+                          type="text" 
+                          className="text-[15px] sm:text-xs p-2.5 min-h-[42px] border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm" 
+                          placeholder="e.g. Canter PS125 / Hilux 2GD / Genset Cummins" 
+                          value={vehicleBrand === 'Copotan (Loose Parts)' ? '' : vehicleBrand} 
+                          onChange={(e) => setVehicleBrand(e.target.value)} 
+                        />
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {['Canter PS125', 'Toyota Hilux 2GD', 'Mitsubishi Triton', 'Isuzu D-Max', 'Innova Reborn', 'Genset Cummins / Perkins', 'Alat Berat Komatsu / CAT'].map(brandPreset => (
+                            <button
+                              key={brandPreset}
+                              type="button"
+                              onClick={() => setVehicleBrand(brandPreset)}
+                              className={`text-[9.5px] font-bold px-2 py-1 rounded-md border transition-all cursor-pointer ${
+                                vehicleBrand === brandPreset 
+                                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
+                                  : 'bg-white text-slate-700 border-slate-200 hover:border-blue-400 hover:text-blue-700'
+                              }`}
+                            >
+                              {brandPreset}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col bg-slate-50/50 p-3.5 rounded-lg border border-slate-100">
+                        <label className="text-[10px] font-black uppercase text-slate-700">No. Plat / No. Seri Unit Referensi (Opsional)</label>
+                        <span className="text-[9px] text-slate-400 italic mb-1">No. plat kendaraan asal atau identitas unit customer</span>
+                        <input 
+                          type="text" 
+                          placeholder="e.g. BM 8899 QA / Unit Genset 02" 
+                          className="text-[15px] sm:text-xs p-2.5 min-h-[42px] border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm font-mono uppercase" 
+                          value={plateNumber === '-' ? '' : plateNumber} 
+                          onChange={(e) => setPlateNumber(e.target.value)} 
+                        />
                       </div>
                     </>
                   )}

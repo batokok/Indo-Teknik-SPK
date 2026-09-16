@@ -340,6 +340,7 @@ export const PrintTemplate: React.FC = () => {
   const damagesList = printWO.damages || [];
   const inventoryList = printWO.inventory || [];
   const loosePartsList = printWO.looseParts || [];
+  const isPartsOnly = printWO.dropMethod === 'PARTS';
 
   const isInventoryChecked = (itemName: string) => {
     const found = inventoryList.find(i => i.name.toLowerCase() === itemName.toLowerCase());
@@ -500,36 +501,72 @@ export const PrintTemplate: React.FC = () => {
             )}
           </div>
 
-          {/* Vehicle Box (6 Cols) */}
-          <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2.5 shadow-xs flex flex-col justify-between">
-            <div>
-              <h3 className="font-black border-b border-slate-300 pb-1 mb-1.5 text-[#0F2D59] text-[10px] uppercase tracking-wider flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-red-600"></span> IDENTITAS KENDARAAN / UNIT
-              </h3>
-              <div className="space-y-1 text-xs">
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">No. Polisi:</span>
-                  <span className="font-mono font-black text-white text-xs bg-slate-950 px-2 py-0.5 rounded border border-slate-700 tracking-wider shadow-xs">
-                    {printWO.plateNumber || '-'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-baseline gap-2">
-                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Merek / Tipe:</span>
-                  <span className="font-black text-slate-900 text-right truncate text-xs">{printWO.vehicleBrand || '-'}</span>
-                </div>
-                <div className="flex justify-between items-baseline gap-2">
-                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">No. Rangka:</span>
-                  <span className="font-mono text-slate-800 text-right truncate text-[10.5px] font-semibold">{printWO.vin || '-'}</span>
+          {/* Vehicle / Component Source Box (6 Cols) */}
+          {isPartsOnly ? (
+            <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2.5 shadow-xs flex flex-col justify-between">
+              <div>
+                <h3 className="font-black border-b border-slate-300 pb-1 mb-1.5 text-[#0F2D59] text-[10px] uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-500"></span> IDENTITAS ASAL KOMPONEN & STATUS
+                </h3>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Status Penyerahan:</span>
+                    <span className="font-black text-amber-950 text-[10px] bg-amber-100 border border-amber-300 px-2 py-0.5 rounded shadow-2xs uppercase">
+                      ⚙️ Komponen Copotan (Loose Parts)
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-baseline gap-2">
+                    <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Asal Mesin / Unit:</span>
+                    <span className="font-black text-slate-900 text-right truncate text-xs">
+                      {printWO.vehicleBrand || 'Komponen Lepas (Loose Parts)'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-baseline gap-2">
+                    <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Plat / No. Ref:</span>
+                    <span className="font-mono text-slate-800 text-right truncate text-[10.5px] font-semibold">
+                      {printWO.plateNumber && printWO.plateNumber !== '-' ? printWO.plateNumber : 'Tanpa Unit Mobil'}
+                    </span>
+                  </div>
                 </div>
               </div>
+              <div className="flex justify-between items-baseline gap-2 pt-1 mt-1 border-t border-slate-200">
+                <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Total Komponen:</span>
+                <span className="font-black text-blue-900 text-right text-[10.5px] font-mono">
+                  {loosePartsList.length || 1} Item Fisik Terdaftar
+                </span>
+              </div>
             </div>
-            <div className="flex justify-between items-baseline gap-2 pt-1 mt-1 border-t border-slate-200">
-              <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Odometer / Waktu:</span>
-              <span className="font-bold text-slate-800 text-right text-[10.5px] font-mono">
-                {printWO.odometer ? `${Number(printWO.odometer).toLocaleString('id-ID')} km` : '-'}
-              </span>
+          ) : (
+            <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2.5 shadow-xs flex flex-col justify-between">
+              <div>
+                <h3 className="font-black border-b border-slate-300 pb-1 mb-1.5 text-[#0F2D59] text-[10px] uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-red-600"></span> IDENTITAS KENDARAAN / UNIT
+                </h3>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">No. Polisi:</span>
+                    <span className="font-mono font-black text-white text-xs bg-slate-950 px-2 py-0.5 rounded border border-slate-700 tracking-wider shadow-xs">
+                      {printWO.plateNumber || '-'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-baseline gap-2">
+                    <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Merek / Tipe:</span>
+                    <span className="font-black text-slate-900 text-right truncate text-xs">{printWO.vehicleBrand || '-'}</span>
+                  </div>
+                  <div className="flex justify-between items-baseline gap-2">
+                    <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">No. Rangka:</span>
+                    <span className="font-mono text-slate-800 text-right truncate text-[10.5px] font-semibold">{printWO.vin || '-'}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-between items-baseline gap-2 pt-1 mt-1 border-t border-slate-200">
+                <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Odometer / Waktu:</span>
+                <span className="font-bold text-slate-800 text-right text-[10.5px] font-mono">
+                  {printWO.odometer ? `${Number(printWO.odometer).toLocaleString('id-ID')} km` : '-'}
+                </span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* SECTION 2: KELUHAN AWAL */}
@@ -736,9 +773,10 @@ export const PrintTemplate: React.FC = () => {
   );
 
   // =========================================================================
-  // PAGE 2: LEMBAR PEMERIKSAAN KENDARAAN (VEHICLE INSPECTION & BODY MAP)
+  // PAGE 2 (OPTION A): LEMBAR PEMERIKSAAN KENDARAAN (VEHICLE INSPECTION & BODY MAP)
+  // Digunakan jika dropMethod === 'WHOLE' (Bawa Kendaraan Utuh)
   // =========================================================================
-  const renderInspectionPage2 = () => (
+  const renderVehicleInspectionPage2 = () => (
     <div className="relative print-page space-y-2.5 box-border">
       {/* Watermark */}
       <DocumentWatermark 
@@ -974,11 +1012,336 @@ export const PrintTemplate: React.FC = () => {
 
         <div className="flex justify-between items-center text-[7.5px] text-slate-500 border-t border-slate-200 pt-1 mt-1.5 font-mono">
           <span>Indo Teknik Pekanbaru • One Stop Solution for All Your Diesel Needs</span>
-          <span className="font-bold text-slate-800">Lembar Pemeriksaan Halaman 2 • Dicetak: {new Date().toLocaleString('id-ID')} WIB</span>
+          <span className="font-bold text-slate-800">Lembar Pemeriksaan Kendaraan Halaman 2 • Dicetak: {new Date().toLocaleString('id-ID')} WIB</span>
         </div>
       </div>
     </div>
   );
+
+  // =========================================================================
+  // PAGE 2 (OPTION B): LEMBAR PEMERIKSAAN KOMPONEN (COMPONENT INSPECTION SHEET)
+  // Khusus untuk Metode Drop: Bawa Komponen Copotan (dropMethod === 'PARTS')
+  // Bersifat DYNAMIC: baris menyesuaikan persis jumlah barang (1 barang -> 1 baris, 4 -> 4)
+  // Font dan padding mengecil otomatis (responsive scaling) jika jumlah item banyak
+  // =========================================================================
+  const renderComponentInspectionPage2 = () => {
+    // Dynamic parts list: if loosePartsList has items, render them; if empty, fallback to 1 single component
+    const actualParts = loosePartsList.length > 0 ? loosePartsList : [
+      {
+        id: 'p-default',
+        description: printWO.vehicleBrand && printWO.vehicleBrand !== 'Copotan (Loose Parts)' 
+          ? printWO.vehicleBrand 
+          : (printWO.assyNo ? `Komponen Unit / Part (${printWO.assyNo})` : 'Komponen Diesel Lepas'),
+        partNumber: printWO.assyNo || '',
+        physicalCondition: 'OK'
+      }
+    ];
+
+    const totalCount = actualParts.length;
+
+    // Responsive Typography & Density Scaling
+    // 1-3 items: Spacious & large font
+    // 4-7 items: Normal readable font
+    // 8-12 items: Compact font
+    // 13+ items: Ultra-compact font to prevent page overflow
+    const density = totalCount <= 3 ? 'spacious' : totalCount <= 7 ? 'normal' : totalCount <= 12 ? 'compact' : 'dense';
+
+    const cellPadding = 
+      density === 'spacious' ? 'py-3 px-3' :
+      density === 'normal' ? 'py-2 px-2.5' :
+      density === 'compact' ? 'py-1.5 px-2' : 'py-1 px-1.5';
+
+    const thPadding = 
+      density === 'spacious' ? 'py-2.5 px-3 text-[9.5px]' :
+      density === 'normal' ? 'py-1.5 px-2.5 text-[8.5px]' :
+      density === 'compact' ? 'py-1 px-2 text-[8px]' : 'py-0.5 px-1.5 text-[7.5px]';
+
+    const textMain = 
+      density === 'spacious' ? 'text-xs' :
+      density === 'normal' ? 'text-[9.5px]' :
+      density === 'compact' ? 'text-[8.5px]' : 'text-[7.5px]';
+
+    const textPn = 
+      density === 'spacious' ? 'text-[11px]' :
+      density === 'normal' ? 'text-[9px]' :
+      density === 'compact' ? 'text-[8px]' : 'text-[7.5px]';
+
+    const badgeText = 
+      density === 'spacious' ? 'text-[9.5px] px-2.5 py-0.5' :
+      density === 'normal' ? 'text-[8.5px] px-2 py-0.5' :
+      density === 'compact' ? 'text-[7.5px] px-1.5 py-0.2' : 'text-[7px] px-1 py-0.2';
+
+    return (
+      <div className="relative print-page space-y-2.5 box-border">
+        {/* Watermark */}
+        <DocumentWatermark 
+          config={watermarkConfig} 
+          documentStatus={printWO.status} 
+          documentType="INSPECTION" 
+        />
+
+        <div className="relative z-1 space-y-2">
+          {/* Header Page 2 - Component Sheet */}
+          <div className="border-b-2 border-[#0F2D59] pb-2">
+            <div className="flex justify-between items-start gap-3">
+              <div className="flex-shrink min-w-0">
+                <div className="flex items-center gap-3">
+                  <SmartLogo 
+                    baseName="logo-indo-teknik" 
+                    alt="IT INDO TEKNIK" 
+                    className="h-10 w-auto object-contain flex-shrink-0" 
+                    style={{ height: '36px', maxWidth: '145px' }}
+                  />
+                  <div className="border-l-2 border-slate-300 pl-3 leading-tight text-left">
+                    <p className="text-xs font-black tracking-widest text-[#0F2D59] uppercase">INDO TEKNIK PEKANBARU</p>
+                    <p className="text-[10px] font-extrabold text-[#0F2D59] mt-0.5">
+                      One Stop Solution for All Your Diesel Needs
+                    </p>
+                    <p className="text-[9px] text-slate-600 font-semibold flex items-center gap-1 mt-0.5">
+                      <MapPin className="w-3 h-3 text-[#E21F26] shrink-0" /> Jl. Riau Ujung No.898-904, Pekanbaru • Telp: (0761) 853798
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 mt-1 pl-0.5">
+                  <SmartLogo 
+                    baseName="logo-itech" 
+                    alt="ITech" 
+                    className="h-7 w-auto object-contain flex-shrink-0 bg-white px-2 py-0.5 rounded border border-slate-200" 
+                    style={{ height: '24px', maxWidth: '90px' }}
+                  />
+                  <p className="text-[9.5px] font-black tracking-wider text-[#0F2D59] whitespace-nowrap bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                    ITECH AUTHORIZED DEALER & WORKSHOP
+                  </p>
+                </div>
+              </div>
+              
+              {/* Header Right / WO Number & Digital Verification QR */}
+              <div className="flex items-center gap-2.5 shrink-0 max-w-[50%]">
+                <div className="bg-white border border-slate-300 rounded-lg p-1 shadow-xs flex flex-col items-center justify-center shrink-0">
+                  <QRCodeSVG value={trackingUrl} size={46} level="M" />
+                  <span className="text-[7px] font-mono font-black text-slate-500 uppercase mt-0.5 tracking-tight">Scan Tracking</span>
+                </div>
+
+                <div className="text-right flex flex-col items-end">
+                  <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                    <h2 className="text-xs font-black bg-[#0F2D59] text-white px-2.5 py-0.5 rounded tracking-wider uppercase shadow-xs">
+                      LEMBAR PEMERIKSAAN KOMPONEN
+                    </h2>
+                    <span className="text-[8.5px] font-black bg-amber-100 text-amber-950 border border-amber-300 px-1.5 py-0.5 rounded uppercase shrink-0">
+                      HALAMAN 2 • INSPEKSI KOMPONEN LAB
+                    </span>
+                  </div>
+
+                  <div className="mt-1 flex items-center gap-2 bg-slate-50 border-2 border-slate-400 rounded-lg px-2.5 py-0.5 shadow-xs">
+                    <span className="text-[9px] font-black text-slate-600 uppercase">NO. WO:</span>
+                    <span className="text-base sm:text-lg font-mono font-black text-[#0F2D59] tracking-tight">{printWO.id}</span>
+                  </div>
+
+                  <div className="text-[9px] text-slate-600 font-bold mt-0.5 font-mono flex items-center gap-1.5">
+                    <span>Tgl: {new Date(printWO.createdAt || Date.now()).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                    <span>•</span>
+                    <span>SA: {printWO.createdBy || 'Front Office'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Profile Grid Compact */}
+          <div className="grid grid-cols-12 gap-2 text-xs">
+            {/* Customer Box */}
+            <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2.5 shadow-xs flex flex-col justify-between">
+              <div className="space-y-1">
+                <h3 className="font-black border-b border-slate-300 pb-1 mb-1 text-[#0F2D59] text-[10px] uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-600"></span> DATA PELANGGAN & PEMBAWA KOMPONEN
+                </h3>
+                <div className="flex justify-between items-baseline gap-2">
+                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Pelanggan:</span>
+                  <span className="font-black text-slate-950 text-right truncate text-xs">{printWO.customerName}</span>
+                </div>
+                <div className="flex justify-between items-baseline gap-2">
+                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">No. Telepon:</span>
+                  <span className="font-bold text-slate-900 text-right font-mono text-[11px] bg-white px-1.5 py-0.2 rounded border border-slate-200">{printWO.customerPhone || '-'}</span>
+                </div>
+                <div className="flex justify-between items-baseline gap-2">
+                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Alamat:</span>
+                  <span className="text-slate-700 text-right truncate text-[10.5px] max-w-[210px]">{printWO.customerAddress || '-'}</span>
+                </div>
+                <div className="flex justify-between items-baseline gap-2 pt-1 border-t border-slate-200">
+                  <span className="text-blue-900 font-black shrink-0 text-[10px] uppercase">Pembawa Komponen:</span>
+                  <span className="font-bold text-slate-900 text-right truncate text-[10.5px]">
+                    {printWO.bringerName || printWO.customerName} {printWO.bringerPhone ? `(${printWO.bringerPhone})` : ''}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Component Profile Box */}
+            <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2.5 shadow-xs flex flex-col justify-between">
+              <div className="space-y-1">
+                <h3 className="font-black border-b border-slate-300 pb-1 mb-1 text-[#0F2D59] text-[10px] uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-500"></span> IDENTITAS ASAL & METODE SERAH TERIMA
+                </h3>
+                <div className="flex justify-between items-center gap-2">
+                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Metode Penyerahan:</span>
+                  <span className="font-black text-amber-950 text-[10.5px] bg-amber-100 border border-amber-300 px-2 py-0.5 rounded shadow-2xs uppercase">
+                    ⚙️ Komponen Copotan (Loose Parts)
+                  </span>
+                </div>
+                <div className="flex justify-between items-baseline gap-2">
+                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Asal Mesin / Unit:</span>
+                  <span className="font-black text-slate-900 text-right truncate text-xs">
+                    {printWO.vehicleBrand || 'Komponen Lepas (Loose Parts)'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-baseline gap-2">
+                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Estimasi & Garansi:</span>
+                  <span className="font-bold text-slate-800 text-right text-[10.5px]">
+                    {printWO.estimasiPengerjaan || '-'} • Garansi: {printWO.garansi || '-'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-baseline gap-2 pt-1 border-t border-slate-200">
+                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Total Komponen:</span>
+                  <span className="font-black text-[#0F2D59] text-right font-mono text-[11px]">
+                    {totalCount} Item Fisik Terdaftar
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* TABEL PEMERIKSAAN DETAIL FISIK KOMPONEN (NO, KOMPONEN, PART NUMBER, KONDISI) */}
+          <div className="border border-slate-300 rounded-lg overflow-hidden bg-white shadow-xs">
+            <div className="bg-[#0F2D59] text-white px-2.5 py-1 flex items-center justify-between">
+              <h3 className="text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
+                <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> 
+                TABEL PEMERIKSAAN FISIK KOMPONEN DITERIMA ({totalCount} ITEM)
+              </h3>
+              <span className="text-[8.5px] text-blue-100 font-mono">
+                Verifikasi Fisik Awal Sebelum Uji Lab
+              </span>
+            </div>
+            
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-100 border-b border-slate-300 text-slate-800 font-black uppercase">
+                  <th className={`${thPadding} text-center w-8 border-r border-slate-200`}>NO</th>
+                  <th className={`${thPadding} w-[30%] border-r border-slate-200`}>KOMPONEN / NAMA BARANG</th>
+                  <th className={`${thPadding} w-[24%] border-r border-slate-200 font-mono`}>PART NUMBER (P/N)</th>
+                  <th className={`${thPadding} w-[18%] text-center border-r border-slate-200`}>KONDISI FISIK</th>
+                  <th className={`${thPadding} w-[24%]`}>CATATAN PEMERIKSAAN VISUAL / LAB</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {actualParts.map((part, index) => {
+                  const isOk = part.physicalCondition === 'OK' || !part.physicalCondition;
+                  return (
+                    <tr key={part.id || index} className="hover:bg-blue-50/30 transition-colors">
+                      <td className={`${cellPadding} text-center font-mono font-bold text-slate-700 bg-slate-50 border-r border-slate-200 ${textMain}`}>
+                        {index + 1}
+                      </td>
+                      <td className={`${cellPadding} font-bold text-slate-950 border-r border-slate-200 ${textMain}`}>
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0"></span>
+                          <span className="break-words">{part.description || `Komponen #${index + 1}`}</span>
+                        </div>
+                      </td>
+                      <td className={`${cellPadding} font-mono font-bold text-slate-900 border-r border-slate-200 ${textPn}`}>
+                        {part.partNumber ? (
+                          <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 inline-block">
+                            {part.partNumber}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 italic text-[8.5px]">- Belum ada P/N -</span>
+                        )}
+                      </td>
+                      <td className={`${cellPadding} text-center border-r border-slate-200`}>
+                        {isOk ? (
+                          <span className={`inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 font-black ${badgeText}`}>
+                            ✓ NORMAL / OK
+                          </span>
+                        ) : (
+                          <span className={`inline-flex items-center gap-1 rounded-full bg-rose-50 text-rose-800 border border-rose-300 font-black ${badgeText}`}>
+                            ⚠️ {part.physicalCondition}
+                          </span>
+                        )}
+                      </td>
+                      <td className={`${cellPadding} text-slate-700 ${textPn}`}>
+                        <span className="font-semibold text-slate-900">Fisik diterima lengkap; </span>
+                        <span className="text-slate-500">siap uji kalibrasi test bench</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* CATATAN KELUHAN & PERMINTAAN PEMERIKSAAN KOMPONEN (CUSTOMER VOICE) */}
+          <div className="border border-slate-300 rounded-lg p-2.5 bg-white shadow-xs">
+            <h3 className="text-[9.5px] font-black text-[#0F2D59] uppercase tracking-wider mb-1.5 flex items-center justify-between border-b border-slate-200 pb-1">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                KELUHAN / GEJALA KERUSAKAN & CATATAN PERMINTAAN PEMERIKSAAN KOMPONEN
+              </span>
+              <span className="text-[8px] font-mono text-slate-500 font-bold">Customer Voice & Requirement</span>
+            </h3>
+            <div className="text-[9.5px] font-semibold text-slate-800 bg-slate-50 p-2.5 rounded-lg border border-slate-200 leading-relaxed min-h-[46px] whitespace-pre-line">
+              {printWO.customerVoice || 'Komponen diterima untuk pemeriksaan fisik, verifikasi nomor komponen (P/N), dan pengujian kondisi teknis.'}
+            </div>
+          </div>
+
+          {/* Serah Terima Notes */}
+          <div className="border border-slate-200 bg-slate-50 rounded-lg p-2 text-[8.5px] text-slate-700 leading-snug">
+            <span className="font-bold text-slate-900">Pernyataan Kesepakatan Serah Terima Komponen: </span>
+            Pihak Pelanggan dan Laboratorium Indo Teknik telah bersama-sama memeriksa jumlah fisik, kelengkapan, nomor seri, dan kondisi awal komponen di atas sebelum dilakukan uji kalibrasi test bench dan proses pembongkaran. Segala kerusakan internal/cacat tersembunyi yang timbul akibat riwayat keausan pemakaian sebelum masuk bengkel bukan tanggung jawab pihak bengkel.
+          </div>
+        </div>
+
+        {/* Bottom Signatures Page 2 - 3 Pihak Lab */}
+        <div className="border-t-2 border-slate-400 pt-2 shrink-0 print:break-inside-avoid">
+          <div className="text-right text-[8px] text-slate-500 font-mono mb-1">
+            Pekanbaru, {new Date(printWO.createdAt || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </div>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="border border-slate-300 rounded-lg p-2 bg-slate-50/70 shadow-xs">
+              <p className="text-[9px] font-black text-slate-900 uppercase">Pelanggan / Pembawa</p>
+              <div className="h-12 border-b border-slate-400 my-1 flex items-end justify-center pb-0.5 text-[8px] text-slate-400">
+                (Tanda Tangan & Nama Terang)
+              </div>
+              <p className="font-black text-slate-950 text-[9.5px] truncate">{printWO.bringerName || printWO.customerName}</p>
+            </div>
+
+            <div className="border border-slate-300 rounded-lg p-2 bg-slate-50/70 shadow-xs">
+              <p className="text-[9px] font-black text-slate-900 uppercase">Service Advisor (Penerima)</p>
+              <div className="h-12 border-b border-slate-400 my-1 flex items-end justify-center pb-0.5 text-[8px] text-slate-400">
+                (Tanda Tangan & Stempel)
+              </div>
+              <p className="font-black text-slate-950 text-[9.5px] truncate">{printWO.createdBy || 'Front Office Staff'}</p>
+            </div>
+
+            <div className="border border-slate-300 rounded-lg p-2 bg-slate-50/70 shadow-xs">
+              <p className="text-[9px] font-black text-slate-900 uppercase">Teknisi Lab / Foreman</p>
+              <div className="h-12 border-b border-slate-400 my-1 flex items-end justify-center pb-0.5 text-[8px] text-slate-400">
+                (Pemeriksa & Uji Fisik Lab)
+              </div>
+              <p className="font-black text-slate-950 text-[9.5px] truncate">{printWO.mechanicName || 'Laboratorium Diesel'}</p>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center text-[7.5px] text-slate-500 border-t border-slate-200 pt-1 mt-1.5 font-mono">
+            <span>Indo Teknik Pekanbaru • One Stop Solution for All Your Diesel Needs</span>
+            <span className="font-bold text-slate-800">Lembar Pemeriksaan Komponen Halaman 2 • Dicetak: {new Date().toLocaleString('id-ID')} WIB</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Helper to render either Vehicle Inspection or Component Inspection for Page 2
+  const renderPage2 = () => {
+    return isPartsOnly ? renderComponentInspectionPage2() : renderVehicleInspectionPage2();
+  };
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[100] overflow-y-auto print:static print:h-auto print:w-auto print:overflow-visible print:bg-white text-[#0f172a] font-sans">
@@ -1047,8 +1410,14 @@ export const PrintTemplate: React.FC = () => {
               <ArrowLeft className="w-4 h-4" /> <span className="hidden xs:inline">Kembali</span>
             </button>
             <div className="min-w-0">
-              <h2 className="text-sm sm:text-base font-extrabold text-slate-800 leading-tight truncate">Pratinjau Cetak SPK</h2>
-              <p className="text-[10px] sm:text-xs text-slate-500 font-medium">Dokumen Resmi Workshop & Konsumen</p>
+              <h2 className="text-sm sm:text-base font-extrabold text-slate-800 leading-tight truncate">
+                Pratinjau Cetak SPK {isPartsOnly ? '& Lembar Komponen' : '& Lembar Inspeksi'}
+              </h2>
+              <p className="text-[10px] sm:text-xs text-slate-500 font-medium">
+                {isPartsOnly 
+                  ? 'Dokumen Resmi Workshop & Pemeriksaan Komponen Lab (2 Halaman)' 
+                  : 'Dokumen Resmi Workshop & Lembar Pemeriksaan Kendaraan (2 Halaman)'}
+              </p>
             </div>
           </div>
 
@@ -1075,7 +1444,7 @@ export const PrintTemplate: React.FC = () => {
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <FileText className="w-3.5 h-3.5" /> Hal 1
+                <FileText className="w-3.5 h-3.5" /> Hal 1 (SPK)
               </button>
               <button
                 type="button"
@@ -1085,8 +1454,9 @@ export const PrintTemplate: React.FC = () => {
                     ? 'bg-white text-[#0F2D59] shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
+                title={isPartsOnly ? 'Cetak Lembar Pemeriksaan Komponen Saja' : 'Cetak Lembar Pemeriksaan Kendaraan Saja'}
               >
-                <ClipboardCheck className="w-3.5 h-3.5" /> Hal 2
+                <ClipboardCheck className="w-3.5 h-3.5" /> {isPartsOnly ? 'Hal 2 (Komponen)' : 'Hal 2 (Mobil)'}
               </button>
             </div>
 
@@ -1173,8 +1543,8 @@ export const PrintTemplate: React.FC = () => {
                 {spkViewMode === 'FULL_2_PAGES' 
                   ? 'Cetak (2 Hal)' 
                   : spkViewMode === 'SPK_ONLY' 
-                    ? 'Cetak Hal 1' 
-                    : 'Cetak Hal 2'}
+                    ? 'Cetak Hal 1 (SPK)' 
+                    : isPartsOnly ? 'Cetak Hal 2 (Komponen)' : 'Cetak Hal 2 (Mobil)'}
               </span>
             </button>
           </div>
@@ -1234,10 +1604,13 @@ export const PrintTemplate: React.FC = () => {
             {/* Sheet 2 */}
             <div className="print-page border border-slate-200/80 rounded-xl p-4 lg:p-6 bg-white shadow-xs print:border-none print:p-0 print:shadow-none">
               <div className="mb-2 text-[10px] font-black uppercase tracking-wider text-blue-900 flex items-center justify-between border-b border-slate-200 pb-1 print:hidden">
-                <span className="flex items-center gap-1.5"><ClipboardCheck className="w-3 h-3 text-blue-600" /> Lembar 2: Visual Body Map & Lembar Kendali Lab</span>
+                <span className="flex items-center gap-1.5">
+                  <ClipboardCheck className="w-3 h-3 text-blue-600" /> 
+                  {isPartsOnly ? 'Lembar 2: Lembar Pemeriksaan Komponen (Component Inspection Sheet)' : 'Lembar 2: Visual Body Map & Lembar Pemeriksaan Kendaraan'}
+                </span>
                 <span className="font-mono bg-blue-50 text-blue-800 px-2 py-0.2 rounded">Halaman 2 dari 2</span>
               </div>
-              {renderInspectionPage2()}
+              {renderPage2()}
             </div>
           </div>
         )}
@@ -1246,7 +1619,7 @@ export const PrintTemplate: React.FC = () => {
         {spkViewMode === 'SPK_ONLY' && renderSPKPage1()}
 
         {/* MODE 3: INSPECTION ONLY */}
-        {spkViewMode === 'INSPECTION_ONLY' && renderInspectionPage2()}
+        {spkViewMode === 'INSPECTION_ONLY' && renderPage2()}
 
       </div>
     </div>

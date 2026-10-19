@@ -34,9 +34,26 @@ export interface InventoryItem {
   checked: boolean;
 }
 
+export type MechanicalInspectionStatus = 'NORMAL' | 'ISSUE_FOUND' | 'FURTHER_TEST_NEEDED' | 'NOT_INSPECTED';
+
+export interface MechanicalInspectionItem {
+  id: string; // e.g. 'injection_system', 'turbocharger', 'engine_mechanical', 'electrical_solenoid', 'braking_system'
+  systemName: string; // e.g. 'Sistem Injeksi / Fuel Injection Pump'
+  category?: 'DIESEL_CORE' | 'ENGINE_AUX' | 'VEHICLE_CHASSIS';
+  method: string; // e.g. 'Pemeriksaan sistem bahan bakar & pengujian test bench'
+  status: MechanicalInspectionStatus;
+  findings: string; // Temuan faktual pemeriksaan mekanik
+  diagnosisNotes?: string; // Analisis mekanik mengenai dugaan penyebab masalah
+  recommendation?: string; // Rekomendasi tindakan/pekerjaan lanjutan
+  inspectedBy?: string; // Nama mekanik/penguji
+  inspectedAt?: string; // Timestamp ISO
+}
+
 export interface DamageReport {
   partId: string;
   description: string;
+  status?: 'DEFECT' | 'OK' | 'UNCHECKED';
+  damageType?: 'SCRATCH' | 'DENT' | 'CRACK' | 'NORMAL';
 }
 
 export interface PartLog {
@@ -57,7 +74,24 @@ export interface LoosePartDetails {
   description: string;
   partNumber: string;
   physicalCondition: string;
+  category?: string;
+  brand?: string;
+  serialNumber?: string;
+  qty?: number;
+  accessories?: string;
 }
+
+export const DEFAULT_COMPONENT_CATEGORIES = [
+  'Injector',
+  'Nozzle',
+  'Fuel Injection Pump (FIP)',
+  'Supply Pump',
+  'Common Rail Component',
+  'Turbocharger',
+  'Fuel Rail',
+  'Control Valve',
+  'Other Diesel Components'
+] as const;
 
 export interface TodoAction {
   id: string;
@@ -132,11 +166,27 @@ export interface WorkOrder {
   plateNumber: string;
   odometer: string;
   fuelLevel: 'E' | '1/4' | '1/2' | '3/4' | 'F';
+  fuelType?: 'SOLAR' | 'BENSIN';
+  engineNumber?: string;
+  year?: string;
+  stnkName?: string;
   estimasiPengerjaan: string;
   garansi: string;
   intakeDate?: string;
   fuelContaminated?: boolean;
   assyNo?: string;
+  
+  // Component Intake Identity (When dropMethod === 'PARTS')
+  componentCategory?: string;
+  componentName?: string;
+  componentBrand?: string;
+  componentPartNumber?: string;
+  componentSerialNumber?: string;
+  componentQty?: number;
+  componentOriginUnit?: string;
+  componentOriginPlate?: string;
+  componentIntakeCondition?: string;
+  componentAccessories?: string;
   
   // Drop Method
   dropMethod: 'WHOLE' | 'PARTS';
@@ -146,8 +196,11 @@ export interface WorkOrder {
   // Complaint
   customerVoice: string;
   
-  // Visual Map
+  // Visual Map (Pemeriksaan Kondisi Fisik Bodi)
   damages: DamageReport[];
+  
+  // Mechanical Diagnostic Findings (Hasil Pemeriksaan Mekanik Diesel & Sistem Kendaraan)
+  mechanicalInspections?: MechanicalInspectionItem[];
   
   // Inventory
   inventory: InventoryItem[];

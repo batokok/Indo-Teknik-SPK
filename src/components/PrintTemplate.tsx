@@ -1,14 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../store/AppContext';
+import { MechanicalInspectionItem, MechanicalInspectionStatus } from '../types';
+import { DEFAULT_MECHANICAL_INSPECTIONS } from './SADashboard';
 import { 
   Printer, Download, ArrowLeft, MapPin, ShieldCheck, Wrench, CheckCircle, 
-  FileText, ClipboardCheck, Layers, ZoomIn, ZoomOut, Columns, Rows, Eye, Maximize2 
+  FileText, ClipboardCheck, Layers, ZoomIn, ZoomOut, Columns, Rows, Eye, Maximize2,
+  CheckSquare, Square, AlertTriangle, Phone, Mail, Globe
 } from 'lucide-react';
 import { SmartLogo } from './SmartLogo';
 import { FuelGauge } from './FuelGauge';
-import { CarInspectionMap } from './CarInspectionMap';
+import { CarInspectionMap, getPointInspectionStatus, CAR_INSPECTION_POINTS } from './CarInspectionMap';
 import { DocumentWatermark, WatermarkControl, WatermarkConfig, DEFAULT_WATERMARK_CONFIG } from './DocumentWatermark';
 import { QRCodeSVG } from 'qrcode.react';
+
+// Exact 15 Clauses Verbatim from Official Indo Teknik Legal PDF Document (PDF 1)
+export const LEGAL_TERMS_AND_CONDITIONS: string[] = [
+  "Kendaraan diserahkan kepada Indo Teknik untuk dilakukan pemeriksaan, taksasi, perbaikan, pembongkaran, pemasangan, penggantian suku cadang, dan/atau pekerjaan lainnya sesuai dengan keluhan pelanggan dan hasil pemeriksaan mekanik.",
+  "Pelanggan memberikan kuasa kepada Indo Teknik untuk melakukan pembongkaran komponen kendaraan yang diperlukan guna proses pemeriksaan (diagnosa) dan perbaikan.",
+  "Hasil pemeriksaan teknisi dapat menemukan kerusakan lain yang tidak terlihat pada saat pemeriksaan awal. Apabila ditemukan kerusakan tambahan yang memerlukan penggantian suku cadang atau pekerjaan tambahan, Indo Teknik akan menginformasikan kepada pelanggan untuk memperoleh persetujuan sebelum pekerjaan dilakukan.",
+  "Pelanggan memahami dan menyetujui bahwa penambahan pekerjaan, jasa, maupun suku cadang selama proses perbaikan akan menimbulkan tambahan biaya sesuai pekerjaan yang dilakukan.",
+  "Apabila pelanggan menolak rekomendasi teknisi atau meminta pembatalan penggantian suku cadang yang telah direkomendasikan, termasuk meminta pemasangan kembali suku cadang lama setelah dilakukan pembongkaran, maka pelanggan memahami bahwa kondisi, performa, tenaga, fungsi, maupun keandalan kendaraan mungkin tidak kembali seperti semula. Segala risiko yang timbul akibat permintaan tersebut menjadi tanggung jawab pelanggan dan Indo Teknik dibebaskan dari segala tuntutan atas kondisi tersebut.",
+  "Upah jasa pemeriksaan, diagnosa, pembongkaran, pemasangan kembali, serta pekerjaan yang telah dilakukan tetap menjadi kewajiban pelanggan meskipun pelanggan membatalkan penggantian suku cadang atau tidak melanjutkan proses perbaikan.",
+  "Indo Teknik tidak bertanggung jawab atas kerusakan yang telah ada sebelum kendaraan diterima maupun kerusakan lain yang tidak berkaitan dengan pekerjaan yang dilakukan.",
+  "Indo Teknik berhak melakukan uji fungsi atau test jalan apabila diperlukan untuk memastikan hasil pekerjaan.",
+  "Kendaraan yang telah selesai diperbaiki agar segera diambil oleh pelanggan. Apabila dalam waktu 30 (tiga puluh) hari kalender sejak pelanggan diberitahukan bahwa kendaraan telah selesai diperbaiki kendaraan belum diambil tanpa pemberitahuan, maka Indo Teknik tidak bertanggung jawab atas kehilangan barang yang ditinggalkan di dalam kendaraan maupun risiko yang timbul akibat penyimpanan kendaraan.",
+  "Pelanggan wajib memeriksa kendaraan pada saat serah terima. Keluhan yang berkaitan dengan hasil pekerjaan agar disampaikan selambat-lambatnya 7 hari kalender kepada Indo Teknik untuk dilakukan pemeriksaan lebih lanjut.",
+  "Barang-barang berharga yang tertinggal di dalam kendaraan bukan merupakan tanggung jawab Indo Teknik Pelanggan disarankan untuk mengeluarkan seluruh barang berharga sebelum kendaraan diserahkan.",
+  "Indo Teknik tidak menjamin seluruh keluhan kendaraan akan hilang hanya dengan penggantian satu komponen, karena kerusakan pada kendaraan dapat disebabkan oleh lebih dari satu komponen yang saling berkaitan. Hasil perbaikan mengikuti kondisi aktual kendaraan berdasarkan pemeriksaan teknisi.",
+  "Apabila pelanggan meminta penghentian proses perbaikan sebelum pekerjaan selesai atau meminta kendaraan diserahkan kembali, maka seluruh pekerjaan yang telah dilakukan beserta biaya jasa dan suku cadang yang telah terpasang tetap menjadi kewajiban pelanggan untuk dibayarkan.",
+  "Perintah Kerja ini merupakan bukti tanda terima kendaraan dan wajib dibawa oleh pelanggan pada saat pengambilan kendaraan sebagai dasar penyerahan kembali kendaraan.",
+  "Dengan menandatangani Perintah Kerja ini, pelanggan menyatakan telah membaca, memahami, dan menyetujui seluruh syarat dan ketentuan yang tercantum dalam dokumen ini."
+];
 
 const formatRupiah = (value: string | number | undefined | null): string => {
   if (value === undefined || value === null) return '';
@@ -16,6 +38,29 @@ const formatRupiah = (value: string | number | undefined | null): string => {
   if (!str) return '';
   const num = parseInt(str, 10);
   return 'Rp ' + num.toLocaleString('id-ID');
+};
+
+const formatOdometer = (value: string | number | undefined | null): string => {
+  if (value === undefined || value === null) return '-';
+  const cleanStr = String(value).trim();
+  if (!cleanStr || cleanStr === '-' || cleanStr.toLowerCase() === 'nan') return '-';
+  const num = parseInt(cleanStr.replace(/\D/g, ''), 10);
+  if (isNaN(num) || num === 0) return '-';
+  return `${num.toLocaleString('id-ID')} km`;
+};
+
+const formatDateIndo = (dateVal?: string | number | Date): string => {
+  if (!dateVal) return '-';
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return '-';
+  return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+const formatTimeIndo = (dateVal?: string | number | Date): string => {
+  if (!dateVal) return '-';
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return '-';
+  return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
 };
 
 const DEFAULT_INVENTORY_ITEMS = [
@@ -41,6 +86,18 @@ export const PrintTemplate: React.FC = () => {
   const [spkViewMode, setSpkViewMode] = useState<'FULL_2_PAGES' | 'SPK_ONLY' | 'INSPECTION_ONLY'>('FULL_2_PAGES');
   const [previewLayout, setPreviewLayout] = useState<'STACKED' | 'SIDE_BY_SIDE'>('STACKED');
   const [zoomLevel, setZoomLevel] = useState<number>(100);
+
+  // Synchronize document.title with sanitized WO ID for automatic PDF file naming upon Save as PDF
+  useEffect(() => {
+    if (printWO?.id) {
+      const originalTitle = document.title;
+      const cleanWoId = printWO.id.replace(/[^a-zA-Z0-9_-]/g, '_');
+      document.title = cleanWoId;
+      return () => {
+        document.title = originalTitle;
+      };
+    }
+  }, [printWO?.id]);
 
   if (!printWO) return null;
 
@@ -176,7 +233,7 @@ export const PrintTemplate: React.FC = () => {
                         One Stop Solution for All Your Diesel Needs
                       </p>
                       <p className="text-[9px] text-slate-600 font-semibold flex items-center gap-1 mt-0.5">
-                        <MapPin className="w-3 h-3 text-[#E21F26] shrink-0" /> Jl. Riau Ujung No.898-904, Pekanbaru • Telp: (0761) 853798
+                        <MapPin className="w-3 h-3 text-[#E21F26] shrink-0" /> Jl. Riau Ujung No.898-904, Pekanbaru • WA: wa.me/628117531881 • Email: customerservice@indo-teknik.com
                       </p>
                     </div>
                   </div>
@@ -322,7 +379,7 @@ export const PrintTemplate: React.FC = () => {
               </div>
 
               <div className="text-center mt-1.5 text-[8.5px] text-slate-500 border-t border-slate-200 pt-1 font-mono">
-                Indo Teknik Pekanbaru • One Stop Solution for All Your Diesel Needs • Jl. Riau Ujung No.898-904 Pekanbaru • Telp: (0761) 853798
+                Indo Teknik Pekanbaru • One Stop Solution for All Your Diesel Needs • Jl. Riau Ujung No.898-904, Pekanbaru • WA: wa.me/628117531881 • Email: customerservice@indo-teknik.com
               </div>
             </div>
 
@@ -390,10 +447,9 @@ export const PrintTemplate: React.FC = () => {
   // =========================================================================
   const trackingUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/?tracking=${printWO.id}`
-    : `https://it-erp-app.web.app/?tracking=${printWO.id}`;
-
+    : '';
   const renderSPKPage1 = () => (
-    <div className="relative print-page print-page-1 space-y-2.5 box-border">
+    <div className="relative print-page print-page-1 print:max-h-[285mm] print:overflow-hidden space-y-2 box-border">
       {/* Watermark */}
       <DocumentWatermark 
         config={watermarkConfig} 
@@ -401,25 +457,25 @@ export const PrintTemplate: React.FC = () => {
         documentType="SPK" 
       />
 
-      <div className="relative z-1 space-y-2">
+      <div className="relative z-1 space-y-1.5">
         {/* Header SPK */}
-        <div className="border-b-2 border-[#0F2D59] pb-2">
+        <div className="border-b-2 border-[#0F2D59] pb-1.5">
           <div className="flex justify-between items-start gap-3">
             <div className="flex-shrink min-w-0">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
                 <SmartLogo 
                   baseName="logo-indo-teknik" 
                   alt="IT INDO TEKNIK" 
-                  className="h-10 w-auto object-contain flex-shrink-0" 
-                  style={{ height: '36px', maxWidth: '145px' }}
+                  className="h-9 w-auto object-contain flex-shrink-0" 
+                  style={{ height: '34px', maxWidth: '140px' }}
                 />
-                <div className="border-l-2 border-slate-300 pl-3 leading-tight text-left">
-                  <p className="text-xs font-black tracking-widest text-[#0F2D59] uppercase">INDO TEKNIK PEKANBARU</p>
-                  <p className="text-[10px] font-extrabold text-[#0F2D59] mt-0.5">
+                <div className="border-l-2 border-slate-300 pl-2.5 leading-tight text-left">
+                  <p className="text-[11px] font-black tracking-widest text-[#0F2D59] uppercase">INDO TEKNIK PEKANBARU</p>
+                  <p className="text-[9.5px] font-extrabold text-[#0F2D59] mt-0.5">
                     One Stop Solution for All Your Diesel Needs
                   </p>
-                  <p className="text-[9px] text-slate-600 font-semibold flex items-center gap-1 mt-0.5">
-                    <MapPin className="w-3 h-3 text-[#E21F26] shrink-0" /> Jl. Riau Ujung No.898-904, Pekanbaru • Telp: (0761) 853798
+                  <p className="text-[8px] text-slate-600 font-semibold flex items-center gap-1 mt-0.5 flex-wrap">
+                    <MapPin className="w-2.5 h-2.5 text-[#E21F26] shrink-0" /> Jl. Riau Ujung No.898-904, Pekanbaru • WA: wa.me/628117531881 • Email: customerservice@indo-teknik.com
                   </p>
                 </div>
               </div>
@@ -427,39 +483,38 @@ export const PrintTemplate: React.FC = () => {
                 <SmartLogo 
                   baseName="logo-itech" 
                   alt="ITech" 
-                  className="h-7 w-auto object-contain flex-shrink-0 bg-white px-2 py-0.5 rounded border border-slate-200" 
-                  style={{ height: '24px', maxWidth: '90px' }}
+                  className="h-6 w-auto object-contain flex-shrink-0 bg-white px-1.5 py-0.5 rounded border border-slate-200" 
+                  style={{ height: '22px', maxWidth: '80px' }}
                 />
-                <p className="text-[9.5px] font-black tracking-wider text-[#0F2D59] whitespace-nowrap bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                <p className="text-[9px] font-black tracking-wider text-[#0F2D59] whitespace-nowrap bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                   ITECH AUTHORIZED DEALER & WORKSHOP
                 </p>
               </div>
             </div>
             
-            {/* Header Right / WO Number & Digital Verification QR */}
-            <div className="flex items-center gap-2.5 shrink-0 max-w-[50%]">
+            {/* Header Right / WO Number, Date, Time, QR Tracking */}
+            <div className="flex items-center gap-2 shrink-0 max-w-[50%]">
               <div className="bg-white border border-slate-300 rounded-lg p-1 shadow-xs flex flex-col items-center justify-center shrink-0">
-                <QRCodeSVG value={trackingUrl} size={46} level="M" />
-                <span className="text-[7px] font-mono font-black text-slate-500 uppercase mt-0.5 tracking-tight">Scan Tracking</span>
+                <QRCodeSVG value={trackingUrl} size={42} level="M" />
+                <span className="text-[6.5px] font-mono font-black text-slate-500 uppercase mt-0.5 tracking-tight">Scan Tracking</span>
               </div>
 
               <div className="text-right flex flex-col items-end">
-                <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                  <h2 className="text-xs font-black bg-[#0F2D59] text-white px-3 py-1 rounded tracking-wider uppercase shadow-xs">
-                    SURAT PERINTAH KERJA (SPK)
-                  </h2>
-                  <span className="text-[8.5px] font-black bg-blue-100 text-blue-950 border border-blue-300 px-2 py-0.5 rounded uppercase shrink-0">
+                <div className="flex items-center justify-end gap-1 flex-wrap">
+                  <span className="text-[8px] font-black bg-blue-100 text-blue-950 border border-blue-300 px-1.5 py-0.5 rounded uppercase shrink-0">
                     HALAMAN 1 • SPK
                   </span>
                 </div>
 
-                <div className="mt-1 flex items-center gap-2 bg-slate-50 border-2 border-slate-400 rounded-lg px-3 py-1 shadow-xs">
-                  <span className="text-[9.5px] font-black text-slate-600 uppercase">NO. WO:</span>
-                  <span className="text-base sm:text-lg font-mono font-black text-[#0F2D59] tracking-tight">{printWO.id}</span>
+                <div className="mt-1 flex items-center gap-1.5 bg-slate-50 border-2 border-slate-400 rounded-lg px-2.5 py-0.5 shadow-xs">
+                  <span className="text-[9px] font-black text-slate-600 uppercase">NO. WO:</span>
+                  <span className="text-sm sm:text-base font-mono font-black text-[#0F2D59] tracking-tight">{printWO.id}</span>
                 </div>
 
-                <div className="text-[9px] text-slate-600 font-bold mt-0.5 font-mono flex items-center gap-1.5">
-                  <span>Tgl: {new Date(printWO.createdAt || Date.now()).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                <div className="text-[8.5px] text-slate-600 font-bold mt-0.5 font-mono flex items-center gap-1">
+                  <span>Tgl: {formatDateIndo(printWO.createdAt)}</span>
+                  <span>•</span>
+                  <span>Jam: {formatTimeIndo(printWO.createdAt)}</span>
                   <span>•</span>
                   <span>SA: {printWO.createdBy || 'Front Office'}</span>
                 </div>
@@ -468,33 +523,51 @@ export const PrintTemplate: React.FC = () => {
           </div>
         </div>
 
-        {/* SECTION 1: CUSTOMER & VEHICLE PROFILE GRID */}
+        {/* JUDUL UTAMA TENGAH HALAMAN: PERINTAH KERJA BENGKEL */}
+        <div className="text-center py-1 border-y-2 border-[#0F2D59] bg-gradient-to-r from-slate-50 via-blue-50/50 to-slate-50 shadow-2xs">
+          <h1 className="text-sm sm:text-base font-black tracking-widest text-[#0F2D59] uppercase">
+            PERINTAH KERJA BENGKEL
+          </h1>
+          <p className="text-[8px] font-bold text-slate-500 tracking-wider uppercase font-mono">
+            SURAT PERINTAH KERJA (SPK) • WORKSHOP INDO TEKNIK
+          </p>
+        </div>
+
+        {/* SECTION 1: INFORMASI PELANGGAN & IDENTITAS KENDARAAN / KOMPONEN */}
         <div className="grid grid-cols-12 gap-2 text-xs">
           {/* Customer Box (6 Cols) */}
-          <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2.5 shadow-xs flex flex-col justify-between">
+          <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2 shadow-xs flex flex-col justify-between">
             <div>
-              <h3 className="font-black border-b border-slate-300 pb-1 mb-1.5 text-[#0F2D59] text-[10px] uppercase tracking-wider flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-blue-600"></span> DATA PELANGGAN & PEMBAWA
+              <h3 className="font-black border-b border-slate-300 pb-0.5 mb-1 text-[#0F2D59] text-[9.5px] uppercase tracking-wider flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span> INFORMASI PELANGGAN
               </h3>
-              <div className="space-y-1 text-xs">
+              <div className="space-y-0.5 text-xs">
                 <div className="flex justify-between items-baseline gap-2">
-                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Pelanggan:</span>
-                  <span className="font-black text-slate-950 text-right truncate text-xs">{printWO.customerName}</span>
+                  <span className="text-slate-500 font-bold shrink-0 text-[9.5px] uppercase">Nama:</span>
+                  <span className="font-black text-slate-950 text-right truncate text-[11px]">{printWO.customerName}</span>
                 </div>
                 <div className="flex justify-between items-baseline gap-2">
-                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">No. Telepon:</span>
-                  <span className="font-bold text-slate-900 text-right font-mono text-[11px] bg-white px-1.5 py-0.2 rounded border border-slate-200">{printWO.customerPhone || '-'}</span>
+                  <span className="text-slate-500 font-bold shrink-0 text-[9.5px] uppercase">Contact Person:</span>
+                  <span className="font-bold text-slate-800 text-right truncate text-[10.5px]">
+                    {printWO.bringerName || printWO.customerName}
+                  </span>
                 </div>
                 <div className="flex justify-between items-baseline gap-2">
-                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Alamat:</span>
-                  <span className="text-slate-700 text-right truncate text-[10.5px] max-w-[210px]">{printWO.customerAddress || '-'}</span>
+                  <span className="text-slate-500 font-bold shrink-0 text-[9.5px] uppercase">No. Telp / WA:</span>
+                  <span className="font-bold text-slate-900 text-right font-mono text-[10.5px] bg-white px-1 py-0.2 rounded border border-slate-200">
+                    {printWO.customerPhone || '-'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-baseline gap-2">
+                  <span className="text-slate-500 font-bold shrink-0 text-[9.5px] uppercase">Alamat:</span>
+                  <span className="text-slate-700 text-right truncate text-[10px] max-w-[210px]">{printWO.customerAddress || '-'}</span>
                 </div>
               </div>
             </div>
-            {printWO.bringerName && (
-              <div className="flex justify-between items-baseline gap-2 pt-1 mt-1 border-t border-slate-200">
-                <span className="text-blue-900 font-black shrink-0 text-[10px] uppercase">Pembawa Unit:</span>
-                <span className="font-bold text-slate-900 text-right truncate text-[10.5px]">
+            {printWO.bringerName && printWO.bringerName !== printWO.customerName && (
+              <div className="flex justify-between items-baseline gap-2 pt-0.5 mt-0.5 border-t border-slate-200">
+                <span className="text-blue-900 font-black shrink-0 text-[9px] uppercase">Pembawa Unit:</span>
+                <span className="font-bold text-slate-900 text-right truncate text-[9.5px]">
                   {printWO.bringerName} {printWO.bringerPhone ? `(${printWO.bringerPhone})` : ''}
                 </span>
               </div>
@@ -503,155 +576,144 @@ export const PrintTemplate: React.FC = () => {
 
           {/* Vehicle / Component Source Box (6 Cols) */}
           {isPartsOnly ? (
-            <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2.5 shadow-xs flex flex-col justify-between">
+            <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2 shadow-xs flex flex-col justify-between">
               <div>
-                <h3 className="font-black border-b border-slate-300 pb-1 mb-1.5 text-[#0F2D59] text-[10px] uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-amber-500"></span> IDENTITAS ASAL KOMPONEN & STATUS
+                <h3 className="font-black border-b border-slate-300 pb-0.5 mb-1 text-[#0F2D59] text-[9.5px] uppercase tracking-wider flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> IDENTITAS KOMPONEN YANG DITERIMA
+                  </span>
+                  <span className="text-[8px] font-mono text-amber-900 bg-amber-100 px-1 py-0.2 rounded border border-amber-300">
+                    {printWO.componentQty || loosePartsList.length || 1} Unit Fisik
+                  </span>
                 </h3>
-                <div className="space-y-1 text-xs">
-                  <div className="flex justify-between items-center gap-2">
-                    <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Status Penyerahan:</span>
-                    <span className="font-black text-amber-950 text-[10px] bg-amber-100 border border-amber-300 px-2 py-0.5 rounded shadow-2xs uppercase">
-                      ⚙️ Komponen Copotan (Loose Parts)
+                <div className="space-y-0.5 text-xs">
+                  <div className="flex justify-between items-baseline gap-2">
+                    <span className="text-slate-500 font-bold shrink-0 text-[9px] uppercase">Nama / Model:</span>
+                    <span className="font-black text-slate-950 text-right truncate text-[10.5px]">
+                      {printWO.componentName || printWO.vehicleBrand || 'Komponen Diesel Copotan'}
                     </span>
                   </div>
                   <div className="flex justify-between items-baseline gap-2">
-                    <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Asal Mesin / Unit:</span>
-                    <span className="font-black text-slate-900 text-right truncate text-xs">
-                      {printWO.vehicleBrand || 'Komponen Lepas (Loose Parts)'}
+                    <span className="text-slate-500 font-bold shrink-0 text-[9px] uppercase">Jenis & Merek:</span>
+                    <span className="font-bold text-slate-800 text-right truncate text-[9.5px]">
+                      {printWO.componentCategory || 'Komponen'} {printWO.componentBrand ? `• ${printWO.componentBrand}` : ''}
                     </span>
                   </div>
                   <div className="flex justify-between items-baseline gap-2">
-                    <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Plat / No. Ref:</span>
-                    <span className="font-mono text-slate-800 text-right truncate text-[10.5px] font-semibold">
-                      {printWO.plateNumber && printWO.plateNumber !== '-' ? printWO.plateNumber : 'Tanpa Unit Mobil'}
+                    <span className="text-slate-500 font-bold shrink-0 text-[9px] uppercase">Part Number (P/N):</span>
+                    <span className="font-mono text-blue-900 text-right truncate text-[10px] font-bold">
+                      {printWO.componentPartNumber || printWO.assyNo || '-'}
+                    </span>
+                  </div>
+                  {printWO.componentSerialNumber && (
+                    <div className="flex justify-between items-baseline gap-2">
+                      <span className="text-slate-500 font-bold shrink-0 text-[9px] uppercase">Serial Number (S/N):</span>
+                      <span className="font-mono text-slate-800 text-right truncate text-[9.5px]">
+                        {printWO.componentSerialNumber}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-baseline gap-2">
+                    <span className="text-slate-500 font-bold shrink-0 text-[9px] uppercase">Kondisi Diterima:</span>
+                    <span className="font-bold text-emerald-800 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200 text-right truncate text-[9px]">
+                      {printWO.componentIntakeCondition || 'Normal / Baik'}
                     </span>
                   </div>
                 </div>
               </div>
-              <div className="flex justify-between items-baseline gap-2 pt-1 mt-1 border-t border-slate-200">
-                <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Total Komponen:</span>
-                <span className="font-black text-blue-900 text-right text-[10.5px] font-mono">
-                  {loosePartsList.length || 1} Item Fisik Terdaftar
+              <div className="flex justify-between items-baseline gap-2 pt-0.5 mt-0.5 border-t border-slate-200 text-[8.5px]">
+                <span className="text-slate-500 font-bold uppercase">Asal Unit / Mesin:</span>
+                <span className="font-medium text-slate-800 text-right truncate">
+                  {printWO.componentOriginUnit || printWO.vehicleBrand || 'Copotan Tanpa Unit'}
+                  {printWO.componentOriginPlate && printWO.componentOriginPlate !== '-' ? ` (${printWO.componentOriginPlate})` : ''}
                 </span>
               </div>
             </div>
           ) : (
-            <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2.5 shadow-xs flex flex-col justify-between">
+            <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2 shadow-xs flex flex-col justify-between">
               <div>
-                <h3 className="font-black border-b border-slate-300 pb-1 mb-1.5 text-[#0F2D59] text-[10px] uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-red-600"></span> IDENTITAS KENDARAAN / UNIT
+                <h3 className="font-black border-b border-slate-300 pb-0.5 mb-1 text-[#0F2D59] text-[9.5px] uppercase tracking-wider flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span> IDENTITAS KENDARAAN
                 </h3>
-                <div className="space-y-1 text-xs">
+                <div className="space-y-0.5 text-xs">
                   <div className="flex justify-between items-center gap-2">
-                    <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">No. Polisi:</span>
-                    <span className="font-mono font-black text-white text-xs bg-slate-950 px-2 py-0.5 rounded border border-slate-700 tracking-wider shadow-xs">
+                    <span className="text-slate-500 font-bold shrink-0 text-[9.5px] uppercase">Nomor Polisi:</span>
+                    <span className="font-mono font-black text-white text-[11px] bg-slate-950 px-2 py-0.2 rounded border border-slate-700 tracking-wider shadow-xs">
                       {printWO.plateNumber || '-'}
                     </span>
                   </div>
                   <div className="flex justify-between items-baseline gap-2">
-                    <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Merek / Tipe:</span>
-                    <span className="font-black text-slate-900 text-right truncate text-xs">{printWO.vehicleBrand || '-'}</span>
+                    <span className="text-slate-500 font-bold shrink-0 text-[9.5px] uppercase">Merek / Tipe:</span>
+                    <span className="font-black text-slate-900 text-right truncate text-[10.5px]">{printWO.vehicleBrand || '-'}</span>
                   </div>
                   <div className="flex justify-between items-baseline gap-2">
-                    <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">No. Rangka:</span>
-                    <span className="font-mono text-slate-800 text-right truncate text-[10.5px] font-semibold">{printWO.vin || '-'}</span>
+                    <span className="text-slate-500 font-bold shrink-0 text-[9.5px] uppercase">Nomor Rangka:</span>
+                    <span className="font-mono text-slate-800 text-right truncate text-[10px] font-semibold">{printWO.vin || '-'}</span>
+                  </div>
+                  <div className="flex justify-between items-baseline gap-2">
+                    <span className="text-slate-500 font-bold shrink-0 text-[9.5px] uppercase">Nomor Mesin:</span>
+                    <span className="font-mono text-slate-800 text-right truncate text-[10px] font-semibold">{printWO.engineNumber || printWO.assyNo || '-'}</span>
+                  </div>
+                  <div className="flex justify-between items-baseline gap-2">
+                    <span className="text-slate-500 font-bold shrink-0 text-[9.5px] uppercase">Kilometer:</span>
+                    <span className="font-bold text-slate-800 text-right text-[10px] font-mono">
+                      {formatOdometer(printWO.odometer)}
+                    </span>
                   </div>
                 </div>
               </div>
-              <div className="flex justify-between items-baseline gap-2 pt-1 mt-1 border-t border-slate-200">
-                <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Odometer / Waktu:</span>
-                <span className="font-bold text-slate-800 text-right text-[10.5px] font-mono">
-                  {printWO.odometer ? `${Number(printWO.odometer).toLocaleString('id-ID')} km` : '-'}
-                </span>
+              <div className="flex justify-between items-center gap-2 pt-0.5 mt-0.5 border-t border-slate-200 text-[8.5px]">
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-500 font-bold uppercase">Bahan Bakar:</span>
+                  <span className="font-black text-slate-800">[✓] Solar</span>
+                  <span className="text-slate-400">[ ] Bensin</span>
+                </div>
+                <div className="flex items-center gap-1 font-mono text-[8px] text-slate-600">
+                  <span>Level BBM: <strong>{printWO.fuelLevel || '1/2'}</strong></span>
+                </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* SECTION 2: KELUHAN AWAL */}
-        <div className="border border-slate-300 bg-white rounded-lg p-2.5 shadow-xs">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-1 mb-1.5">
-            <h3 className="text-[10px] font-black text-[#0F2D59] uppercase tracking-wider flex items-center gap-1.5">
-              <Wrench className="w-3.5 h-3.5 text-amber-600" /> KELUHAN / GEJALA KERUSAKAN AWAL (CUSTOMER VOICE)
+        {/* SECTION 2: KELUHAN PELANGGAN */}
+        <div className="border border-slate-300 bg-white rounded-lg p-2 shadow-xs">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-0.5 mb-1">
+            <h3 className="text-[9.5px] font-black text-[#0F2D59] uppercase tracking-wider flex items-center gap-1">
+              <Wrench className="w-3 h-3 text-amber-600" /> KELUHAN PELANGGAN (CUSTOMER VOICE)
             </h3>
-            <span className="text-[9px] font-black px-2 py-0.5 rounded uppercase font-mono tracking-tight bg-slate-100 text-slate-700 border border-slate-200">
+            <span className="text-[8.5px] font-black px-1.5 py-0.2 rounded uppercase font-mono tracking-tight bg-slate-100 text-slate-700 border border-slate-200">
               Metode: {printWO.dropMethod === 'PARTS' ? 'KOMPONEN COPOTAN' : 'MOBIL UTUH'}
             </span>
           </div>
-          <div className="bg-slate-50 border border-slate-200 rounded p-2 text-[11px] font-bold text-slate-900 leading-relaxed whitespace-pre-line">
+          <div className="bg-slate-50 border border-slate-200 rounded p-1.5 text-[10px] font-bold text-slate-900 leading-snug whitespace-pre-line min-h-[24px]">
             {printWO.customerVoice || 'Tidak ada catatan keluhan spesifik yang didaftarkan.'}
           </div>
         </div>
 
-        {/* SECTION 3A: DAFTAR KOMPONEN COPOTAN (JIKA ADA LOOSE PARTS) */}
-        {loosePartsList.length > 0 && (
-          <div className="border border-slate-300 rounded-lg overflow-hidden shadow-xs">
-            <div className="bg-[#0F2D59] text-white px-2.5 py-0.5 flex items-center justify-between">
-              <h3 className="text-[9.5px] font-black uppercase tracking-wider flex items-center gap-1.5">
-                <CheckCircle className="w-3 h-3 text-emerald-400" /> DAFTAR KOMPONEN DITERIMA & SERIALISASI ({loosePartsList.length} PCS)
-              </h3>
-              <span className="text-[8.5px] text-blue-200 font-bold font-mono">
-                {loosePartsList.length} Item Fisik
-              </span>
-            </div>
-
-            <div className="p-0.5 bg-white">
-              <table className="w-full text-xs text-left border-collapse">
-                <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-300 text-[9.5px]">
-                  <tr>
-                    <th className="py-0.5 px-2 text-center w-8">No</th>
-                    <th className="py-0.5 px-2">Deskripsi / Komponen</th>
-                    <th className="py-0.5 px-2 w-48">Part Number (P/N) / Serial</th>
-                    <th className="py-0.5 px-2 text-center w-28">Kondisi Intake</th>
-                  </tr>
-                </thead>
-                <tbody className={`divide-y divide-slate-200 ${loosePartsList.length > 6 ? 'text-[9.5px]' : 'text-[10.5px]'}`}>
-                  {loosePartsList.map((lp, idx) => (
-                    <tr key={lp.id || idx} className="hover:bg-slate-50">
-                      <td className="py-0.5 px-2 text-slate-500 font-bold text-center font-mono">{idx + 1}</td>
-                      <td className="py-0.5 px-2 font-black text-slate-900">{lp.description || `Komponen #${idx + 1}`}</td>
-                      <td className="py-0.5 px-2 font-mono font-bold text-blue-900">{lp.partNumber || '-'}</td>
-                      <td className="py-0.5 px-2 text-center">
-                        <span className={`inline-block px-1.5 py-0.2 rounded text-[8.5px] font-black uppercase border ${
-                          lp.physicalCondition === 'OK' 
-                            ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
-                            : 'bg-amber-50 text-amber-800 border-amber-300'
-                        }`}>
-                          {lp.physicalCondition || 'OK'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* SECTION 3B: RINCIAN PENGERJAAN & ESTIMASI BIAYA */}
+        {/* SECTION 3: LINGKUP PENGERJAAN, JASA SERVIS & ESTIMASI SUKU CADANG */}
         <div className="border border-slate-300 rounded-lg overflow-hidden shadow-xs">
           <div className="bg-[#0F2D59] text-white px-2.5 py-0.5 flex items-center justify-between">
-            <h3 className="text-[9.5px] font-black uppercase tracking-wider flex items-center gap-1.5">
+            <h3 className="text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
               <CheckCircle className="w-3 h-3 text-emerald-400" /> LINGKUP PENGERJAAN, JASA SERVIS & ESTIMASI SUKU CADANG
             </h3>
-            <span className="text-[8.5px] text-blue-200 font-bold font-mono">
+            <span className="text-[8px] text-blue-200 font-bold font-mono">
               {todoList.length} Item Tindakan
             </span>
           </div>
 
           <div className="p-0.5 bg-white">
             <table className="w-full text-xs text-left border-collapse">
-              <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-300 text-[9.5px]">
+              <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-300 text-[8.5px]">
                 <tr>
-                  <th className="py-0.5 px-2 text-center w-8">No</th>
+                  <th className="py-0.5 px-2 text-center w-7">No</th>
                   <th className="py-0.5 px-2">Jenis Pengerjaan / Tindakan</th>
-                  <th className="py-0.5 px-2 text-center w-12">Qty</th>
+                  <th className="py-0.5 px-2 text-center w-10">Qty</th>
                   <th className="py-0.5 px-2">Catatan Mekanik / Spesifikasi</th>
                   <th className="py-0.5 px-2 text-right w-36 sm:w-44 whitespace-nowrap">Estimasi Biaya</th>
                 </tr>
               </thead>
-              <tbody className={`divide-y divide-slate-200 ${todoList.length > 6 ? 'text-[9.5px]' : 'text-[10.5px]'}`}>
+              <tbody className={`divide-y divide-slate-200 ${todoList.length > 5 ? 'text-[9px]' : 'text-[9.5px]'}`}>
                 {todoList.length > 0 ? (
                   todoList.map((act, idx) => {
                     const { min, max, hasRange } = parseItemEstimation(act);
@@ -660,18 +722,18 @@ export const PrintTemplate: React.FC = () => {
                         <td className="py-0.5 px-2 text-slate-500 font-bold text-center font-mono">{idx + 1}</td>
                         <td className="py-0.5 px-2 font-black text-slate-900">{act.jenisPengerjaan || 'Pemeriksaan & Servis'}</td>
                         <td className="py-0.5 px-2 text-center font-bold text-slate-800">{act.qty || 1}</td>
-                        <td className="py-0.5 px-2 text-slate-600 text-[9.5px]">{act.catatanMekanik || '-'}</td>
+                        <td className="py-0.5 px-2 text-slate-600 text-[9px]">{act.catatanMekanik || '-'}</td>
                         <td className="py-0.5 px-2 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
                           {hasRange ? (
                             min > 0 ? (
                               <span>
                                 {formatRupiah(min)}{' '}
-                                <span className="text-slate-500 font-sans text-[9px] font-semibold">s/d</span>{' '}
+                                <span className="text-slate-500 font-sans text-[8.5px] font-semibold">s/d</span>{' '}
                                 {formatRupiah(max)}
                               </span>
                             ) : (
                               <span>
-                                <span className="text-slate-500 font-sans text-[9px] font-semibold mr-0.5">s/d</span>{' '}
+                                <span className="text-slate-500 font-sans text-[8.5px] font-semibold mr-0.5">s/d</span>{' '}
                                 {formatRupiah(max)}
                               </span>
                             )
@@ -686,7 +748,7 @@ export const PrintTemplate: React.FC = () => {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={5} className="py-2 px-2 text-center text-slate-500 italic text-[10px]">
+                    <td colSpan={5} className="py-1.5 px-2 text-center text-slate-500 italic text-[9.5px]">
                       Tahap diagnosa & estimasi rincian pengerjaan sedang diproses oleh Foreman/Mekanik.
                     </td>
                   </tr>
@@ -695,20 +757,20 @@ export const PrintTemplate: React.FC = () => {
               {hasAnyEstimation && (
                 <tfoot className="bg-slate-100 border-t-2 border-slate-300 text-xs font-black">
                   <tr>
-                    <td colSpan={4} className="py-0.5 px-2 text-right uppercase text-slate-800 text-[9.5px]">
+                    <td colSpan={4} className="py-0.5 px-2 text-right uppercase text-slate-800 text-[9px]">
                       Total Estimasi Biaya Sementara:
                     </td>
-                    <td className="py-0.5 px-2 text-right font-mono text-[#0F2D59] text-xs whitespace-nowrap font-black">
+                    <td className="py-0.5 px-2 text-right font-mono text-[#0F2D59] text-[11px] whitespace-nowrap font-black">
                       {hasTotalRange ? (
                         totalEstimationMin > 0 ? (
                           <span>
                             {formatRupiah(totalEstimationMin)}{' '}
-                            <span className="text-slate-600 font-sans font-black text-[10px] mx-0.5">s/d</span>{' '}
+                            <span className="text-slate-600 font-sans font-black text-[9px] mx-0.5">s/d</span>{' '}
                             {formatRupiah(totalEstimationMax)}
                           </span>
                         ) : (
                           <span>
-                            <span className="text-slate-600 font-sans font-black text-[10px] mr-1">s/d</span>
+                            <span className="text-slate-600 font-sans font-black text-[9px] mr-1">s/d</span>
                             {formatRupiah(totalEstimationMax)}
                           </span>
                         )
@@ -723,50 +785,81 @@ export const PrintTemplate: React.FC = () => {
           </div>
         </div>
 
-        {/* SECTION 4: SYARAT & KETENTUAN SPK */}
-        <div className="border border-slate-300 bg-slate-50/80 rounded-lg p-1.5 text-[8px] text-slate-600 leading-snug shadow-xs">
-          <span className="font-black text-slate-900 uppercase block mb-0.5">Ketentuan Layanan Bengkel:</span>
-          <p>
-            1. Pekerjaan dikerjakan sesuai estimasi dan persetujuan pelanggan. 2. Pihak bengkel tidak bertanggung jawab atas kehilangan barang berharga yang tidak tertera pada checklist. 3. Unit yang telah selesai harus diambil paling lambat 7 hari kerja setelah konfirmasi penyelesaian.
-          </p>
+        {/* SECTION 4: SYARAT DAN KETENTUAN (15 POIN RESMI VERBATIM TIM LEGAL INDO TEKNIK) */}
+        <div className="border border-slate-300 bg-slate-50/90 rounded-lg p-2 shadow-xs">
+          <div className="flex items-center justify-between border-b border-slate-300 pb-0.5 mb-1">
+            <span className="font-black text-slate-900 uppercase text-[8.5px] tracking-wider flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#0F2D59]"></span> SYARAT DAN KETENTUAN
+            </span>
+            <span className="text-[7px] text-slate-500 font-mono font-bold uppercase">
+              Standar Legal Kontrak Perintah Kerja Indo Teknik
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[6.5px] leading-[1.28] text-slate-700">
+            {LEGAL_TERMS_AND_CONDITIONS.map((term, index) => (
+              <div key={index} className="flex items-start gap-1">
+                <span className="font-black text-slate-950 shrink-0 font-mono text-[7px]">{index + 1}.</span>
+                <span className="text-justify">{term}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* SECTION 5: TANDA TANGAN 3 PIHAK */}
-      <div className="border-t-2 border-slate-400 pt-1.5 shrink-0 print:break-inside-avoid">
-        <div className="grid grid-cols-3 gap-2.5 text-center">
-          {/* 1. Customer */}
-          <div className="border border-slate-300 rounded-lg p-1.5 bg-slate-50/60 shadow-xs">
-            <p className="text-[9px] font-black text-slate-900 uppercase">Pemberi Order / Pelanggan</p>
-            <div className="h-9 border-b border-slate-400 my-1 flex items-end justify-center pb-0.5 text-[7.5px] text-slate-400">
-              (Tanda Tangan & Nama Terang)
+      {/* SECTION 5: TANDA TANGAN 4 PIHAK (SESUAI DOKUMEN RESMI TIM LEGAL) */}
+      <div className="border-t-2 border-slate-400 pt-1 shrink-0 print:break-inside-avoid">
+        <div className="grid grid-cols-4 gap-2 text-center">
+          {/* 1. Pelanggan */}
+          <div className="border border-slate-300 rounded p-1 bg-slate-50/70 shadow-2xs">
+            <p className="text-[8px] font-black text-slate-900 uppercase">Diserahkan oleh :</p>
+            <p className="text-[8.5px] font-bold text-slate-800">Pelanggan</p>
+            <div className="h-8 border-b border-slate-400 my-0.5 flex items-end justify-center pb-0.2 text-[6.5px] text-slate-400">
+              (Nama & Tandatangan)
             </div>
-            <p className="font-bold text-slate-950 text-[9.5px] truncate">{printWO.customerName}</p>
+            <p className="font-bold text-slate-950 text-[8.5px] truncate">{printWO.customerName}</p>
           </div>
 
-          {/* 2. Service Advisor */}
-          <div className="border border-slate-300 rounded-lg p-1.5 bg-slate-50/60 shadow-xs">
-            <p className="text-[9px] font-black text-slate-900 uppercase">Service Advisor (SA)</p>
-            <div className="h-9 border-b border-slate-400 my-1 flex items-end justify-center pb-0.5 text-[7.5px] text-slate-400">
-              (Tanda Tangan & Stempel)
+          {/* 2. Counter Service */}
+          <div className="border border-slate-300 rounded p-1 bg-slate-50/70 shadow-2xs">
+            <p className="text-[8px] font-black text-slate-900 uppercase">Diterima oleh :</p>
+            <p className="text-[8.5px] font-bold text-slate-800">Counter Service</p>
+            <div className="h-8 border-b border-slate-400 my-0.5 flex items-end justify-center pb-0.2 text-[6.5px] text-slate-400">
+              (Nama & Tandatangan)
             </div>
-            <p className="font-bold text-slate-950 text-[9.5px]">Front Office Staff</p>
+            <p className="font-bold text-slate-950 text-[8.5px] truncate">Front Office Staff</p>
           </div>
 
-          {/* 3. Foreman / Mechanic */}
-          <div className="border border-slate-300 rounded-lg p-1.5 bg-slate-50/60 shadow-xs">
-            <p className="text-[9px] font-black text-slate-900 uppercase">Foreman / Kepala Bengkel</p>
-            <div className="h-9 border-b border-slate-400 my-1 flex items-end justify-center pb-0.5 text-[7.5px] text-slate-400">
-              (Tanda Tangan Verifikasi)
+          {/* 3. Mekanik */}
+          <div className="border border-slate-300 rounded p-1 bg-slate-50/70 shadow-2xs">
+            <p className="text-[8px] font-black text-slate-900 uppercase">Dikerjakan oleh :</p>
+            <p className="text-[8.5px] font-bold text-slate-800">Mekanik</p>
+            <div className="h-8 border-b border-slate-400 my-0.5 flex items-end justify-center pb-0.2 text-[6.5px] text-slate-400">
+              (Nama & Tandatangan)
             </div>
-            <p className="font-bold text-slate-950 text-[9.5px]">Divisi Produksi</p>
+            <p className="font-bold text-slate-950 text-[8.5px] truncate">{printWO.mechanicName || 'Divisi Produksi'}</p>
+          </div>
+
+          {/* 4. Service Advisor */}
+          <div className="border border-slate-300 rounded p-1 bg-slate-50/70 shadow-2xs">
+            <p className="text-[8px] font-black text-slate-900 uppercase">Diperiksa oleh :</p>
+            <p className="text-[8.5px] font-bold text-slate-800">Service Advisor</p>
+            <div className="h-8 border-b border-slate-400 my-0.5 flex items-end justify-center pb-0.2 text-[6.5px] text-slate-400">
+              (Nama & Tandatangan)
+            </div>
+            <p className="font-bold text-slate-950 text-[8.5px] truncate">{printWO.createdBy || 'Service Advisor'}</p>
           </div>
         </div>
 
-        {/* Document Footer */}
-        <div className="flex justify-between items-center text-[7.5px] text-slate-500 border-t border-slate-200 pt-0.5 mt-1 font-mono">
-          <span>Indo Teknik Pekanbaru • One Stop Solution for All Your Diesel Needs</span>
-          <span className="font-bold text-slate-800">SPK Halaman 1 • Dicetak: {new Date().toLocaleString('id-ID')} WIB</span>
+        {/* SECTION 6: FOOTER AUTOMOTIVE AFTERMARKET RESMI */}
+        <div className="mt-1 pt-1 border-t border-slate-300 text-center text-[7px] text-slate-600 font-sans leading-tight">
+          <p className="font-black text-slate-900 tracking-wider uppercase text-[7.5px]">AUTOMOTIVE AFTERMARKET</p>
+          <p className="mt-0.5 font-medium">
+            JL. Riau Ujung No. 898-904, Pekanbaru – Riau • WhatsApp: wa.me/628117531881 • Email: customerservice@indo-teknik.com
+          </p>
+          <div className="flex justify-between items-center text-[6.5px] text-slate-400 font-mono mt-0.5 pt-0.5 border-t border-slate-200">
+            <span>SPK Halaman 1 • Dokumen Sah Bengkel</span>
+            <span>Dicetak: {new Date().toLocaleString('id-ID')} WIB</span>
+          </div>
         </div>
       </div>
     </div>
@@ -776,253 +869,386 @@ export const PrintTemplate: React.FC = () => {
   // PAGE 2 (OPTION A): LEMBAR PEMERIKSAAN KENDARAAN (VEHICLE INSPECTION & BODY MAP)
   // Digunakan jika dropMethod === 'WHOLE' (Bawa Kendaraan Utuh)
   // =========================================================================
-  const renderVehicleInspectionPage2 = () => (
-    <div className="relative print-page space-y-2.5 box-border">
-      {/* Watermark */}
-      <DocumentWatermark 
-        config={watermarkConfig} 
-        documentStatus={printWO.status} 
-        documentType="INSPECTION" 
-      />
+  const renderVehicleInspectionPage2 = () => {
+    // Only actual defects are counted
+    const actualDefectPoints = CAR_INSPECTION_POINTS.filter(
+      pt => getPointInspectionStatus(pt.id, printWO.damages || []).status === 'DEFECT'
+    );
+    const defectCount = actualDefectPoints.length;
+    const okCount = CAR_INSPECTION_POINTS.filter(
+      pt => getPointInspectionStatus(pt.id, printWO.damages || []).status === 'OK'
+    ).length;
 
-      <div className="relative z-1 space-y-2">
-        {/* Header Page 2 */}
-        <div className="border-b-2 border-[#0F2D59] pb-2">
-          <div className="flex justify-between items-start gap-3">
-            <div className="flex-shrink min-w-0">
-              <div className="flex items-center gap-3">
-                <SmartLogo 
-                  baseName="logo-indo-teknik" 
-                  alt="IT INDO TEKNIK" 
-                  className="h-10 w-auto object-contain flex-shrink-0" 
-                  style={{ height: '36px', maxWidth: '145px' }}
-                />
-                <div className="border-l-2 border-slate-300 pl-3 leading-tight text-left">
-                  <p className="text-xs font-black tracking-widest text-[#0F2D59] uppercase">INDO TEKNIK PEKANBARU</p>
-                  <p className="text-[10px] font-extrabold text-[#0F2D59] mt-0.5">
-                    One Stop Solution for All Your Diesel Needs
-                  </p>
-                  <p className="text-[9px] text-slate-600 font-semibold flex items-center gap-1 mt-0.5">
-                    <MapPin className="w-3 h-3 text-[#E21F26] shrink-0" /> Jl. Riau Ujung No.898-904, Pekanbaru • Telp: (0761) 853798
+    const mechanicalSystems = [
+      { id: 'mesin', name: 'Pemeriksaan Mesin', status: 'Diperiksa' },
+      { id: 'injeksi', name: 'Sistem Injeksi (FIP/Common Rail/Supply Pump)', status: 'Fokus Uji Lab' },
+      { id: 'turbo', name: 'Turbocharger', status: 'Diperiksa' },
+      { id: 'kelistrikan', name: 'Kelistrikan & Solenoid', status: 'Diperiksa' },
+      { id: 'rem', name: 'Sistem Rem', status: 'Pemeriksaan Visual' },
+      { id: 'transmisi', name: 'Transmisi', status: 'Pemeriksaan Visual' },
+      { id: 'suspensi', name: 'Suspensi', status: 'Pemeriksaan Visual' },
+      { id: 'lainnya', name: 'Uji Jalan (Road Test)', status: 'Uji Fungsi' },
+    ];
+
+    return (
+      <div className="relative print-page print-page-2 print:max-h-[285mm] print:overflow-hidden space-y-2 box-border">
+        {/* Watermark */}
+        <DocumentWatermark 
+          config={watermarkConfig} 
+          documentStatus={printWO.status} 
+          documentType="INSPECTION" 
+        />
+
+        <div className="relative z-1 space-y-1.5">
+          {/* Header Page 2 */}
+          <div className="border-b-2 border-[#0F2D59] pb-1.5">
+            <div className="flex justify-between items-start gap-3">
+              <div className="flex-shrink min-w-0">
+                <div className="flex items-center gap-2.5">
+                  <SmartLogo 
+                    baseName="logo-indo-teknik" 
+                    alt="IT INDO TEKNIK" 
+                    className="h-9 w-auto object-contain flex-shrink-0" 
+                    style={{ height: '34px', maxWidth: '140px' }}
+                  />
+                  <div className="border-l-2 border-slate-300 pl-2.5 leading-tight text-left">
+                    <p className="text-[11px] font-black tracking-widest text-[#0F2D59] uppercase">INDO TEKNIK PEKANBARU</p>
+                    <p className="text-[9.5px] font-extrabold text-[#0F2D59] mt-0.5">
+                      One Stop Solution for All Your Diesel Needs
+                    </p>
+                    <p className="text-[8px] text-slate-600 font-semibold flex items-center gap-1 mt-0.5 flex-wrap">
+                      <MapPin className="w-2.5 h-2.5 text-[#E21F26] shrink-0" /> Jl. Riau Ujung No.898-904, Pekanbaru • WA: wa.me/628117531881 • Email: customerservice@indo-teknik.com
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 mt-1 pl-0.5">
+                  <SmartLogo 
+                    baseName="logo-itech" 
+                    alt="ITech" 
+                    className="h-6 w-auto object-contain flex-shrink-0 bg-white px-1.5 py-0.5 rounded border border-slate-200" 
+                    style={{ height: '22px', maxWidth: '80px' }}
+                  />
+                  <p className="text-[9px] font-black tracking-wider text-[#0F2D59] whitespace-nowrap bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                    ITECH AUTHORIZED DEALER & WORKSHOP
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 mt-1 pl-0.5">
-                <SmartLogo 
-                  baseName="logo-itech" 
-                  alt="ITech" 
-                  className="h-7 w-auto object-contain flex-shrink-0 bg-white px-2 py-0.5 rounded border border-slate-200" 
-                  style={{ height: '24px', maxWidth: '90px' }}
-                />
-                <p className="text-[9.5px] font-black tracking-wider text-[#0F2D59] whitespace-nowrap bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                  ITECH AUTHORIZED DEALER & WORKSHOP
-                </p>
+              
+              {/* Header Right / WO Number & Digital Verification QR */}
+              <div className="flex items-center gap-2 shrink-0 max-w-[50%]">
+                <div className="bg-white border border-slate-300 rounded-lg p-1 shadow-xs flex flex-col items-center justify-center shrink-0">
+                  <QRCodeSVG value={trackingUrl} size={42} level="M" />
+                  <span className="text-[6.5px] font-mono font-black text-slate-500 uppercase mt-0.5 tracking-tight">Scan Tracking</span>
+                </div>
+
+                <div className="text-right flex flex-col items-end">
+                  <div className="flex items-center justify-end gap-1 flex-wrap">
+                    <span className="text-[8px] font-black bg-blue-100 text-blue-950 border border-blue-300 px-1.5 py-0.5 rounded uppercase shrink-0">
+                      HALAMAN 2 • INSPEKSI KENDARAAN
+                    </span>
+                  </div>
+
+                  <div className="mt-1 flex items-center gap-1.5 bg-slate-50 border-2 border-slate-400 rounded-lg px-2.5 py-0.5 shadow-xs">
+                    <span className="text-[9px] font-black text-slate-600 uppercase">NO. WO:</span>
+                    <span className="text-sm sm:text-base font-mono font-black text-[#0F2D59] tracking-tight">{printWO.id}</span>
+                  </div>
+
+                  <div className="text-[8.5px] text-slate-600 font-bold mt-0.5 font-mono flex items-center gap-1">
+                    <span>Tgl: {formatDateIndo(printWO.createdAt)}</span>
+                    <span>•</span>
+                    <span>Jam: {formatTimeIndo(printWO.createdAt)}</span>
+                    <span>•</span>
+                    <span>SA: {printWO.createdBy || 'Front Office'}</span>
+                  </div>
+                </div>
               </div>
             </div>
-            
-            {/* Header Right / WO Number & Digital Verification QR */}
-            <div className="flex items-center gap-2.5 shrink-0 max-w-[50%]">
-              <div className="bg-white border border-slate-300 rounded-lg p-1 shadow-xs flex flex-col items-center justify-center shrink-0">
-                <QRCodeSVG value={trackingUrl} size={46} level="M" />
-                <span className="text-[7px] font-mono font-black text-slate-500 uppercase mt-0.5 tracking-tight">Scan Tracking</span>
-              </div>
+          </div>
 
-              <div className="text-right flex flex-col items-end">
-                <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                  <h2 className="text-xs font-black bg-[#0F2D59] text-white px-2.5 py-0.5 rounded tracking-wider uppercase shadow-xs">
-                    LEMBAR PEMERIKSAAN KENDARAAN
-                  </h2>
-                  <span className="text-[8.5px] font-black bg-blue-100 text-blue-950 border border-blue-300 px-1.5 py-0.5 rounded uppercase shrink-0">
-                    HALAMAN 2 • INSPEKSI
+          {/* Centered Main Heading */}
+          <div className="text-center py-1 border-y-2 border-[#0F2D59] bg-gradient-to-r from-slate-50 via-blue-50/50 to-slate-50 shadow-2xs">
+            <h2 className="text-sm sm:text-base font-black tracking-widest text-[#0F2D59] uppercase">
+              LEMBAR PEMERIKSAAN KENDARAAN
+            </h2>
+            <p className="text-[8px] font-bold text-slate-500 tracking-wider uppercase font-mono">
+              HASIL PEMERIKSAAN MEKANIK & INTEGRITAS FISIK UNIT
+            </p>
+          </div>
+
+          {/* Profile Grid Compact */}
+          <div className="grid grid-cols-12 gap-2 text-xs">
+            <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2 shadow-xs flex flex-col justify-between">
+              <div className="space-y-0.5">
+                <h3 className="font-black border-b border-slate-300 pb-0.5 mb-1 text-[#0F2D59] text-[9.5px] uppercase tracking-wider flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span> DATA PELANGGAN
+                </h3>
+                <div className="flex justify-between items-baseline gap-2">
+                  <span className="text-slate-500 font-bold shrink-0 text-[9.5px] uppercase">Pelanggan:</span>
+                  <span className="font-black text-slate-950 text-right truncate text-[11px]">{printWO.customerName}</span>
+                </div>
+                <div className="flex justify-between items-baseline gap-2">
+                  <span className="text-slate-500 font-bold shrink-0 text-[9.5px] uppercase">No. Telepon:</span>
+                  <span className="font-bold text-slate-900 text-right font-mono text-[10.5px] bg-white px-1 py-0.2 rounded border border-slate-200">{printWO.customerPhone || '-'}</span>
+                </div>
+                <div className="flex justify-between items-baseline gap-2">
+                  <span className="text-slate-500 font-bold shrink-0 text-[9.5px] uppercase">Alamat:</span>
+                  <span className="text-slate-700 text-right truncate text-[10px] max-w-[210px]">{printWO.customerAddress || '-'}</span>
+                </div>
+              </div>
+            </div>
+            <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2 shadow-xs flex flex-col justify-between">
+              <div className="space-y-0.5">
+                <h3 className="font-black border-b border-slate-300 pb-0.5 mb-1 text-[#0F2D59] text-[9.5px] uppercase tracking-wider flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span> IDENTITAS UNIT
+                </h3>
+                <div className="flex justify-between items-center gap-2">
+                  <span className="text-slate-500 font-bold shrink-0 text-[9.5px] uppercase">No. Polisi:</span>
+                  <span className="font-mono font-black text-white text-[11px] bg-slate-950 px-2 py-0.2 rounded border border-slate-700 tracking-wider shadow-xs">
+                    {printWO.plateNumber || '-'}
                   </span>
                 </div>
-
-                <div className="mt-1 flex items-center gap-2 bg-slate-50 border-2 border-slate-400 rounded-lg px-2.5 py-0.5 shadow-xs">
-                  <span className="text-[9px] font-black text-slate-600 uppercase">NO. WO:</span>
-                  <span className="text-base sm:text-lg font-mono font-black text-[#0F2D59] tracking-tight">{printWO.id}</span>
+                <div className="flex justify-between items-baseline gap-2">
+                  <span className="text-slate-500 font-bold shrink-0 text-[9.5px] uppercase">Merek / Tipe:</span>
+                  <span className="font-black text-slate-900 text-right truncate text-[10.5px]">{printWO.vehicleBrand || '-'}</span>
                 </div>
-
-                <div className="text-[9px] text-slate-600 font-bold mt-0.5 font-mono flex items-center gap-1.5">
-                  <span>Tgl: {new Date(printWO.createdAt || Date.now()).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-                  <span>•</span>
-                  <span>SA: {printWO.createdBy || 'Front Office'}</span>
+                <div className="flex justify-between items-baseline gap-2">
+                  <span className="text-slate-500 font-bold shrink-0 text-[9.5px] uppercase">Odometer:</span>
+                  <span className="font-bold text-slate-800 text-right text-[10px] font-mono">
+                    {formatOdometer(printWO.odometer)}
+                  </span>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Profile Grid Compact */}
-        <div className="grid grid-cols-12 gap-2 text-xs">
-          <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2.5 shadow-xs flex flex-col justify-between">
-            <div className="space-y-1">
-              <h3 className="font-black border-b border-slate-300 pb-1 mb-1 text-[#0F2D59] text-[10px] uppercase tracking-wider flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-blue-600"></span> DATA PELANGGAN
-              </h3>
-              <div className="flex justify-between items-baseline gap-2">
-                <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Pelanggan:</span>
-                <span className="font-black text-slate-950 text-right truncate text-xs">{printWO.customerName}</span>
-              </div>
-              <div className="flex justify-between items-baseline gap-2">
-                <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">No. Telepon:</span>
-                <span className="font-bold text-slate-900 text-right font-mono text-[11px] bg-white px-1.5 py-0.2 rounded border border-slate-200">{printWO.customerPhone || '-'}</span>
-              </div>
-              <div className="flex justify-between items-baseline gap-2">
-                <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Alamat:</span>
-                <span className="text-slate-700 text-right truncate text-[10.5px] max-w-[210px]">{printWO.customerAddress || '-'}</span>
-              </div>
-            </div>
-          </div>
-          <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2.5 shadow-xs flex flex-col justify-between">
-            <div className="space-y-1">
-              <h3 className="font-black border-b border-slate-300 pb-1 mb-1 text-[#0F2D59] text-[10px] uppercase tracking-wider flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-red-600"></span> IDENTITAS UNIT
-              </h3>
-              <div className="flex justify-between items-center gap-2">
-                <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">No. Polisi:</span>
-                <span className="font-mono font-black text-white text-xs bg-slate-950 px-2 py-0.5 rounded border border-slate-700 tracking-wider shadow-xs">
-                  {printWO.plateNumber || '-'}
-                </span>
-              </div>
-              <div className="flex justify-between items-baseline gap-2">
-                <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Merek / Tipe:</span>
-                <span className="font-black text-slate-900 text-right truncate text-xs">{printWO.vehicleBrand || '-'}</span>
-              </div>
-              <div className="flex justify-between items-baseline gap-2">
-                <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Odometer:</span>
-                <span className="font-bold text-slate-800 text-right text-[10.5px] font-mono">
-                  {printWO.odometer ? `${Number(printWO.odometer).toLocaleString('id-ID')} km` : '-'}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Car Inspection Visual Map & Fuel Grid */}
-        <div className="grid grid-cols-12 gap-2.5">
-          {/* Visual Body Diagram (7 Cols) */}
-          <div className="col-span-7 border border-slate-300 rounded-lg p-2.5 bg-white shadow-xs">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-1 mb-1.5">
-              <h3 className="text-[10px] font-black text-[#0F2D59] uppercase tracking-wider flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-blue-600"></span> DENAH PEMERIKSAAN KONDISI FISIK BODI KENDARAAN
-              </h3>
-              <div className="flex items-center gap-2 text-[8px] font-bold text-slate-500 font-mono">
-                <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded-full bg-red-600 inline-block"></span> Dent/Penyok</span>
-                <span className="flex items-center gap-0.5"><span className="w-2 h-2 rounded-full bg-amber-500 inline-block"></span> Scratch/Baret</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-center p-1.5 bg-slate-50 rounded-lg border border-slate-200">
-              <CarInspectionMap
-                damages={printWO.damages || []}
-                onAddDamage={() => {}}
-                onRemoveDamage={() => {}}
-                readonly={true}
-              />
-            </div>
-          </div>
-
-          {/* Fuel & Physical Damage Notes (5 Cols) */}
-          <div className="col-span-5 flex flex-col justify-between gap-2">
-            {/* Fuel Box */}
-            <div className="border border-slate-300 rounded-lg p-2.5 bg-white shadow-xs">
-              <div className="flex justify-between items-center mb-1.5">
-                <h3 className="text-[9.5px] font-black text-[#0F2D59] uppercase tracking-wider">
-                  KONDISI BAHAN BAKAR (BBM)
+          {/* HIERARCHY 1: HASIL PEMERIKSAAN MEKANIK (DIESEL & VEHICLE DIAGNOSTIC REPORT) - PRIORITAS UTAMA BENGKEL */}
+          <div className="border border-[#0F2D59] rounded-lg overflow-hidden bg-white shadow-xs">
+            <div className="bg-[#0F2D59] text-white px-2 py-0.5 flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Wrench className="w-3 h-3 text-amber-400" />
+                <h3 className="text-[9px] font-black uppercase tracking-wider">
+                  HASIL PEMERIKSAAN MEKANIK (DIESEL & VEHICLE DIAGNOSTIC REPORT)
                 </h3>
-                <span className="text-[9px] font-black font-mono text-cyan-900 bg-cyan-50 px-2 py-0.5 rounded border border-cyan-200">
-                  Level: {printWO.fuelLevel || '1/2'}
+              </div>
+              <span className="text-[7.5px] font-mono text-blue-200 font-bold uppercase tracking-tight">
+                Prioritas Utama Diagnosa Teknis Bengkel
+              </span>
+            </div>
+
+            <div className="p-1 space-y-1">
+              {/* Header Context: Keluhan Pelanggan yang dijawab oleh pemeriksaan */}
+              <div className="bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 flex items-center gap-1.5 text-[8px]">
+                <strong className="text-slate-900 uppercase shrink-0 font-black">Keluhan / Gejala Awal:</strong>
+                <span className="text-slate-800 italic truncate">
+                  {printWO.customerVoice ? printWO.customerVoice.replace(/\n/g, ' • ') : 'Pemeriksaan performa dan perawatan preventif diesel.'}
                 </span>
               </div>
-              <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+
+              {/* High-Density Technical Diagnostic Table */}
+              <div className="border border-slate-300 rounded overflow-hidden">
+                <table className="w-full text-left border-collapse text-[7.5px] leading-tight">
+                  <thead>
+                    <tr className="bg-slate-100 text-slate-800 font-black border-b border-slate-300 uppercase tracking-tight text-[7px]">
+                      <th className="py-0.5 px-1 text-center w-6 border-r border-slate-200">No.</th>
+                      <th className="py-0.5 px-1.5 w-[22%] border-r border-slate-200">Bagian / Sistem Diperiksa</th>
+                      <th className="py-0.5 px-1.5 w-[14%] border-r border-slate-200">Metode Uji</th>
+                      <th className="py-0.5 px-1 text-center w-[16%] border-r border-slate-200">Status Kondisi</th>
+                      <th className="py-0.5 px-1.5 w-[28%] border-r border-slate-200">Hasil Temuan & Analisis Mekanik</th>
+                      <th className="py-0.5 px-1.5 w-[20%]">Rekomendasi Tindakan</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {(() => {
+                      const mechList: MechanicalInspectionItem[] = (printWO.mechanicalInspections && printWO.mechanicalInspections.length > 0)
+                        ? printWO.mechanicalInspections
+                        : DEFAULT_MECHANICAL_INSPECTIONS;
+
+                      return mechList.map((item, idx) => {
+                        const isIssue = item.status === 'ISSUE_FOUND';
+                        const isNormal = item.status === 'NORMAL';
+                        const isFurther = item.status === 'FURTHER_TEST_NEEDED';
+
+                        const statusBadgeText = isIssue
+                          ? '[!] Ditemukan Masalah'
+                          : isNormal
+                            ? '[✓] Kondisi Normal'
+                            : isFurther
+                              ? '[?] Perlu Uji Lanjutan'
+                              : '[-] Belum Diperiksa';
+
+                        const statusBadgeClass = isIssue
+                          ? 'bg-rose-100 text-rose-900 border-rose-300 font-black'
+                          : isNormal
+                            ? 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold'
+                            : isFurther
+                              ? 'bg-amber-100 text-amber-900 border-amber-300 font-bold'
+                              : 'bg-slate-100 text-slate-700 border-slate-300';
+
+                        return (
+                          <tr key={item.id || idx} className={isIssue ? 'bg-rose-50/40' : idx % 2 === 1 ? 'bg-slate-50/50' : 'bg-white'}>
+                            <td className="py-0.5 px-1 text-center font-mono font-bold text-slate-600 border-r border-slate-200">
+                              {String(idx + 1).padStart(2, '0')}
+                            </td>
+                            <td className="py-0.5 px-1.5 font-bold text-slate-950 border-r border-slate-200">
+                              {item.systemName}
+                            </td>
+                            <td className="py-0.5 px-1.5 text-slate-700 border-r border-slate-200">
+                              {item.method || 'Visual & Standar Lab'}
+                            </td>
+                            <td className="py-0.5 px-1 text-center border-r border-slate-200 whitespace-nowrap">
+                              <span className={`inline-block px-1 py-0.2 rounded border text-[7px] uppercase ${statusBadgeClass}`}>
+                                {statusBadgeText}
+                              </span>
+                            </td>
+                            <td className="py-0.5 px-1.5 border-r border-slate-200">
+                              <div className="font-semibold text-slate-900 break-words">
+                                {item.findings || (isNormal ? 'Komponen normal terverifikasi dalam batas toleransi standar.' : isIssue ? 'Terindikasi ketidaksesuaian performa pada sistem terkait.' : isFurther ? 'Data uji awal belum mencukupi untuk vonis kondisi final.' : 'Pemeriksaan terjadwal.')}
+                              </div>
+                              {item.diagnosisNotes && (
+                                <div className="mt-0.5 text-[7px] text-blue-900 font-medium bg-blue-50/80 px-1 py-0.2 rounded border border-blue-200">
+                                  <span className="font-black">Analisis: </span>{item.diagnosisNotes}
+                                </div>
+                              )}
+                            </td>
+                            <td className="py-0.5 px-1.5 text-slate-800 break-words">
+                              {item.recommendation ? (
+                                <span className="font-medium text-blue-950">{item.recommendation}</span>
+                              ) : (
+                                <span className="text-slate-400 italic">-</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      });
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Legal Notice: Kerusakan Tambahan */}
+              <div className="px-1.5 py-0.5 rounded bg-amber-50/80 border border-amber-200 text-[7px] leading-tight text-amber-950 flex items-center justify-between">
+                <span>
+                  <strong className="font-black text-amber-900 uppercase mr-1">[!] Ketentuan Tambahan:</strong>
+                  Apabila ditemukan kerusakan tambahan pada pengujian/pembongkaran lanjutan, pelanggan akan dihubungi untuk konfirmasi persetujuan sebelum penggantian part atau pembongkaran lebih lanjut.
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* HIERARCHY 2 & 3: DOKUMENTASI FISIK BODI KENDARAAN (VEHICLE CONDITION DIAGRAM & TABEL DETAIL TEMUAN) */}
+          <CarInspectionMap
+            damages={printWO.damages || []}
+            isPrintMode={true}
+            readonly={true}
+          />
+
+          {/* HIERARCHY 4: BAHAN BAKAR & CHECKLIST KELENGKAPAN INVENTARIS */}
+          <div className="grid grid-cols-12 gap-2">
+            {/* Level BBM (3.5 cols) */}
+            <div className="col-span-4 border border-slate-300 rounded-lg p-1.5 bg-white shadow-xs flex flex-col justify-between">
+              <div className="flex justify-between items-center mb-0.5">
+                <h4 className="text-[8.5px] font-black text-[#0F2D59] uppercase tracking-wider">
+                  LEVEL BAHAN BAKAR (BBM)
+                </h4>
+                <span className="text-[8px] font-mono font-black text-cyan-900 bg-cyan-50 px-1 py-0.2 rounded border border-cyan-200">
+                  {printWO.fuelLevel || '1/2'}
+                </span>
+              </div>
+              <div className="bg-slate-50 p-1 rounded border border-slate-200">
                 <FuelGauge level={printWO.fuelLevel || '1/2'} onChange={() => {}} readonly={true} />
               </div>
+              <div className="text-[7px] text-slate-500 font-mono text-right mt-0.5">
+                Jenis BBM: Solar [✓]
+              </div>
             </div>
 
-            {/* Physical damages notes */}
-            <div className="border border-slate-300 rounded-lg p-2.5 bg-slate-50 flex-1 shadow-xs">
-              <h3 className="text-[9.5px] font-black text-[#0F2D59] uppercase tracking-wider mb-1.5 flex items-center justify-between border-b border-slate-200 pb-1">
-                <span>CATATAN KERUSAKAN / GORESAN BODI</span>
-                <span className="text-[8.5px] font-mono text-slate-500">{damagesList.length} Titik</span>
-              </h3>
-              {damagesList.length > 0 ? (
-                <ul className="text-[9px] text-slate-800 space-y-1 max-h-24 overflow-y-auto">
-                  {damagesList.map((dmg, i) => (
-                    <li key={i} className="flex items-start gap-1.5 bg-white p-1 rounded border border-slate-200">
-                      <span className="text-red-600 font-bold shrink-0">•</span>
-                      <span><strong className="text-slate-950 uppercase">{dmg.partId}:</strong> {dmg.description}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-[9px] text-slate-500 italic p-1">Tidak ada catatan kerusakan fisik bodi teridentifikasi saat serah terima awal.</p>
-              )}
+            {/* Checklist Kelengkapan & Inventaris Unit (8 cols) */}
+            <div className="col-span-8 border border-slate-300 rounded-lg p-1.5 bg-white shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-0.5 mb-1">
+                <h4 className="text-[8.5px] font-black text-[#0F2D59] uppercase tracking-wider flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> CHECKLIST KELENGKAPAN & INVENTARIS UNIT
+                </h4>
+                <span className="text-[7.5px] text-slate-500 font-mono">
+                  {DEFAULT_INVENTORY_ITEMS.filter(item => isInventoryChecked(item)).length} / {DEFAULT_INVENTORY_ITEMS.length} Terpasang
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-1 text-[8px]">
+                {DEFAULT_INVENTORY_ITEMS.map((item) => {
+                  const checked = isInventoryChecked(item);
+                  return (
+                    <div
+                      key={item}
+                      className={`flex items-center gap-1 px-1 py-0.5 rounded border transition-colors ${
+                        checked
+                          ? 'bg-emerald-50 border-emerald-300 font-bold text-emerald-950'
+                          : 'bg-slate-50 border-slate-200 text-slate-500'
+                      }`}
+                    >
+                      <span
+                        className={`w-3 h-3 rounded-full flex items-center justify-center text-[7px] font-black shrink-0 ${
+                          checked ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'
+                        }`}
+                      >
+                        {checked ? '✓' : '✗'}
+                      </span>
+                      <span className="truncate">{item}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
+          </div>
+
+          {/* HIERARCHY 5: INFORMASI SERAH TERIMA & KESEPAKATAN */}
+          <div className="border border-slate-200 bg-slate-50 rounded-lg p-1.5 text-[8px] text-slate-700 leading-snug">
+            <span className="font-bold text-slate-900">Pernyataan Kesepakatan Serah Terima: </span>
+            Hasil pemeriksaan teknis mekanik, temuan kondisi fisik bodi luar kendaraan, kelengkapan inventaris barang bawaan, dan level bahan bakar di atas telah diperiksa bersama secara seksama antara Pelanggan/Pembawa Unit dan Service Advisor Indo Teknik saat penerimaan unit.
           </div>
         </div>
 
-        {/* Full Inventory Items */}
-        <div className="border border-slate-300 rounded-lg p-2.5 bg-white shadow-xs">
-          <h3 className="text-[9.5px] font-black text-[#0F2D59] uppercase tracking-wider mb-1.5 flex items-center gap-1.5 border-b border-slate-200 pb-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-600"></span> CHECKLIST KELENGKAPAN & INVENTARIS UNIT
-          </h3>
-          <div className="grid grid-cols-4 gap-1.5 text-[9px]">
-            {DEFAULT_INVENTORY_ITEMS.map((item) => {
-              const checked = isInventoryChecked(item);
-              return (
-                <div key={item} className={`flex items-center gap-1.5 px-2 py-0.5 rounded border transition-colors ${checked ? 'bg-emerald-50/90 border-emerald-300 font-bold text-emerald-950' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
-                  <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-black shrink-0 ${checked ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
-                    {checked ? '✓' : '✗'}
-                  </span>
-                  <span className="truncate">{item}</span>
-                </div>
-              );
-            })}
+        {/* Bottom Signatures Page 2 */}
+        <div className="border-t-2 border-slate-400 pt-1.5 shrink-0 print:break-inside-avoid">
+          <div className="text-right text-[7.5px] text-slate-500 font-mono mb-1">
+            Pekanbaru, {new Date(printWO.createdAt || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
           </div>
-        </div>
+          <div className="grid grid-cols-2 gap-6 text-center">
+            <div className="border border-slate-300 rounded-lg p-1.5 bg-slate-50/70 shadow-xs">
+              <p className="text-[9px] font-black text-slate-900 uppercase">Pelanggan / Pembawa Unit</p>
+              <div className="h-10 border-b border-slate-400 my-1 flex items-end justify-center pb-0.5 text-[7.5px] text-slate-400">
+                (Tanda Tangan & Nama Terang)
+              </div>
+              <p className="font-black text-slate-950 text-[9.5px] truncate">{printWO.customerName}</p>
+            </div>
 
-        {/* Serah Terima Notes */}
-        <div className="border border-slate-200 bg-slate-50 rounded-lg p-2 text-[8.5px] text-slate-700 leading-snug">
-          <span className="font-bold text-slate-900">Pernyataan Kesepakatan Kondisi Fisik: </span>
-          Kondisi fisik bodi, kelengkapan inventaris, dan level bahan bakar di atas telah diperiksa bersama secara seksama antara Pelanggan/Pembawa Unit dan Service Advisor Indo Teknik saat penerimaan unit.
+            <div className="border border-slate-300 rounded-lg p-1.5 bg-slate-50/70 shadow-xs">
+              <p className="text-[9px] font-black text-slate-900 uppercase">Service Advisor (Indo Teknik)</p>
+              <div className="h-10 border-b border-slate-400 my-1 flex items-end justify-center pb-0.5 text-[7.5px] text-slate-400">
+                (Tanda Tangan & Stempel)
+              </div>
+              <p className="font-black text-slate-950 text-[9.5px]">{printWO.createdBy || 'Front Office Staff'}</p>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center text-[7px] text-slate-500 border-t border-slate-200 pt-0.5 mt-0.5 font-mono">
+            <span>Indo Teknik Pekanbaru • WA: wa.me/628117531881 • Email: customerservice@indo-teknik.com</span>
+            <span className="font-bold text-slate-800">Lembar Pemeriksaan Kendaraan Halaman 2 • Dicetak: {new Date().toLocaleString('id-ID')} WIB</span>
+          </div>
         </div>
       </div>
-
-      {/* Bottom Signatures Page 2 */}
-      <div className="border-t-2 border-slate-400 pt-2 shrink-0 print:break-inside-avoid">
-        <div className="text-right text-[8px] text-slate-500 font-mono mb-1">
-          Pekanbaru, {new Date(printWO.createdAt || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-        </div>
-        <div className="grid grid-cols-2 gap-6 text-center">
-          <div className="border border-slate-300 rounded-lg p-2 bg-slate-50/70 shadow-xs">
-            <p className="text-[9.5px] font-black text-slate-900 uppercase">Pelanggan / Pembawa Unit</p>
-            <div className="h-12 border-b border-slate-400 my-1.5 flex items-end justify-center pb-0.5 text-[8px] text-slate-400">
-              (Tanda Tangan & Nama Terang)
-            </div>
-            <p className="font-black text-slate-950 text-[10px] truncate">{printWO.customerName}</p>
-          </div>
-
-          <div className="border border-slate-300 rounded-lg p-2 bg-slate-50/70 shadow-xs">
-            <p className="text-[9.5px] font-black text-slate-900 uppercase">Service Advisor (Indo Teknik)</p>
-            <div className="h-12 border-b border-slate-400 my-1.5 flex items-end justify-center pb-0.5 text-[8px] text-slate-400">
-              (Tanda Tangan & Stempel)
-            </div>
-            <p className="font-black text-slate-950 text-[10px]">{printWO.createdBy || 'Front Office Staff'}</p>
-          </div>
-        </div>
-
-        <div className="flex justify-between items-center text-[7.5px] text-slate-500 border-t border-slate-200 pt-1 mt-1.5 font-mono">
-          <span>Indo Teknik Pekanbaru • One Stop Solution for All Your Diesel Needs</span>
-          <span className="font-bold text-slate-800">Lembar Pemeriksaan Kendaraan Halaman 2 • Dicetak: {new Date().toLocaleString('id-ID')} WIB</span>
-        </div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   // =========================================================================
   // PAGE 2 (OPTION B): LEMBAR PEMERIKSAAN KOMPONEN (COMPONENT INSPECTION SHEET)
   // Khusus untuk Metode Drop: Bawa Komponen Copotan (dropMethod === 'PARTS')
-  // Bersifat DYNAMIC: baris menyesuaikan persis jumlah barang (1 barang -> 1 baris, 4 -> 4)
-  // Font dan padding mengecil otomatis (responsive scaling) jika jumlah item banyak
+  // =========================================================================
+  // PAGE 2 (OPTION B): LEMBAR PEMERIKSAAN KOMPONEN (COMPONENT INSPECTION SHEET)
+  // Khusus untuk Metode Drop: Bawa Komponen Copotan (dropMethod === 'PARTS')
+  // Bersifat ADAPTIF & AUTO-OPTIMIZED FIT A4:
+  // - Tabel 1: Kondisi Komponen Saat Dibawa (mengganti pencatatan nomor seri, isi sendiri)
+  // - Tabel 2: Hasil Pemeriksaan Mekanik Komponen (Custom, tulis sendiri)
+  // - Menyesuaikan persis jumlah barang (1 ya 1, 2 ya 2, 10 ya 10)
+  // - Otomatis skala typography, padding, gap & tinggi agar PASTI FIT 1 HALAMAN A4
   // =========================================================================
   const renderComponentInspectionPage2 = () => {
     // Dynamic parts list: if loosePartsList has items, render them; if empty, fallback to 1 single component
@@ -1033,46 +1259,73 @@ export const PrintTemplate: React.FC = () => {
           ? printWO.vehicleBrand 
           : (printWO.assyNo ? `Komponen Unit / Part (${printWO.assyNo})` : 'Komponen Diesel Lepas'),
         partNumber: printWO.assyNo || '',
-        physicalCondition: 'OK'
+        physicalCondition: 'Normal / Baik'
       }
     ];
 
-    const totalCount = actualParts.length;
+    // Dynamic custom mechanical inspection items
+    const actualMechList: MechanicalInspectionItem[] = (printWO.mechanicalInspections && printWO.mechanicalInspections.length > 0)
+      ? printWO.mechanicalInspections
+      : [
+          {
+            id: 'm1',
+            systemName: 'Pengujian Kalibrasi Test Bench (Spray & Pressure)',
+            category: 'DIESEL_CORE',
+            method: 'Uji Test Bench Tekanan Tinggi',
+            status: 'NOT_INSPECTED',
+            findings: 'Pemeriksaan performa dan debit bahan bakar awal.',
+            recommendation: 'Kalibrasi sesuai toleransi spesifikasi pabrikan.'
+          }
+        ];
 
-    // Responsive Typography & Density Scaling
-    // 1-3 items: Spacious & large font
-    // 4-7 items: Normal readable font
-    // 8-12 items: Compact font
-    // 13+ items: Ultra-compact font to prevent page overflow
-    const density = totalCount <= 3 ? 'spacious' : totalCount <= 7 ? 'normal' : totalCount <= 12 ? 'compact' : 'dense';
+    const partsCount = actualParts.length;
+    const mechCount = actualMechList.length;
+    const totalItems = partsCount + mechCount;
+
+    // Automatic responsive scaling to GUARANTEE fitting 1 page of A4
+    // totalItems <= 4: spacious
+    // totalItems <= 7: normal
+    // totalItems <= 10: compact
+    // totalItems > 10: dense
+    const density = totalItems <= 4 ? 'spacious' : totalItems <= 7 ? 'normal' : totalItems <= 10 ? 'compact' : 'dense';
 
     const cellPadding = 
-      density === 'spacious' ? 'py-3 px-3' :
-      density === 'normal' ? 'py-2 px-2.5' :
-      density === 'compact' ? 'py-1.5 px-2' : 'py-1 px-1.5';
+      density === 'spacious' ? 'py-1.5 px-2.5' :
+      density === 'normal' ? 'py-1 px-2' :
+      density === 'compact' ? 'py-0.5 px-1.5' : 'py-0.5 px-1';
 
     const thPadding = 
-      density === 'spacious' ? 'py-2.5 px-3 text-[9.5px]' :
-      density === 'normal' ? 'py-1.5 px-2.5 text-[8.5px]' :
-      density === 'compact' ? 'py-1 px-2 text-[8px]' : 'py-0.5 px-1.5 text-[7.5px]';
+      density === 'spacious' ? 'py-1 px-2 text-[8px]' :
+      density === 'normal' ? 'py-0.5 px-1.5 text-[7.5px]' :
+      density === 'compact' ? 'py-0.5 px-1 text-[7px]' : 'py-0.2 px-1 text-[6.5px]';
 
     const textMain = 
-      density === 'spacious' ? 'text-xs' :
-      density === 'normal' ? 'text-[9.5px]' :
-      density === 'compact' ? 'text-[8.5px]' : 'text-[7.5px]';
+      density === 'spacious' ? 'text-[8.5px]' :
+      density === 'normal' ? 'text-[8px]' :
+      density === 'compact' ? 'text-[7.5px]' : 'text-[7px]';
 
     const textPn = 
-      density === 'spacious' ? 'text-[11px]' :
-      density === 'normal' ? 'text-[9px]' :
-      density === 'compact' ? 'text-[8px]' : 'text-[7.5px]';
+      density === 'spacious' ? 'text-[8px]' :
+      density === 'normal' ? 'text-[7.5px]' :
+      density === 'compact' ? 'text-[7px]' : 'text-[6.5px]';
 
     const badgeText = 
-      density === 'spacious' ? 'text-[9.5px] px-2.5 py-0.5' :
-      density === 'normal' ? 'text-[8.5px] px-2 py-0.5' :
-      density === 'compact' ? 'text-[7.5px] px-1.5 py-0.2' : 'text-[7px] px-1 py-0.2';
+      density === 'spacious' ? 'text-[7.5px] px-1.5 py-0.2' :
+      density === 'normal' ? 'text-[7px] px-1 py-0.2' :
+      density === 'compact' ? 'text-[6.5px] px-1 py-0.1' : 'text-[6px] px-0.8 py-0.1';
+
+    const sigHeight = 
+      density === 'spacious' ? 'h-10' :
+      density === 'normal' ? 'h-8' :
+      density === 'compact' ? 'h-7' : 'h-6';
+
+    const containerSpacing = 
+      density === 'spacious' ? 'space-y-2' :
+      density === 'normal' ? 'space-y-1.5' :
+      density === 'compact' ? 'space-y-1' : 'space-y-0.5';
 
     return (
-      <div className="relative print-page space-y-2.5 box-border">
+      <div className={`relative print-page print-page-2 print:max-h-[285mm] print:overflow-hidden ${containerSpacing} box-border`}>
         {/* Watermark */}
         <DocumentWatermark 
           config={watermarkConfig} 
@@ -1080,64 +1333,64 @@ export const PrintTemplate: React.FC = () => {
           documentType="INSPECTION" 
         />
 
-        <div className="relative z-1 space-y-2">
+        <div className={`relative z-1 ${containerSpacing}`}>
           {/* Header Page 2 - Component Sheet */}
-          <div className="border-b-2 border-[#0F2D59] pb-2">
+          <div className="border-b-2 border-[#0F2D59] pb-1.5">
             <div className="flex justify-between items-start gap-3">
               <div className="flex-shrink min-w-0">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                   <SmartLogo 
                     baseName="logo-indo-teknik" 
                     alt="IT INDO TEKNIK" 
-                    className="h-10 w-auto object-contain flex-shrink-0" 
-                    style={{ height: '36px', maxWidth: '145px' }}
+                    className="h-9 w-auto object-contain flex-shrink-0" 
+                    style={{ height: '34px', maxWidth: '140px' }}
                   />
-                  <div className="border-l-2 border-slate-300 pl-3 leading-tight text-left">
-                    <p className="text-xs font-black tracking-widest text-[#0F2D59] uppercase">INDO TEKNIK PEKANBARU</p>
-                    <p className="text-[10px] font-extrabold text-[#0F2D59] mt-0.5">
+                  <div className="border-l-2 border-slate-300 pl-2.5 leading-tight text-left">
+                    <p className="text-[11px] font-black tracking-widest text-[#0F2D59] uppercase">INDO TEKNIK PEKANBARU</p>
+                    <p className="text-[9.5px] font-extrabold text-[#0F2D59] mt-0.5">
                       One Stop Solution for All Your Diesel Needs
                     </p>
-                    <p className="text-[9px] text-slate-600 font-semibold flex items-center gap-1 mt-0.5">
-                      <MapPin className="w-3 h-3 text-[#E21F26] shrink-0" /> Jl. Riau Ujung No.898-904, Pekanbaru • Telp: (0761) 853798
+                    <p className="text-[8px] text-slate-600 font-semibold flex items-center gap-1 mt-0.5 flex-wrap">
+                      <MapPin className="w-2.5 h-2.5 text-[#E21F26] shrink-0" /> Jl. Riau Ujung No.898-904, Pekanbaru • WA: wa.me/628117531881 • Email: customerservice@indo-teknik.com
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 mt-1 pl-0.5">
+                <div className="flex items-center gap-2 mt-0.5 pl-0.5">
                   <SmartLogo 
                     baseName="logo-itech" 
                     alt="ITech" 
-                    className="h-7 w-auto object-contain flex-shrink-0 bg-white px-2 py-0.5 rounded border border-slate-200" 
-                    style={{ height: '24px', maxWidth: '90px' }}
+                    className="h-6 w-auto object-contain flex-shrink-0 bg-white px-1.5 py-0.5 rounded border border-slate-200" 
+                    style={{ height: '20px', maxWidth: '80px' }}
                   />
-                  <p className="text-[9.5px] font-black tracking-wider text-[#0F2D59] whitespace-nowrap bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                  <p className="text-[9px] font-black tracking-wider text-[#0F2D59] whitespace-nowrap bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                     ITECH AUTHORIZED DEALER & WORKSHOP
                   </p>
                 </div>
               </div>
               
               {/* Header Right / WO Number & Digital Verification QR */}
-              <div className="flex items-center gap-2.5 shrink-0 max-w-[50%]">
+              <div className="flex items-center gap-2 shrink-0 max-w-[50%]">
                 <div className="bg-white border border-slate-300 rounded-lg p-1 shadow-xs flex flex-col items-center justify-center shrink-0">
-                  <QRCodeSVG value={trackingUrl} size={46} level="M" />
-                  <span className="text-[7px] font-mono font-black text-slate-500 uppercase mt-0.5 tracking-tight">Scan Tracking</span>
+                  <QRCodeSVG value={trackingUrl} size={40} level="M" />
+                  <span className="text-[6.5px] font-mono font-black text-slate-500 uppercase mt-0.5 tracking-tight">Scan Tracking</span>
                 </div>
 
                 <div className="text-right flex flex-col items-end">
-                  <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                    <h2 className="text-xs font-black bg-[#0F2D59] text-white px-2.5 py-0.5 rounded tracking-wider uppercase shadow-xs">
+                  <div className="flex items-center justify-end gap-1 flex-wrap">
+                    <h2 className="text-[11px] font-black bg-[#0F2D59] text-white px-2 py-0.5 rounded tracking-wider uppercase shadow-xs">
                       LEMBAR PEMERIKSAAN KOMPONEN
                     </h2>
-                    <span className="text-[8.5px] font-black bg-amber-100 text-amber-950 border border-amber-300 px-1.5 py-0.5 rounded uppercase shrink-0">
-                      HALAMAN 2 • INSPEKSI KOMPONEN LAB
+                    <span className="text-[7.5px] font-black bg-amber-100 text-amber-950 border border-amber-300 px-1 py-0.5 rounded uppercase shrink-0">
+                      HALAMAN 2 • KONDISI KOMPONEN & HASIL MEKANIK
                     </span>
                   </div>
 
-                  <div className="mt-1 flex items-center gap-2 bg-slate-50 border-2 border-slate-400 rounded-lg px-2.5 py-0.5 shadow-xs">
-                    <span className="text-[9px] font-black text-slate-600 uppercase">NO. WO:</span>
-                    <span className="text-base sm:text-lg font-mono font-black text-[#0F2D59] tracking-tight">{printWO.id}</span>
+                  <div className="mt-1 flex items-center gap-1.5 bg-slate-50 border-2 border-slate-400 rounded-lg px-2 py-0.5 shadow-xs">
+                    <span className="text-[8.5px] font-black text-slate-600 uppercase">NO. WO:</span>
+                    <span className="text-sm sm:text-base font-mono font-black text-[#0F2D59] tracking-tight">{printWO.id}</span>
                   </div>
 
-                  <div className="text-[9px] text-slate-600 font-bold mt-0.5 font-mono flex items-center gap-1.5">
+                  <div className="text-[8px] text-slate-600 font-bold mt-0.5 font-mono flex items-center gap-1">
                     <span>Tgl: {new Date(printWO.createdAt || Date.now()).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                     <span>•</span>
                     <span>SA: {printWO.createdBy || 'Front Office'}</span>
@@ -1150,93 +1403,107 @@ export const PrintTemplate: React.FC = () => {
           {/* Profile Grid Compact */}
           <div className="grid grid-cols-12 gap-2 text-xs">
             {/* Customer Box */}
-            <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2.5 shadow-xs flex flex-col justify-between">
-              <div className="space-y-1">
-                <h3 className="font-black border-b border-slate-300 pb-1 mb-1 text-[#0F2D59] text-[10px] uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-blue-600"></span> DATA PELANGGAN & PEMBAWA KOMPONEN
+            <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2 shadow-xs flex flex-col justify-between">
+              <div className="space-y-0.5">
+                <h3 className="font-black border-b border-slate-300 pb-0.5 mb-0.5 text-[#0F2D59] text-[9px] uppercase tracking-wider flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span> DATA PELANGGAN & PEMBAWA KOMPONEN
                 </h3>
                 <div className="flex justify-between items-baseline gap-2">
-                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Pelanggan:</span>
-                  <span className="font-black text-slate-950 text-right truncate text-xs">{printWO.customerName}</span>
+                  <span className="text-slate-500 font-bold shrink-0 text-[9px] uppercase">Pelanggan:</span>
+                  <span className="font-black text-slate-950 text-right truncate text-[11px]">{printWO.customerName}</span>
                 </div>
                 <div className="flex justify-between items-baseline gap-2">
-                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">No. Telepon:</span>
-                  <span className="font-bold text-slate-900 text-right font-mono text-[11px] bg-white px-1.5 py-0.2 rounded border border-slate-200">{printWO.customerPhone || '-'}</span>
+                  <span className="text-slate-500 font-bold shrink-0 text-[9px] uppercase">No. Telepon:</span>
+                  <span className="font-bold text-slate-900 text-right font-mono text-[10px] bg-white px-1 py-0.2 rounded border border-slate-200">{printWO.customerPhone || '-'}</span>
                 </div>
                 <div className="flex justify-between items-baseline gap-2">
-                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Alamat:</span>
-                  <span className="text-slate-700 text-right truncate text-[10.5px] max-w-[210px]">{printWO.customerAddress || '-'}</span>
+                  <span className="text-slate-500 font-bold shrink-0 text-[9px] uppercase">Alamat:</span>
+                  <span className="text-slate-700 text-right truncate text-[9.5px] max-w-[210px]">{printWO.customerAddress || '-'}</span>
                 </div>
-                <div className="flex justify-between items-baseline gap-2 pt-1 border-t border-slate-200">
-                  <span className="text-blue-900 font-black shrink-0 text-[10px] uppercase">Pembawa Komponen:</span>
-                  <span className="font-bold text-slate-900 text-right truncate text-[10.5px]">
+                <div className="flex justify-between items-baseline gap-2 pt-0.5 border-t border-slate-200">
+                  <span className="text-blue-900 font-black shrink-0 text-[9px] uppercase">Pembawa:</span>
+                  <span className="font-bold text-slate-900 text-right truncate text-[9.5px]">
                     {printWO.bringerName || printWO.customerName} {printWO.bringerPhone ? `(${printWO.bringerPhone})` : ''}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Component Profile Box */}
-            <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2.5 shadow-xs flex flex-col justify-between">
-              <div className="space-y-1">
-                <h3 className="font-black border-b border-slate-300 pb-1 mb-1 text-[#0F2D59] text-[10px] uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-amber-500"></span> IDENTITAS ASAL & METODE SERAH TERIMA
+            {/* SECTION A: DATA PENERIMAAN KOMPONEN */}
+            <div className="col-span-6 border border-slate-300 bg-slate-50/90 rounded-lg p-2 shadow-xs flex flex-col justify-between">
+              <div className="space-y-0.5">
+                <h3 className="font-black border-b border-slate-300 pb-0.5 mb-0.5 text-[#0F2D59] text-[9px] uppercase tracking-wider flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> SECTION A: DATA PENERIMAAN KOMPONEN
+                  </span>
+                  <span className="text-[7.5px] font-mono font-bold text-amber-900 bg-amber-100 border border-amber-300 px-1 py-0.2 rounded">
+                    {printWO.componentQty || partsCount} Unit Fisik
+                  </span>
                 </h3>
-                <div className="flex justify-between items-center gap-2">
-                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Metode Penyerahan:</span>
-                  <span className="font-black text-amber-950 text-[10.5px] bg-amber-100 border border-amber-300 px-2 py-0.5 rounded shadow-2xs uppercase">
-                    ⚙️ Komponen Copotan (Loose Parts)
+                <div className="flex justify-between items-baseline gap-2">
+                  <span className="text-slate-500 font-bold shrink-0 text-[8.5px] uppercase">Nama Komponen:</span>
+                  <span className="font-black text-slate-950 text-right truncate text-[10px]">
+                    {printWO.componentName || printWO.componentCategory || printWO.vehicleBrand || 'Komponen Diesel'}
                   </span>
                 </div>
                 <div className="flex justify-between items-baseline gap-2">
-                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Asal Mesin / Unit:</span>
-                  <span className="font-black text-slate-900 text-right truncate text-xs">
-                    {printWO.vehicleBrand || 'Komponen Lepas (Loose Parts)'}
+                  <span className="text-slate-500 font-bold shrink-0 text-[8.5px] uppercase">Jenis & Merek:</span>
+                  <span className="font-bold text-slate-800 text-right truncate text-[9px]">
+                    {printWO.componentCategory || 'Komponen'} {printWO.componentBrand ? `• ${printWO.componentBrand}` : ''}
                   </span>
                 </div>
                 <div className="flex justify-between items-baseline gap-2">
-                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Estimasi & Garansi:</span>
-                  <span className="font-bold text-slate-800 text-right text-[10.5px]">
-                    {printWO.estimasiPengerjaan || '-'} • Garansi: {printWO.garansi || '-'}
+                  <span className="text-slate-500 font-bold shrink-0 text-[8.5px] uppercase">Part Number (P/N):</span>
+                  <span className="font-mono text-blue-900 text-right truncate text-[9.5px] font-bold">
+                    {printWO.componentPartNumber || printWO.assyNo || '-'}
                   </span>
                 </div>
-                <div className="flex justify-between items-baseline gap-2 pt-1 border-t border-slate-200">
-                  <span className="text-slate-500 font-bold shrink-0 text-[10px] uppercase">Total Komponen:</span>
-                  <span className="font-black text-[#0F2D59] text-right font-mono text-[11px]">
-                    {totalCount} Item Fisik Terdaftar
+                <div className="flex justify-between items-baseline gap-2">
+                  <span className="text-slate-500 font-bold shrink-0 text-[8.5px] uppercase">Kondisi Diterima:</span>
+                  <span className="font-bold text-emerald-800 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200 text-right truncate text-[8.5px]">
+                    {printWO.componentIntakeCondition || (actualParts[0]?.physicalCondition) || 'Normal / Baik'}
                   </span>
+                </div>
+                <div className="flex justify-between items-baseline gap-2 pt-0.5 border-t border-slate-200 text-[8.5px]">
+                  <span className="text-slate-500 font-bold uppercase">Estimasi Pengerjaan:</span>
+                  <span className="font-bold text-slate-900 text-right">{printWO.estimasiPengerjaan || '-'}</span>
+                </div>
+                <div className="flex justify-between items-baseline gap-2 text-[8.5px]">
+                  <span className="text-slate-500 font-bold uppercase">Ketentuan Garansi:</span>
+                  <span className="font-bold text-blue-950 text-right">{printWO.garansi || '-'}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* TABEL PEMERIKSAAN DETAIL FISIK KOMPONEN (NO, KOMPONEN, PART NUMBER, KONDISI) */}
+          {/* TABEL 1: KONDISI KOMPONEN SAAT DIBAWA (ADAPTIVE TABLE - ISI SENDIRI) */}
           <div className="border border-slate-300 rounded-lg overflow-hidden bg-white shadow-xs">
-            <div className="bg-[#0F2D59] text-white px-2.5 py-1 flex items-center justify-between">
-              <h3 className="text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
-                <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> 
-                TABEL PEMERIKSAAN FISIK KOMPONEN DITERIMA ({totalCount} ITEM)
+            <div className="bg-[#0F2D59] text-white px-2 py-0.5 flex items-center justify-between">
+              <h3 className="text-[8.5px] font-black uppercase tracking-wider flex items-center gap-1">
+                <CheckCircle className="w-3 h-3 text-emerald-400" /> 
+                1. KONDISI KOMPONEN SAAT DIBAWA ({partsCount} ITEM)
               </h3>
-              <span className="text-[8.5px] text-blue-100 font-mono">
-                Verifikasi Fisik Awal Sebelum Uji Lab
+              <span className="text-[7.5px] text-blue-200 font-mono">
+                Pencatatan Fisik Aktual Komponen Saat Diserahkan Pelanggan
               </span>
             </div>
             
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-100 border-b border-slate-300 text-slate-800 font-black uppercase">
-                  <th className={`${thPadding} text-center w-8 border-r border-slate-200`}>NO</th>
-                  <th className={`${thPadding} w-[30%] border-r border-slate-200`}>KOMPONEN / NAMA BARANG</th>
-                  <th className={`${thPadding} w-[24%] border-r border-slate-200 font-mono`}>PART NUMBER (P/N)</th>
-                  <th className={`${thPadding} w-[18%] text-center border-r border-slate-200`}>KONDISI FISIK</th>
-                  <th className={`${thPadding} w-[24%]`}>CATATAN PEMERIKSAAN VISUAL / LAB</th>
+                  <th className={`${thPadding} text-center w-7 border-r border-slate-200`}>NO</th>
+                  <th className={`${thPadding} w-[32%] border-r border-slate-200`}>NAMA KOMPONEN / DESKRIPSI</th>
+                  <th className={`${thPadding} w-[22%] border-r border-slate-200 font-mono`}>PART NUMBER (P/N) / NO. SERI</th>
+                  <th className={`${thPadding} w-[24%] border-r border-slate-200`}>KONDISI KOMPONEN SAAT DIBAWA</th>
+                  <th className={`${thPadding} w-[22%]`}>CATATAN PENERIMAAN FISIK</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
                 {actualParts.map((part, index) => {
-                  const isOk = part.physicalCondition === 'OK' || !part.physicalCondition;
+                  const cond = (part.physicalCondition || 'Normal / Baik').trim();
+                  const isOk = cond.toLowerCase().includes('ok') || cond.toLowerCase().includes('normal') || cond.toLowerCase().includes('baik');
                   return (
-                    <tr key={part.id || index} className="hover:bg-blue-50/30 transition-colors">
+                    <tr key={part.id || index} className={index % 2 === 1 ? 'bg-slate-50/50' : 'bg-white'}>
                       <td className={`${cellPadding} text-center font-mono font-bold text-slate-700 bg-slate-50 border-r border-slate-200 ${textMain}`}>
                         {index + 1}
                       </td>
@@ -1248,27 +1515,113 @@ export const PrintTemplate: React.FC = () => {
                       </td>
                       <td className={`${cellPadding} font-mono font-bold text-slate-900 border-r border-slate-200 ${textPn}`}>
                         {part.partNumber ? (
-                          <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 inline-block">
+                          <span className="bg-slate-100 px-1 py-0.2 rounded border border-slate-200 inline-block font-mono">
                             {part.partNumber}
                           </span>
                         ) : (
-                          <span className="text-slate-400 italic text-[8.5px]">- Belum ada P/N -</span>
+                          <span className="text-slate-400 italic text-[7.5px]">- Belum ada P/N -</span>
                         )}
                       </td>
-                      <td className={`${cellPadding} text-center border-r border-slate-200`}>
-                        {isOk ? (
-                          <span className={`inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 font-black ${badgeText}`}>
-                            ✓ NORMAL / OK
-                          </span>
-                        ) : (
-                          <span className={`inline-flex items-center gap-1 rounded-full bg-rose-50 text-rose-800 border border-rose-300 font-black ${badgeText}`}>
-                            ⚠️ {part.physicalCondition}
-                          </span>
-                        )}
+                      <td className={`${cellPadding} border-r border-slate-200 ${textMain}`}>
+                        <span className={`inline-flex items-center gap-1 rounded font-bold border ${badgeText} ${
+                          isOk 
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
+                            : 'bg-rose-50 text-rose-800 border-rose-300'
+                        }`}>
+                          {isOk ? '✓' : '⚠️'} {cond}
+                        </span>
                       </td>
                       <td className={`${cellPadding} text-slate-700 ${textPn}`}>
-                        <span className="font-semibold text-slate-900">Fisik diterima lengkap; </span>
-                        <span className="text-slate-500">siap uji kalibrasi test bench</span>
+                        <span className="font-semibold text-slate-900">Diterima lengkap; </span>
+                        <span className="text-slate-500">siap uji kalibrasi lab</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* TABEL 2: HASIL PEMERIKSAAN MEKANIK KOMPONEN (CUSTOM - DITULIS SENDIRI) */}
+          <div className="border border-[#0F2D59] rounded-lg overflow-hidden bg-white shadow-xs">
+            <div className="bg-[#0F2D59] text-white px-2 py-0.5 flex items-center justify-between">
+              <h3 className="text-[8.5px] font-black uppercase tracking-wider flex items-center gap-1">
+                <Wrench className="w-3 h-3 text-amber-400" /> 
+                2. HASIL PEMERIKSAAN MEKANIK & PENGUJIAN LAB ({mechCount} ITEM)
+              </h3>
+              <span className="text-[7.5px] text-blue-200 font-mono">
+                Hasil Diagnosa & Pengujian Test Bench Komponen
+              </span>
+            </div>
+            
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-100 border-b border-slate-300 text-slate-800 font-black uppercase">
+                  <th className={`${thPadding} text-center w-7 border-r border-slate-200`}>NO</th>
+                  <th className={`${thPadding} w-[26%] border-r border-slate-200`}>BAGIAN / KOMPONEN DIPERIKSA</th>
+                  <th className={`${thPadding} w-[18%] border-r border-slate-200`}>METODE PENGUJIAN</th>
+                  <th className={`${thPadding} w-[16%] text-center border-r border-slate-200`}>STATUS KONDISI</th>
+                  <th className={`${thPadding} w-[24%] border-r border-slate-200`}>HASIL TEMUAN & ANALISIS MEKANIK</th>
+                  <th className={`${thPadding} w-[16%]`}>REKOMENDASI TINDAKAN</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {actualMechList.map((item, idx) => {
+                  const isIssue = item.status === 'ISSUE_FOUND';
+                  const isNormal = item.status === 'NORMAL';
+                  const isFurther = item.status === 'FURTHER_TEST_NEEDED';
+
+                  const statusBadgeText = isIssue
+                    ? '[!] Ditemukan Masalah'
+                    : isNormal
+                      ? '[✓] Kondisi Normal'
+                      : isFurther
+                        ? '[?] Perlu Uji Lanjutan'
+                        : '[-] Belum Diperiksa';
+
+                  const statusBadgeClass = isIssue
+                    ? 'bg-rose-100 text-rose-900 border-rose-300 font-black'
+                    : isNormal
+                      ? 'bg-emerald-100 text-emerald-900 border-emerald-300 font-bold'
+                      : isFurther
+                        ? 'bg-amber-100 text-amber-900 border-amber-300 font-bold'
+                        : 'bg-slate-100 text-slate-700 border-slate-300';
+
+                  return (
+                    <tr key={item.id || idx} className={isIssue ? 'bg-rose-50/40' : idx % 2 === 1 ? 'bg-slate-50/50' : 'bg-white'}>
+                      <td className={`${cellPadding} text-center font-mono font-bold text-slate-600 bg-slate-50 border-r border-slate-200 ${textMain}`}>
+                        {idx + 1}
+                      </td>
+                      <td className={`${cellPadding} font-bold text-slate-950 border-r border-slate-200 ${textMain}`}>
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-600 shrink-0"></span>
+                          <span className="break-words">{item.systemName}</span>
+                        </div>
+                      </td>
+                      <td className={`${cellPadding} text-slate-700 border-r border-slate-200 ${textPn}`}>
+                        {item.method || 'Visual & Standar Lab'}
+                      </td>
+                      <td className={`${cellPadding} text-center border-r border-slate-200 whitespace-nowrap`}>
+                        <span className={`inline-block px-1 py-0.2 rounded border uppercase ${badgeText} ${statusBadgeClass}`}>
+                          {statusBadgeText}
+                        </span>
+                      </td>
+                      <td className={`${cellPadding} border-r border-slate-200 ${textMain}`}>
+                        <div className="font-semibold text-slate-900 break-words">
+                          {item.findings || (isNormal ? 'Komponen normal terverifikasi sesuai standar toleransi lab.' : isIssue ? 'Terdeteksi deviasi/masalah pada hasil pengujian.' : 'Pemeriksaan lanjutan dijadwalkan.')}
+                        </div>
+                        {item.diagnosisNotes && (
+                          <div className={`mt-0.5 text-blue-900 font-medium bg-blue-50/80 px-1 py-0.2 rounded border border-blue-200 ${textPn}`}>
+                            <span className="font-black">Analisis: </span>{item.diagnosisNotes}
+                          </div>
+                        )}
+                      </td>
+                      <td className={`${cellPadding} text-slate-800 break-words ${textMain}`}>
+                        {item.recommendation ? (
+                          <span className="font-medium text-blue-950">{item.recommendation}</span>
+                        ) : (
+                          <span className="text-slate-400 italic text-[7.5px]">-</span>
+                        )}
                       </td>
                     </tr>
                   );
@@ -1278,59 +1631,59 @@ export const PrintTemplate: React.FC = () => {
           </div>
 
           {/* CATATAN KELUHAN & PERMINTAAN PEMERIKSAAN KOMPONEN (CUSTOMER VOICE) */}
-          <div className="border border-slate-300 rounded-lg p-2.5 bg-white shadow-xs">
-            <h3 className="text-[9.5px] font-black text-[#0F2D59] uppercase tracking-wider mb-1.5 flex items-center justify-between border-b border-slate-200 pb-1">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-                KELUHAN / GEJALA KERUSAKAN & CATATAN PERMINTAAN PEMERIKSAAN KOMPONEN
+          <div className="border border-slate-300 rounded-lg p-1.5 bg-white shadow-xs">
+            <h3 className="text-[8.5px] font-black text-[#0F2D59] uppercase tracking-wider mb-0.5 flex items-center justify-between border-b border-slate-200 pb-0.5">
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                KELUHAN / GEJALA AWAL & CATATAN PERMINTAAN PEMERIKSAAN KOMPONEN
               </span>
-              <span className="text-[8px] font-mono text-slate-500 font-bold">Customer Voice & Requirement</span>
+              <span className="text-[7.5px] font-mono text-slate-500 font-bold">Customer Voice & Requirement</span>
             </h3>
-            <div className="text-[9.5px] font-semibold text-slate-800 bg-slate-50 p-2.5 rounded-lg border border-slate-200 leading-relaxed min-h-[46px] whitespace-pre-line">
-              {printWO.customerVoice || 'Komponen diterima untuk pemeriksaan fisik, verifikasi nomor komponen (P/N), dan pengujian kondisi teknis.'}
+            <div className={`font-semibold text-slate-800 bg-slate-50 p-1.5 rounded border border-slate-200 leading-snug whitespace-pre-line ${textMain}`}>
+              {printWO.customerVoice || 'Komponen diterima untuk verifikasi fisik awal, pengujian tekanan & kalibrasi di test bench laboratorium.'}
             </div>
           </div>
 
           {/* Serah Terima Notes */}
-          <div className="border border-slate-200 bg-slate-50 rounded-lg p-2 text-[8.5px] text-slate-700 leading-snug">
+          <div className={`border border-slate-200 bg-slate-50 rounded-lg p-1.5 leading-tight ${textPn} text-slate-700`}>
             <span className="font-bold text-slate-900">Pernyataan Kesepakatan Serah Terima Komponen: </span>
-            Pihak Pelanggan dan Laboratorium Indo Teknik telah bersama-sama memeriksa jumlah fisik, kelengkapan, nomor seri, dan kondisi awal komponen di atas sebelum dilakukan uji kalibrasi test bench dan proses pembongkaran. Segala kerusakan internal/cacat tersembunyi yang timbul akibat riwayat keausan pemakaian sebelum masuk bengkel bukan tanggung jawab pihak bengkel.
+            Pelanggan dan Laboratorium Indo Teknik telah bersama-sama memeriksa jumlah fisik, kondisi saat diserahkan, dan kelengkapan komponen di atas. Kerusakan internal/cacat tersembunyi akibat riwayat aus sebelum masuk bengkel bukan tanggung jawab pihak bengkel.
           </div>
         </div>
 
         {/* Bottom Signatures Page 2 - 3 Pihak Lab */}
-        <div className="border-t-2 border-slate-400 pt-2 shrink-0 print:break-inside-avoid">
-          <div className="text-right text-[8px] text-slate-500 font-mono mb-1">
+        <div className="border-t-2 border-slate-400 pt-1 shrink-0 print:break-inside-avoid">
+          <div className="text-right text-[7.5px] text-slate-500 font-mono mb-0.5">
             Pekanbaru, {new Date(printWO.createdAt || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
           </div>
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <div className="border border-slate-300 rounded-lg p-2 bg-slate-50/70 shadow-xs">
-              <p className="text-[9px] font-black text-slate-900 uppercase">Pelanggan / Pembawa</p>
-              <div className="h-12 border-b border-slate-400 my-1 flex items-end justify-center pb-0.5 text-[8px] text-slate-400">
+          <div className="grid grid-cols-3 gap-2.5 text-center">
+            <div className="border border-slate-300 rounded-lg p-1 bg-slate-50/70 shadow-xs">
+              <p className="text-[8.5px] font-black text-slate-900 uppercase">Pelanggan / Pembawa</p>
+              <div className={`${sigHeight} border-b border-slate-400 my-0.5 flex items-end justify-center pb-0.5 text-[7px] text-slate-400`}>
                 (Tanda Tangan & Nama Terang)
               </div>
-              <p className="font-black text-slate-950 text-[9.5px] truncate">{printWO.bringerName || printWO.customerName}</p>
+              <p className="font-black text-slate-950 text-[9px] truncate">{printWO.bringerName || printWO.customerName}</p>
             </div>
 
-            <div className="border border-slate-300 rounded-lg p-2 bg-slate-50/70 shadow-xs">
-              <p className="text-[9px] font-black text-slate-900 uppercase">Service Advisor (Penerima)</p>
-              <div className="h-12 border-b border-slate-400 my-1 flex items-end justify-center pb-0.5 text-[8px] text-slate-400">
+            <div className="border border-slate-300 rounded-lg p-1 bg-slate-50/70 shadow-xs">
+              <p className="text-[8.5px] font-black text-slate-900 uppercase">Service Advisor (Penerima)</p>
+              <div className={`${sigHeight} border-b border-slate-400 my-0.5 flex items-end justify-center pb-0.5 text-[7px] text-slate-400`}>
                 (Tanda Tangan & Stempel)
               </div>
-              <p className="font-black text-slate-950 text-[9.5px] truncate">{printWO.createdBy || 'Front Office Staff'}</p>
+              <p className="font-black text-slate-950 text-[9px] truncate">{printWO.createdBy || 'Front Office Staff'}</p>
             </div>
 
-            <div className="border border-slate-300 rounded-lg p-2 bg-slate-50/70 shadow-xs">
-              <p className="text-[9px] font-black text-slate-900 uppercase">Teknisi Lab / Foreman</p>
-              <div className="h-12 border-b border-slate-400 my-1 flex items-end justify-center pb-0.5 text-[8px] text-slate-400">
+            <div className="border border-slate-300 rounded-lg p-1 bg-slate-50/70 shadow-xs">
+              <p className="text-[8.5px] font-black text-slate-900 uppercase">Teknisi Lab / Foreman</p>
+              <div className={`${sigHeight} border-b border-slate-400 my-0.5 flex items-end justify-center pb-0.5 text-[7px] text-slate-400`}>
                 (Pemeriksa & Uji Fisik Lab)
               </div>
-              <p className="font-black text-slate-950 text-[9.5px] truncate">{printWO.mechanicName || 'Laboratorium Diesel'}</p>
+              <p className="font-black text-slate-950 text-[9px] truncate">{printWO.mechanicName || 'Laboratorium Diesel'}</p>
             </div>
           </div>
 
-          <div className="flex justify-between items-center text-[7.5px] text-slate-500 border-t border-slate-200 pt-1 mt-1.5 font-mono">
-            <span>Indo Teknik Pekanbaru • One Stop Solution for All Your Diesel Needs</span>
+          <div className="flex justify-between items-center text-[7px] text-slate-500 border-t border-slate-200 pt-0.5 mt-0.5 font-mono">
+            <span>Indo Teknik Pekanbaru • WA: wa.me/628117531881 • Email: customerservice@indo-teknik.com</span>
             <span className="font-bold text-slate-800">Lembar Pemeriksaan Komponen Halaman 2 • Dicetak: {new Date().toLocaleString('id-ID')} WIB</span>
           </div>
         </div>
@@ -1348,7 +1701,7 @@ export const PrintTemplate: React.FC = () => {
       <style>{`
         @page {
           size: A4 portrait;
-          margin: 8mm 10mm !important;
+          margin: 6mm 8mm !important;
         }
         @media print {
           html, body {
@@ -1377,6 +1730,18 @@ export const PrintTemplate: React.FC = () => {
           .print-page-1 {
             page-break-after: always !important;
             break-after: page !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            max-height: 285mm !important;
+            overflow: hidden !important;
+          }
+          .print-page-2 {
+            page-break-after: avoid !important;
+            break-after: avoid !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            max-height: 285mm !important;
+            overflow: hidden !important;
           }
           .page-break-divider {
             display: none !important;
@@ -1602,7 +1967,7 @@ export const PrintTemplate: React.FC = () => {
             )}
 
             {/* Sheet 2 */}
-            <div className="print-page border border-slate-200/80 rounded-xl p-4 lg:p-6 bg-white shadow-xs print:border-none print:p-0 print:shadow-none">
+            <div className="print-page print-page-2 border border-slate-200/80 rounded-xl p-4 lg:p-6 bg-white shadow-xs print:border-none print:p-0 print:shadow-none">
               <div className="mb-2 text-[10px] font-black uppercase tracking-wider text-blue-900 flex items-center justify-between border-b border-slate-200 pb-1 print:hidden">
                 <span className="flex items-center gap-1.5">
                   <ClipboardCheck className="w-3 h-3 text-blue-600" /> 

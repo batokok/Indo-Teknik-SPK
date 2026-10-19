@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../store/AppContext';
-import { Priority, PartDetails, InventoryItem, DamageReport, TodoAction, LoosePartDetails, WorkOrder } from '../types';
+import { Priority, PartDetails, InventoryItem, DamageReport, TodoAction, LoosePartDetails, WorkOrder, MechanicalInspectionItem, MechanicalInspectionStatus, DEFAULT_COMPONENT_CATEGORIES } from '../types';
+import { CAR_INSPECTION_POINTS } from './CarInspectionMap';
 import { Printer, Car, ShieldAlert, Plus, Trash2, Camera, User, ClipboardList, Check, ChevronRight, ChevronLeft, Wrench, Archive, RotateCcw, Search, GripVertical, Calendar, TrendingUp, Clock, Download, History, BarChart2, ArrowRight, BookOpen, FileSpreadsheet, ChevronDown, ChevronUp, RefreshCw, MapPin, Copy, Share2, Pencil, CheckCircle2, FileCheck, Sparkles, AlertCircle, AlertTriangle, MessageSquare, Ban, XCircle } from 'lucide-react';
 import { Reorder, motion } from 'motion/react';
 import { FuelGauge } from './FuelGauge';
@@ -187,16 +188,89 @@ const INITIAL_INVENTORY: InventoryItem[] = [
   { name: 'Fender Roda', checked: false },
 ];
 
-const CAR_PARTS = [
-  { id: 'front-view', label: 'Tampak Depan' },
-  { id: 'rear-view', label: 'Tampak Belakang' },
-  { id: 'left-side', label: 'Samping Kiri' },
-  { id: 'right-side', label: 'Samping Kanan' },
-  { id: 'top-view', label: 'Top View' },
-  { id: 'dashboard-panel', label: 'Dashboard Panel' },
-  { id: 'spion-dalam', label: 'Kaca Spion Dalam' },
-  { id: 'soket-kelistrikan', label: 'Soket Kelistrikan' },
-  { id: 'plafon', label: 'Plafon' },
+const CAR_PARTS = CAR_INSPECTION_POINTS;
+
+export const DEFAULT_MECHANICAL_INSPECTIONS: MechanicalInspectionItem[] = [
+  {
+    id: 'injection_system',
+    systemName: 'Sistem Injeksi / Fuel Injection Pump (FIP, Common Rail, Supply Pump)',
+    category: 'DIESEL_CORE',
+    method: 'Pemeriksaan sistem bahan bakar & pengujian fuel injection pump di test bench',
+    status: 'NOT_INSPECTED',
+    findings: '',
+    diagnosisNotes: '',
+    recommendation: '',
+  },
+  {
+    id: 'turbocharger',
+    systemName: 'Turbocharger & Boost Air System',
+    category: 'DIESEL_CORE',
+    method: 'Inspeksi radial/axial play shaft turbocharger & uji kevakuman wastegate actuator',
+    status: 'NOT_INSPECTED',
+    findings: '',
+    diagnosisNotes: '',
+    recommendation: '',
+  },
+  {
+    id: 'engine_mechanical',
+    systemName: 'Pemeriksaan Mesin (Engine Mechanical & Kompresi)',
+    category: 'DIESEL_CORE',
+    method: 'Inspeksi visual fisik mesin, uji kebocoran kompresi & suara knocking blok mesin',
+    status: 'NOT_INSPECTED',
+    findings: '',
+    diagnosisNotes: '',
+    recommendation: '',
+  },
+  {
+    id: 'electrical_solenoid',
+    systemName: 'Kelistrikan, Solenoid & Sensor Diesel (ECU/SCV/Injektor Harness)',
+    category: 'ENGINE_AUX',
+    method: 'Diagnosa scanner OBD-II/HDS, multimeter resistansi solenoid & sinyal osciloscope',
+    status: 'NOT_INSPECTED',
+    findings: '',
+    diagnosisNotes: '',
+    recommendation: '',
+  },
+  {
+    id: 'braking_system',
+    systemName: 'Sistem Pengereman (Brake Master, Booster & Pad)',
+    category: 'VEHICLE_CHASSIS',
+    method: 'Pemeriksaan visual ketebalan kampas, level minyak rem & fungsi vakum booster',
+    status: 'NOT_INSPECTED',
+    findings: '',
+    diagnosisNotes: '',
+    recommendation: '',
+  },
+  {
+    id: 'transmission_drivetrain',
+    systemName: 'Transmisi & Sistem Penggerak (Clutch / Drivetrain)',
+    category: 'VEHICLE_CHASSIS',
+    method: 'Inspeksi engagement kopling/transmisi & pemeriksaan kebocoran seal fluida',
+    status: 'NOT_INSPECTED',
+    findings: '',
+    diagnosisNotes: '',
+    recommendation: '',
+  },
+  {
+    id: 'suspension_steering',
+    systemName: 'Suspensi, Kemudi & Undercarriage (Kaki-Kaki)',
+    category: 'VEHICLE_CHASSIS',
+    method: 'Pemeriksaan visual bushing, ball joint, tie rod & shock absorber',
+    status: 'NOT_INSPECTED',
+    findings: '',
+    diagnosisNotes: '',
+    recommendation: '',
+  },
+  {
+    id: 'road_test',
+    systemName: 'Uji Jalan & Uji Beban Emisi (Road Test & Exhaust Inspection)',
+    category: 'DIESEL_CORE',
+    method: 'Uji jalan responsivitas akselerasi, stabilitas torsi & warna gas buang (asap)',
+    status: 'NOT_INSPECTED',
+    findings: '',
+    diagnosisNotes: '',
+    recommendation: '',
+  },
 ];
 
 const INITIAL_TODO_ACTIONS: TodoAction[] = [
@@ -439,11 +513,24 @@ const SADashboard: React.FC = () => {
   const [assyNo, setAssyNo] = useState('');
   const [dropMethod, setDropMethod] = useState<'WHOLE' | 'PARTS'>('WHOLE');
   
+  // Component-Centric Intake States (When dropMethod === 'PARTS')
+  const [componentCategory, setComponentCategory] = useState<string>('Injector');
+  const [componentName, setComponentName] = useState<string>('');
+  const [componentBrand, setComponentBrand] = useState<string>('');
+  const [componentPartNumber, setComponentPartNumber] = useState<string>('');
+  const [componentSerialNumber, setComponentSerialNumber] = useState<string>('');
+  const [componentQty, setComponentQty] = useState<number>(1);
+  const [componentOriginUnit, setComponentOriginUnit] = useState<string>('');
+  const [componentOriginPlate, setComponentOriginPlate] = useState<string>('');
+  const [componentIntakeCondition, setComponentIntakeCondition] = useState<string>('Normal / Baik (Utuh tanpa retak fisik)');
+  const [componentAccessories, setComponentAccessories] = useState<string>('Tanpa pipa nozzle / kelengkapan standar');
+  
   const [partsTracking, setPartsTracking] = useState<PartDetails[]>(INITIAL_PARTS_TRACKING);
   const [looseParts, setLooseParts] = useState<LoosePartDetails[]>(INITIAL_LOOSE_PARTS);
   const [complaintPoints, setComplaintPoints] = useState<string[]>(['']);
   const [inventory, setInventory] = useState<InventoryItem[]>(INITIAL_INVENTORY);
   const [damages, setDamages] = useState<DamageReport[]>([]);
+  const [mechanicalInspections, setMechanicalInspections] = useState<MechanicalInspectionItem[]>(DEFAULT_MECHANICAL_INSPECTIONS);
   const [priority, setPriority] = useState<Priority>(3);
   const [divisionFlow, setDivisionFlow] = useState<('SUPPLY_PUMP' | 'COMMON_RAIL' | 'TURBO')[]>(['SUPPLY_PUMP']);
   
@@ -479,9 +566,8 @@ const SADashboard: React.FC = () => {
         if (!/^\+?[0-9]{6,15}$/.test(cleanBPhone)) return { valid: false, message: "Nomor Telepon / WhatsApp Pembawa tidak valid! Harus berupa angka 6 s.d. 15 digit (boleh pakai '+')." };
       }
     } else if (stepNum === 2) {
-      if (dropMethod === 'WHOLE' && !vehicleBrand.trim()) return { valid: false, message: "Merek / Tipe / Tahun Mobil wajib diisi!" };
-      
       if (dropMethod === 'WHOLE') {
+        if (!vehicleBrand.trim()) return { valid: false, message: "Merek / Tipe / Tahun Mobil wajib diisi!" };
         const cleanPlate = plateNumber.trim().replace(/\s+/g, '');
         if (!plateNumber.trim()) return { valid: false, message: "Nomor Plat Kendaraan wajib diisi!" };
         if (!/^[A-Z]{1,2}[0-9]{1,4}[A-Z]{0,3}$/i.test(cleanPlate)) return { valid: false, message: "Nomor Plat Kendaraan tidak valid! Format standard: B 1234 CD (1-2 huruf, 1-4 angka, 0-3 huruf)" };
@@ -492,9 +578,13 @@ const SADashboard: React.FC = () => {
         }
 
         if (!odometer.trim()) return { valid: false, message: "Kilometer (KM) / Hour Meter (HM) wajib diisi!" };
+      } else if (dropMethod === 'PARTS') {
+        if (!componentCategory.trim()) return { valid: false, message: "Jenis Komponen wajib dipilih!" };
+        if (!componentName.trim()) return { valid: false, message: "Nama / Model Komponen wajib diisi!" };
+        if (!componentQty || componentQty < 1) return { valid: false, message: "Jumlah Komponen minimal 1!" };
       }
 
-      if (!intakeDate.trim()) return { valid: false, message: "Waktu Masuk Unit wajib diisi!" };
+      if (!intakeDate.trim()) return { valid: false, message: "Waktu Masuk Unit / Komponen wajib diisi!" };
       if (!estimasiPengerjaan.trim()) return { valid: false, message: "Estimasi Waktu Pengerjaan wajib diisi!" };
       if (!garansi.trim()) return { valid: false, message: "Masa Garansi wajib diisi!" };
     }
@@ -586,17 +676,56 @@ const SADashboard: React.FC = () => {
     setPartsTracking(newParts);
   };
 
-  const toggleDamage = (partId: string) => {
+  const setPointStatus = (partId: string, status: 'OK' | 'DEFECT' | 'UNCHECKED') => {
+    if (status === 'UNCHECKED') {
+      setDamages(prev => prev.filter((d) => d.partId !== partId));
+      return;
+    }
     const existing = damages.find((d) => d.partId === partId);
     if (existing) {
-      setDamages(damages.filter((d) => d.partId !== partId));
+      setDamages(prev => prev.map(d => d.partId === partId ? { 
+        ...d, 
+        status, 
+        description: status === 'OK' ? 'Normal / Mulus' : (d.description && d.description !== 'Normal / Mulus' ? d.description : '') 
+      } : d));
     } else {
-      setDamages([...damages, { partId, description: '' }]);
+      setDamages(prev => [...prev, { 
+        partId, 
+        status, 
+        description: status === 'OK' ? 'Normal / Mulus' : '' 
+      }]);
+    }
+  };
+
+  const markAllPointsNormal = () => {
+    const allNormal: DamageReport[] = CAR_PARTS.map(p => ({
+      partId: p.id,
+      status: 'OK',
+      description: 'Normal / Mulus'
+    }));
+    setDamages(allNormal);
+  };
+
+  const clearAllPointsInspection = () => {
+    setDamages([]);
+  };
+
+  const toggleDamage = (partId: string) => {
+    const existing = damages.find((d) => d.partId === partId);
+    if (!existing) {
+      // Step 1: UNCHECKED -> OK
+      setPointStatus(partId, 'OK');
+    } else if (existing.status === 'OK' || (!existing.status && ['ok', 'normal', 'mulus'].includes((existing.description || '').toLowerCase()))) {
+      // Step 2: OK -> DEFECT
+      setPointStatus(partId, 'DEFECT');
+    } else {
+      // Step 3: DEFECT -> UNCHECKED
+      setPointStatus(partId, 'UNCHECKED');
     }
   };
 
   const updateDamageDescription = (partId: string, desc: string) => {
-    setDamages(damages.map((d) => (d.partId === partId ? { ...d, description: desc } : d)));
+    setDamages(prev => prev.map((d) => (d.partId === partId ? { ...d, description: desc, status: 'DEFECT' } : d)));
   };
 
   const addTodoAction = () => {
@@ -618,6 +747,120 @@ const SADashboard: React.FC = () => {
 
   const removeTodoAction = (index: number) => {
     setTodoActions(todoActions.filter((_, i) => i !== index));
+  };
+
+  const updateMechanicalInspection = (
+    id: string,
+    field: keyof MechanicalInspectionItem,
+    value: any
+  ) => {
+    setMechanicalInspections(prev =>
+      prev.map(item => (item.id === id ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const addMechanicalInspection = (customName?: string) => {
+    const newId = `mech_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    setMechanicalInspections(prev => [
+      ...prev,
+      {
+        id: newId,
+        systemName: customName || `Pemeriksaan Komponen #${prev.length + 1}`,
+        category: 'DIESEL_CORE',
+        method: 'Pengujian Test Bench / Visual Lab',
+        status: 'NOT_INSPECTED',
+        findings: '',
+        diagnosisNotes: '',
+        recommendation: '',
+      }
+    ]);
+  };
+
+  const removeMechanicalInspection = (id: string) => {
+    setMechanicalInspections(prev => prev.filter(m => m.id !== id));
+  };
+
+  const loadPresetComponentInspections = (type: 'INJECTOR' | 'PUMP' | 'CLEAR') => {
+    if (type === 'INJECTOR') {
+      setMechanicalInspections([
+        {
+          id: `inj_spray_${Date.now()}`,
+          systemName: 'Pola Semprotan & Debit Backleak (Spray Pattern & Return Flow)',
+          category: 'DIESEL_CORE',
+          method: 'Uji Kalibrasi Test Bench EPS / Hartridge Tekanan Tinggi',
+          status: 'NOT_INSPECTED',
+          findings: '',
+          diagnosisNotes: '',
+          recommendation: '',
+        },
+        {
+          id: `inj_solenoid_${Date.now()}`,
+          systemName: 'Solenoid Actuator & Hambatan Koil (Resistansi Coil Ohm)',
+          category: 'DIESEL_CORE',
+          method: 'Multitester Digital Ohm Meter & Uji Waktu Respon Injeksi',
+          status: 'NOT_INSPECTED',
+          findings: '',
+          diagnosisNotes: '',
+          recommendation: '',
+        },
+        {
+          id: `inj_nozzle_${Date.now()}`,
+          systemName: 'Kondisi Nozzle Tip, Jarum & Dudukan Valve (Keausan / Baret)',
+          category: 'DIESEL_CORE',
+          method: 'Inspeksi Visual Mikroskop Pembesaran & Uji Kebocoran Dudukan',
+          status: 'NOT_INSPECTED',
+          findings: '',
+          diagnosisNotes: '',
+          recommendation: '',
+        }
+      ]);
+    } else if (type === 'PUMP') {
+      setMechanicalInspections([
+        {
+          id: `pump_pressure_${Date.now()}`,
+          systemName: 'Tekanan Suplai Pompa & Flow Rate (High Pressure Test Bench)',
+          category: 'DIESEL_CORE',
+          method: 'Uji Kalibrasi Putaran RPM Rendah, Sedang & Maksimal Test Bench',
+          status: 'NOT_INSPECTED',
+          findings: '',
+          diagnosisNotes: '',
+          recommendation: '',
+        },
+        {
+          id: `pump_scv_${Date.now()}`,
+          systemName: 'Suction Control Valve (SCV / IMV) & Feed Pump Internal',
+          category: 'DIESEL_CORE',
+          method: 'Pengujian Respon Katup Kontrol Arus & Tekanan Hisap Transfer Pump',
+          status: 'NOT_INSPECTED',
+          findings: '',
+          diagnosisNotes: '',
+          recommendation: '',
+        },
+        {
+          id: `pump_internal_${Date.now()}`,
+          systemName: 'Pemeriksaan Internal Plunger, Camshaft & Housing Pompa',
+          category: 'DIESEL_CORE',
+          method: 'Inspeksi Visual Keausan, Baret Logam & Cek Kebocoran Seal Kit',
+          status: 'NOT_INSPECTED',
+          findings: '',
+          diagnosisNotes: '',
+          recommendation: '',
+        }
+      ]);
+    } else {
+      setMechanicalInspections([
+        {
+          id: `custom_${Date.now()}`,
+          systemName: 'Pemeriksaan Komponen #1',
+          category: 'DIESEL_CORE',
+          method: 'Pengujian Test Bench / Visual Lab',
+          status: 'NOT_INSPECTED',
+          findings: '',
+          diagnosisNotes: '',
+          recommendation: '',
+        }
+      ]);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -649,21 +892,35 @@ const SADashboard: React.FC = () => {
       bringerName,
       bringerPhone,
       bringerAddress,
-      vehicleBrand: dropMethod === 'PARTS' ? (vehicleBrand.trim() || 'Copotan (Loose Parts)') : vehicleBrand,
+      vehicleBrand: dropMethod === 'PARTS' ? (componentOriginUnit.trim() || vehicleBrand.trim() || 'Copotan (Loose Parts)') : vehicleBrand,
       vin: dropMethod === 'PARTS' ? (vin.trim() || '') : vin,
-      plateNumber: dropMethod === 'PARTS' ? (plateNumber.trim() || '-') : plateNumber,
+      plateNumber: dropMethod === 'PARTS' ? (componentOriginPlate.trim() || plateNumber.trim() || '-') : plateNumber,
       odometer: dropMethod === 'PARTS' ? '-' : odometer,
       fuelLevel: dropMethod === 'PARTS' ? '' : fuelLevel,
       estimasiPengerjaan,
       garansi,
       intakeDate,
       fuelContaminated: dropMethod === 'PARTS' ? false : fuelContaminated,
-      assyNo,
+      assyNo: dropMethod === 'PARTS' ? (componentPartNumber || assyNo) : assyNo,
+      
+      // Component-Centric Intake Identity
+      componentCategory: dropMethod === 'PARTS' ? componentCategory : undefined,
+      componentName: dropMethod === 'PARTS' ? (componentName.trim() || looseParts[0]?.description || 'Komponen Diesel') : undefined,
+      componentBrand: dropMethod === 'PARTS' ? componentBrand : undefined,
+      componentPartNumber: dropMethod === 'PARTS' ? (componentPartNumber.trim() || assyNo || looseParts[0]?.partNumber || '') : undefined,
+      componentSerialNumber: dropMethod === 'PARTS' ? componentSerialNumber : undefined,
+      componentQty: dropMethod === 'PARTS' ? (Number(componentQty) || (looseParts.length > 0 ? looseParts.length : 1)) : undefined,
+      componentOriginUnit: dropMethod === 'PARTS' ? (componentOriginUnit.trim() || vehicleBrand) : undefined,
+      componentOriginPlate: dropMethod === 'PARTS' ? (componentOriginPlate.trim() || plateNumber) : undefined,
+      componentIntakeCondition: dropMethod === 'PARTS' ? componentIntakeCondition : undefined,
+      componentAccessories: dropMethod === 'PARTS' ? componentAccessories : undefined,
+
       dropMethod,
       partsTracking: [],
       looseParts: dropMethod === 'PARTS' ? JSON.parse(JSON.stringify(looseParts)) : [],
       customerVoice: customerVoiceCombined,
       damages: JSON.parse(JSON.stringify(damages)),
+      mechanicalInspections: JSON.parse(JSON.stringify(mechanicalInspections)),
       inventory: JSON.parse(JSON.stringify(inventory)),
       todoActions: JSON.parse(JSON.stringify(todoActions)),
       currentMilestone: 'Intake & Verifikasi',
@@ -696,6 +953,7 @@ const SADashboard: React.FC = () => {
     setPartsTracking(INITIAL_PARTS_TRACKING);
     setLooseParts(INITIAL_LOOSE_PARTS);
     setDamages([]);
+    setMechanicalInspections(DEFAULT_MECHANICAL_INSPECTIONS);
     setInventory(INITIAL_INVENTORY.map(item => ({ ...item, checked: false })));
     setTodoActions([
       { id: 't1', jenisPengerjaan: '', qty: 1, catatanMekanik: '', estimasiHarga: '', estimasiHargaMin: '', estimasiHargaMax: '' },
@@ -2608,50 +2866,330 @@ const SADashboard: React.FC = () => {
                   )}
 
                   {dropMethod === 'PARTS' && (
-                    <>
-                      <div className="flex flex-col bg-slate-50/50 p-3.5 rounded-lg border border-slate-100">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[10px] font-black uppercase text-slate-700">Asal Mesin / Unit Kendaraan Komponen</label>
-                          <span className="text-[9px] text-blue-600 font-bold hidden xs:inline">Sentuh chip jika tahu</span>
+                    <div className="col-span-1 md:col-span-2 space-y-4 bg-amber-50/40 p-4 rounded-xl border border-amber-200">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-amber-200/80 pb-2">
+                        <div>
+                          <h4 className="text-xs font-black uppercase text-[#0F2D59] tracking-wider flex items-center gap-1.5">
+                            <Wrench className="w-4 h-4 text-amber-600" />
+                            IDENTITAS KOMPONEN YANG DITERIMA
+                          </h4>
+                          <p className="text-[10px] text-slate-500 mt-0.5">
+                            Pencatatan spesifik komponen diesel yang diserahkan pelanggan untuk pengujian & perbaikan di laboratorium.
+                          </p>
                         </div>
-                        <span className="text-[9px] text-slate-400 italic mb-1">Merek & tipe mesin asal komponen copotan</span>
-                        <input 
-                          type="text" 
-                          className="text-[15px] sm:text-xs p-2.5 min-h-[42px] border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm" 
-                          placeholder="e.g. Canter PS125 / Hilux 2GD / Genset Cummins" 
-                          value={vehicleBrand === 'Copotan (Loose Parts)' ? '' : vehicleBrand} 
-                          onChange={(e) => setVehicleBrand(e.target.value)} 
-                        />
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          {['Canter PS125', 'Toyota Hilux 2GD', 'Mitsubishi Triton', 'Isuzu D-Max', 'Innova Reborn', 'Genset Cummins / Perkins', 'Alat Berat Komatsu / CAT'].map(brandPreset => (
-                            <button
-                              key={brandPreset}
-                              type="button"
-                              onClick={() => setVehicleBrand(brandPreset)}
-                              className={`text-[9.5px] font-bold px-2 py-1 rounded-md border transition-all cursor-pointer ${
-                                vehicleBrand === brandPreset 
-                                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
-                                  : 'bg-white text-slate-700 border-slate-200 hover:border-blue-400 hover:text-blue-700'
-                              }`}
-                            >
-                              {brandPreset}
-                            </button>
-                          ))}
+                        <span className="text-[9px] font-mono font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded self-start sm:self-auto">
+                          ⚙️ Intake Khusus Komponen Lepas
+                        </span>
+                      </div>
+
+                      {/* 1. Jenis Komponen & 2. Nama / Model Komponen */}
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5">
+                        <div className="md:col-span-6 flex flex-col bg-white p-3 rounded-lg border border-slate-200 shadow-2xs">
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[10px] font-black uppercase text-slate-700">
+                              1. Jenis Komponen <span className="text-red-500">*</span>
+                            </label>
+                            <span className="text-[9px] text-blue-600 font-bold">Kategori Master</span>
+                          </div>
+                          <select
+                            value={componentCategory}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setComponentCategory(val);
+                              if (!componentName || componentName === 'Injector' || componentName === 'Supply Pump' || componentName === 'Turbocharger') {
+                                setComponentName(val);
+                              }
+                            }}
+                            className="text-xs p-2.5 min-h-[40px] border border-slate-300 rounded-lg bg-white font-bold text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none cursor-pointer"
+                          >
+                            {DEFAULT_COMPONENT_CATEGORIES.map(cat => (
+                              <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                          </select>
+                          {/* Quick category chips */}
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {DEFAULT_COMPONENT_CATEGORIES.slice(0, 6).map(cat => (
+                              <button
+                                key={cat}
+                                type="button"
+                                onClick={() => {
+                                  setComponentCategory(cat);
+                                  if (!componentName) setComponentName(cat);
+                                }}
+                                className={`text-[9px] font-bold px-2 py-0.5 rounded border transition-all cursor-pointer ${
+                                  componentCategory === cat
+                                    ? 'bg-[#0F2D59] text-white border-[#0F2D59]'
+                                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-blue-50 hover:text-blue-900'
+                                }`}
+                              >
+                                {cat}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="md:col-span-6 flex flex-col bg-white p-3 rounded-lg border border-slate-200 shadow-2xs">
+                          <label className="text-[10px] font-black uppercase text-slate-700 mb-1">
+                            2. Nama / Model Komponen <span className="text-red-500">*</span>
+                          </label>
+                          <span className="text-[9px] text-slate-400 italic mb-1">Nama spesifik tipe & model unit</span>
+                          <input
+                            type="text"
+                            required={wizardStep === 2 && dropMethod === 'PARTS'}
+                            placeholder="e.g. Common Rail Injector G3S33 / Supply Pump HP3"
+                            value={componentName}
+                            onChange={(e) => setComponentName(e.target.value)}
+                            className="text-xs p-2.5 min-h-[40px] border border-slate-300 rounded-lg bg-white font-bold text-slate-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none shadow-xs"
+                          />
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {['Injector CR G3S33', 'Injector Piezo Denso', 'Supply Pump HP3', 'Supply Pump HP4', 'FIP Rotary VE', 'FIP In-Line PE', 'Turbo RHF4'].map(modelPreset => (
+                              <button
+                                key={modelPreset}
+                                type="button"
+                                onClick={() => setComponentName(modelPreset)}
+                                className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
+                              >
+                                + {modelPreset}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
 
-                      <div className="flex flex-col bg-slate-50/50 p-3.5 rounded-lg border border-slate-100">
-                        <label className="text-[10px] font-black uppercase text-slate-700">No. Plat / No. Seri Unit Referensi (Opsional)</label>
-                        <span className="text-[9px] text-slate-400 italic mb-1">No. plat kendaraan asal atau identitas unit customer</span>
-                        <input 
-                          type="text" 
-                          placeholder="e.g. BM 8899 QA / Unit Genset 02" 
-                          className="text-[15px] sm:text-xs p-2.5 min-h-[42px] border border-slate-200 rounded-lg mt-1 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-semibold text-slate-800 shadow-sm font-mono uppercase" 
-                          value={plateNumber === '-' ? '' : plateNumber} 
-                          onChange={(e) => setPlateNumber(e.target.value)} 
-                        />
+                      {/* 3. Merek, 4. Part Number, 5. Serial Number, 6. Jumlah Komponen */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-3.5">
+                        <div className="md:col-span-3 flex flex-col bg-white p-3 rounded-lg border border-slate-200 shadow-2xs">
+                          <label className="text-[10px] font-black uppercase text-slate-700 mb-1">
+                            3. Merek / Manufacturer
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Denso / Bosch / Delphi"
+                            value={componentBrand}
+                            onChange={(e) => setComponentBrand(e.target.value)}
+                            className="text-xs p-2 border border-slate-300 rounded-lg bg-white font-semibold text-slate-800 outline-none"
+                          />
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {['Bosch', 'Denso', 'Delphi', 'Garrett', 'Zexel', 'Continental', 'ITech'].map(br => (
+                              <button
+                                key={br}
+                                type="button"
+                                onClick={() => setComponentBrand(br)}
+                                className={`text-[8.5px] font-bold px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
+                                  componentBrand === br ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                                }`}
+                              >
+                                {br}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="md:col-span-3 flex flex-col bg-white p-3 rounded-lg border border-slate-200 shadow-2xs">
+                          <label className="text-[10px] font-black uppercase text-slate-700 mb-1">
+                            4. Part Number (P/N)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. 095000-5471 / 294000-0380"
+                            value={componentPartNumber}
+                            onChange={(e) => {
+                              setComponentPartNumber(e.target.value);
+                              setAssyNo(e.target.value);
+                            }}
+                            className="text-xs p-2 border border-slate-300 rounded-lg bg-white font-mono font-bold text-slate-900 outline-none"
+                          />
+                          <span className="text-[8.5px] text-slate-400 mt-1 italic">Kode part pabrikan komponen</span>
+                        </div>
+
+                        <div className="md:col-span-3 flex flex-col bg-white p-3 rounded-lg border border-slate-200 shadow-2xs">
+                          <label className="text-[10px] font-black uppercase text-slate-700 mb-1">
+                            5. Serial Number (S/N)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. SN-8829104 / Barcode"
+                            value={componentSerialNumber}
+                            onChange={(e) => setComponentSerialNumber(e.target.value)}
+                            className="text-xs p-2 border border-slate-300 rounded-lg bg-white font-mono font-semibold text-slate-800 outline-none"
+                          />
+                          <span className="text-[8.5px] text-slate-400 mt-1 italic">Nomor seri laser pada bodi</span>
+                        </div>
+
+                        <div className="md:col-span-3 flex flex-col bg-white p-3 rounded-lg border border-slate-200 shadow-2xs">
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[10px] font-black uppercase text-slate-700">
+                              6. Jumlah (Qty) <span className="text-red-500">*</span>
+                            </label>
+                            <span className="text-[9px] font-mono font-bold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200">
+                              {componentQty} Unit
+                            </span>
+                          </div>
+                          <input
+                            type="number"
+                            min="1"
+                            max="30"
+                            required={wizardStep === 2 && dropMethod === 'PARTS'}
+                            value={componentQty}
+                            onChange={(e) => {
+                              const qty = Math.max(1, parseInt(e.target.value) || 1);
+                              setComponentQty(qty);
+                              if (qty !== looseParts.length) {
+                                const newParts: LoosePartDetails[] = Array.from({ length: qty }).map((_, i) => {
+                                  const existing = looseParts[i];
+                                  return existing || {
+                                    id: `part_${Date.now()}_${i + 1}`,
+                                    description: `${componentName || componentCategory || 'Komponen'} #${i + 1}`,
+                                    partNumber: componentPartNumber || '',
+                                    physicalCondition: 'Normal / Baik'
+                                  };
+                                });
+                                setLooseParts(newParts);
+                              }
+                            }}
+                            className="text-xs p-2 border border-slate-300 rounded-lg bg-white font-mono font-black text-slate-900 outline-none"
+                          />
+                          <div className="flex gap-1 mt-1.5">
+                            {[1, 2, 4, 6, 8].map(q => (
+                              <button
+                                key={q}
+                                type="button"
+                                onClick={() => {
+                                  setComponentQty(q);
+                                  const newParts: LoosePartDetails[] = Array.from({ length: q }).map((_, i) => {
+                                    const existing = looseParts[i];
+                                    return existing || {
+                                      id: `part_${Date.now()}_${i + 1}`,
+                                      description: `${componentName || componentCategory || 'Komponen'} #${i + 1}`,
+                                      partNumber: componentPartNumber || '',
+                                      physicalCondition: 'Normal / Baik'
+                                    };
+                                  });
+                                  setLooseParts(newParts);
+                                }}
+                                className={`flex-1 text-[9px] font-mono font-bold py-0.5 rounded border transition-colors cursor-pointer ${
+                                  componentQty === q ? 'bg-amber-600 text-white border-amber-600' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                                }`}
+                              >
+                                {q}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       </div>
-                    </>
+
+                      {/* 7. Asal Mesin / Kendaraan, 8. Nomor Polisi / Identitas Unit Asal */}
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5">
+                        <div className="md:col-span-6 flex flex-col bg-white p-3 rounded-lg border border-slate-200 shadow-2xs">
+                          <label className="text-[10px] font-black uppercase text-slate-700 mb-1">
+                            7. Asal Mesin / Unit Kendaraan (Opsional)
+                          </label>
+                          <span className="text-[9px] text-slate-400 italic mb-1">Merek & tipe mesin asal komponen copotan</span>
+                          <input
+                            type="text"
+                            placeholder="e.g. Canter PS125 / Hilux 2GD / Genset Cummins"
+                            value={componentOriginUnit}
+                            onChange={(e) => {
+                              setComponentOriginUnit(e.target.value);
+                              setVehicleBrand(e.target.value);
+                            }}
+                            className="text-xs p-2.5 border border-slate-300 rounded-lg bg-white font-semibold text-slate-800 outline-none"
+                          />
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {['Canter PS125', 'Toyota Hilux 2GD', 'Mitsubishi Triton', 'Isuzu D-Max', 'Innova Reborn', 'Genset Cummins/Perkins', 'Alat Berat CAT/Komatsu'].map(bp => (
+                              <button
+                                key={bp}
+                                type="button"
+                                onClick={() => {
+                                  setComponentOriginUnit(bp);
+                                  setVehicleBrand(bp);
+                                }}
+                                className={`text-[8.5px] font-bold px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
+                                  componentOriginUnit === bp ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                                }`}
+                              >
+                                {bp}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="md:col-span-6 flex flex-col bg-white p-3 rounded-lg border border-slate-200 shadow-2xs">
+                          <label className="text-[10px] font-black uppercase text-slate-700 mb-1">
+                            8. Nomor Polisi / Identitas Unit Asal (Opsional)
+                          </label>
+                          <span className="text-[9px] text-slate-400 italic mb-1">No. plat kendaraan asal atau identitas unit customer</span>
+                          <input
+                            type="text"
+                            placeholder="e.g. BM 8899 QA / Unit Genset 02"
+                            value={componentOriginPlate}
+                            onChange={(e) => {
+                              setComponentOriginPlate(e.target.value);
+                              setPlateNumber(e.target.value);
+                            }}
+                            className="text-xs p-2.5 border border-slate-300 rounded-lg bg-white font-mono font-bold uppercase text-slate-900 outline-none"
+                          />
+                          <span className="text-[8.5px] text-slate-400 mt-1 italic">Dapat dikosongkan jika copotan mesin industri/alat berat</span>
+                        </div>
+                      </div>
+
+                      {/* 9. Kondisi Komponen Saat Diterima & 10. Kelengkapan dan Aksesori */}
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5">
+                        <div className="md:col-span-6 flex flex-col bg-white p-3 rounded-lg border border-slate-200 shadow-2xs">
+                          <label className="text-[10px] font-black uppercase text-slate-700 mb-1">
+                            9. Kondisi Komponen Saat Diterima
+                          </label>
+                          <input
+                            type="text"
+                            value={componentIntakeCondition}
+                            onChange={(e) => setComponentIntakeCondition(e.target.value)}
+                            placeholder="e.g. Normal / Baik (Utuh tanpa retak fisik)"
+                            className="text-xs p-2 border border-slate-300 rounded-lg bg-white font-semibold text-slate-800 outline-none"
+                          />
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {['Normal / Baik (Utuh)', 'Kotor & Bekas Oli', 'Drat Slek / Baut Aus', 'Bekas Dibongkar Luar', 'Retak / Cacat Fisik'].map(cp => (
+                              <button
+                                key={cp}
+                                type="button"
+                                onClick={() => setComponentIntakeCondition(cp)}
+                                className={`text-[8.5px] font-bold px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
+                                  componentIntakeCondition === cp ? 'bg-amber-600 text-white border-amber-600' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                                }`}
+                              >
+                                {cp}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="md:col-span-6 flex flex-col bg-white p-3 rounded-lg border border-slate-200 shadow-2xs">
+                          <label className="text-[10px] font-black uppercase text-slate-700 mb-1">
+                            10. Kelengkapan & Aksesori yang Diserahkan
+                          </label>
+                          <input
+                            type="text"
+                            value={componentAccessories}
+                            onChange={(e) => setComponentAccessories(e.target.value)}
+                            placeholder="e.g. Unit komponen saja / Pipa return terpasang"
+                            className="text-xs p-2 border border-slate-300 rounded-lg bg-white font-semibold text-slate-800 outline-none"
+                          />
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {['Unit komponen saja', 'Dengan bracket pipa', 'Seal tembaga lama menempel', 'Pipa rail terpasang', 'Lengkap kabel soket'].map(ap => (
+                              <button
+                                key={ap}
+                                type="button"
+                                onClick={() => setComponentAccessories(ap)}
+                                className={`text-[8.5px] font-bold px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
+                                  componentAccessories === ap ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                                }`}
+                              >
+                                {ap}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   )}
 
                   <div className="flex flex-col bg-slate-50/50 p-3.5 rounded-lg border border-slate-100">
@@ -3038,50 +3576,103 @@ const SADashboard: React.FC = () => {
                 </div>
 
                 <div className="mb-4 space-y-4">
-                  {/* Vehicle Body Outlines Quick Buttons */}
+                  {/* Vehicle Body Outlines Quick Buttons & Presets */}
                   <div>
-                    <p className="text-[10px] font-black text-slate-700 uppercase tracking-wider mb-2">Tombol Cepat Titik Eksterior & Interior</p>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                      <p className="text-[10px] font-black text-slate-700 uppercase tracking-wider">
+                        Status Pemeriksaan Fisik Bodi (9 Titik)
+                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={markAllPointsNormal}
+                          className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded text-[9.5px] font-bold flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                        >
+                          ✓ Tandai Semua Normal (9 Titik OK)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={clearAllPointsInspection}
+                          className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded text-[9.5px] font-medium transition-colors cursor-pointer"
+                        >
+                          ↺ Reset
+                        </button>
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                       {CAR_PARTS.map(part => {
-                        const isDefective = damages.some((d) => d.partId === part.id);
+                        const existing = damages.find((d) => d.partId === part.id);
+                        const isDefective = existing?.status === 'DEFECT' || (!existing?.status && existing?.description && !['ok', 'normal', 'mulus'].includes(existing.description.toLowerCase().trim()));
+                        const isOk = existing?.status === 'OK' || (!existing?.status && existing && !isDefective);
+                        const isUnchecked = !existing || existing.status === 'UNCHECKED';
+
                         return (
-                          <button
-                            key={part.id} 
-                            type="button" 
-                            onClick={() => toggleDamage(part.id)}
-                            className={`h-14 rounded-xl border-2 flex flex-col items-center justify-center text-[10px] p-2 text-center uppercase cursor-pointer transition-all ${
-                              isDefective 
-                                ? 'bg-rose-50 border-rose-500 text-rose-700 font-bold shadow-sm' 
-                                : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-blue-50 hover:border-blue-300'
+                          <div
+                            key={part.id}
+                            className={`rounded-xl border-2 p-2 flex flex-col justify-between text-center transition-all ${
+                              isDefective
+                                ? 'bg-rose-50 border-rose-500 text-rose-900 shadow-xs'
+                                : isOk
+                                  ? 'bg-emerald-50/70 border-emerald-400 text-emerald-950 shadow-xs'
+                                  : 'bg-slate-50 border-slate-200 text-slate-700'
                             }`}
                           >
-                            <span className="font-bold block truncate w-full">{part.label}</span>
-                            <span className={`text-[8px] font-black mt-1 px-1.5 py-0.2 rounded-full ${
-                              isDefective ? 'bg-rose-600 text-white' : 'bg-emerald-100 text-emerald-800'
-                            }`}>
-                              {isDefective ? '⚠️ DEFECT' : '✓ OK'}
-                            </span>
-                          </button>
+                            <span className="font-black text-[10px] block truncate w-full">{part.label}</span>
+                            
+                            <div className="grid grid-cols-2 gap-1 mt-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setPointStatus(part.id, 'OK')}
+                                title="Kondisi Mulus / Normal"
+                                className={`py-1 rounded text-[8px] font-black uppercase transition-all cursor-pointer ${
+                                  isOk
+                                    ? 'bg-emerald-600 text-white shadow-xs'
+                                    : 'bg-white/80 hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                }`}
+                              >
+                                ✓ OK
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setPointStatus(part.id, 'DEFECT')}
+                                title="Ada Baret / Kerusakan Fisik"
+                                className={`py-1 rounded text-[8px] font-black uppercase transition-all cursor-pointer ${
+                                  isDefective
+                                    ? 'bg-rose-600 text-white shadow-xs'
+                                    : 'bg-white/80 hover:bg-rose-100 text-rose-800 border border-rose-200'
+                                }`}
+                              >
+                                ⚠️ Rusak
+                              </button>
+                            </div>
+                          </div>
                         );
                       })}
                     </div>
                   </div>
 
-                  {damages.length > 0 && (
-                    <div className="bg-rose-50/30 p-3 rounded-xl border border-rose-200 mt-2 space-y-2">
-                      <p className="text-[10px] font-black uppercase text-rose-900 tracking-wider">Tulis Catatan Baret & Kerusakan Di Sini:</p>
+                  {/* Catatan Kerusakan - Hanya Tampil untuk Titik yang Berstatus DEFECT */}
+                  {damages.some(d => d.status === 'DEFECT' || (!d.status && d.description && !['ok', 'normal', 'mulus'].includes(d.description.toLowerCase().trim()))) && (
+                    <div className="bg-rose-50/40 p-3 rounded-xl border border-rose-200 mt-2 space-y-2">
+                      <p className="text-[10px] font-black uppercase text-rose-900 tracking-wider flex items-center justify-between">
+                        <span>Tulis Catatan Baret & Kerusakan Aktual Di Sini:</span>
+                        <span className="text-[9px] font-mono text-rose-700">Wajib Diisi untuk Titik Defect</span>
+                      </p>
                       <div className="flex flex-col gap-2">
-                        {damages.map(d => {
-                          const part = CAR_PARTS.find(p => p.id === d.partId)!;
+                        {damages.filter(d => d.status === 'DEFECT' || (!d.status && d.description && !['ok', 'normal', 'mulus'].includes(d.description.toLowerCase().trim()))).map(d => {
+                          const part = CAR_PARTS.find(p => p.id === d.partId);
                           return (
-                            <div key={d.partId} className="flex items-center gap-2 bg-white p-2 rounded-lg border border-rose-100 shadow-xs">
-                              <span className="text-[9px] font-bold bg-rose-100 text-rose-800 px-2 py-1 rounded uppercase tracking-wider">{part?.label || d.partId}</span>
+                            <div key={d.partId} className="flex items-center gap-2 bg-white p-2 rounded-lg border border-rose-200 shadow-xs">
+                              <span className="text-[9.5px] font-black bg-rose-100 text-rose-900 px-2 py-1 rounded uppercase tracking-wider shrink-0">
+                                {part?.label || d.partId}
+                              </span>
                               <input
                                 type="text"
                                 required={wizardStep === 3}
-                                className="flex-1 text-[10px] rounded-md border border-slate-200 px-2.5 py-1.5 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 outline-none bg-slate-50/50 text-slate-800 font-medium"
-                                placeholder={`Tulis baret sebelah mana pada ${part?.label || d.partId} (e.g. Baret halus di bawah lampu kiri)`}
-                                value={d.description}
+                                className="flex-1 text-[10px] rounded-md border border-slate-200 px-2.5 py-1.5 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 outline-none bg-slate-50/50 text-slate-900 font-medium"
+                                placeholder={`Tulis lokasi baret/cacat pada ${part?.label || d.partId} (e.g. Baret halus di bawah lampu kiri)`}
+                                value={d.description === 'Normal / Mulus' ? '' : d.description}
                                 onChange={(e) => updateDamageDescription(d.partId, e.target.value)}
                               />
                             </div>
@@ -3107,7 +3698,270 @@ const SADashboard: React.FC = () => {
               </div>
             )}
 
-            {/* Work Order Scope & Serialization */}
+            {/* SEPARATE SECTION: HASIL PEMERIKSAAN MEKANIK (DIESEL & VEHICLE DIAGNOSTICS) */}
+            <div className="bg-white p-5 rounded-xl shadow-md border border-slate-200 space-y-4">
+              <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 text-[#0F2D59] flex items-center justify-center font-bold">
+                    <Wrench className="w-4 h-4 text-blue-800" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-[#0F2D59] uppercase tracking-wider flex items-center gap-2">
+                      {dropMethod === 'PARTS' 
+                        ? 'Hasil Pemeriksaan Mekanik & Uji Lab Komponen (Custom)' 
+                        : 'Hasil Pemeriksaan Mekanik (Diesel Diagnostic Findings)'}
+                    </h3>
+                    <p className="text-[10px] text-slate-500 font-medium">
+                      {dropMethod === 'PARTS'
+                        ? 'Tulis sendiri pemeriksaan komponen, pengujian test bench, temuan faktual & rekomendasi mekanik'
+                        : 'Pemeriksaan teknis sistem mesin diesel & komponen mekanik kendaraan (Terpisah dari bodi fisik)'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[9px] font-mono font-bold bg-slate-100 text-slate-700 px-2 py-1 rounded border border-slate-200">
+                    {mechanicalInspections.filter(m => m.status === 'ISSUE_FOUND').length} Masalah •{' '}
+                    {mechanicalInspections.filter(m => m.status === 'NORMAL').length} Normal
+                  </span>
+
+                  {dropMethod === 'PARTS' && (
+                    <button
+                      type="button"
+                      onClick={() => addMechanicalInspection()}
+                      className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-black uppercase flex items-center gap-1 shadow-xs cursor-pointer transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> + Pemeriksaan
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Component Specific Quick Presets */}
+              {dropMethod === 'PARTS' && (
+                <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-xs">
+                  <span className="text-[10px] font-bold text-slate-600 uppercase flex items-center gap-1">
+                    <Wrench className="w-3.5 h-3.5 text-blue-600" /> Preset Cepat Lab Komponen:
+                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => loadPresetComponentInspections('INJECTOR')}
+                      className="px-2 py-1 bg-white hover:bg-blue-50 text-blue-900 border border-slate-300 rounded text-[9.5px] font-bold transition-colors cursor-pointer"
+                    >
+                      ★ Uji Injektor CR
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => loadPresetComponentInspections('PUMP')}
+                      className="px-2 py-1 bg-white hover:bg-blue-50 text-blue-900 border border-slate-300 rounded text-[9.5px] font-bold transition-colors cursor-pointer"
+                    >
+                      ★ Uji Supply Pump
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => loadPresetComponentInspections('CLEAR')}
+                      className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded text-[9.5px] font-bold transition-colors cursor-pointer"
+                    >
+                      + Kustom Kosong
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-blue-50/60 border border-blue-200 rounded-xl p-3 text-xs text-blue-950 flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-blue-700 shrink-0 mt-0.5" />
+                <div className="space-y-0.5 text-[10.5px]">
+                  <strong>Pedoman Standar Pemeriksaan Mekanik Indo Teknik:</strong>
+                  <p className="text-slate-600">
+                    {dropMethod === 'PARTS'
+                      ? 'Tulis nama komponen/bagian yang diperiksa, metode pengujian (e.g. Test bench EPS, visual, multitester), temuan faktual, dan rekomendasi teknis secara spesifik.'
+                      : 'Catat metode pemeriksaan aktual (visual, scanner OBD, test bench), temuan mekanik yang faktual, serta rekomendasi penanganan. Status "Normal" tidak boleh diasumsikan tanpa bukti pemeriksaan.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* List of Mechanical Inspection Items */}
+              <div className="space-y-3">
+                {mechanicalInspections.map((item, idx) => {
+                  const isIssue = item.status === 'ISSUE_FOUND';
+                  const isNormal = item.status === 'NORMAL';
+                  const isFurther = item.status === 'FURTHER_TEST_NEEDED';
+                  const isNotInspected = item.status === 'NOT_INSPECTED';
+
+                  return (
+                    <div
+                      key={item.id}
+                      className={`rounded-xl border p-3.5 transition-all space-y-3 ${
+                        isIssue
+                          ? 'bg-rose-50/40 border-rose-300 ring-1 ring-rose-300/40'
+                          : isNormal
+                            ? 'bg-emerald-50/30 border-emerald-300'
+                            : isFurther
+                              ? 'bg-amber-50/30 border-amber-300'
+                              : 'bg-slate-50/60 border-slate-200'
+                      }`}
+                    >
+                      {/* Top Header Item */}
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
+                        <div className="flex items-center gap-2 flex-1 min-w-0 mr-2">
+                          <span className="w-5 h-5 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-mono font-bold shrink-0">
+                            {String(idx + 1).padStart(2, '0')}
+                          </span>
+                          {dropMethod === 'PARTS' ? (
+                            <div className="flex-1 min-w-0">
+                              <label className="text-[9px] font-bold text-slate-500 uppercase block mb-0.5">
+                                Bagian / Komponen Diperiksa (Tulis Sendiri):
+                              </label>
+                              <input
+                                type="text"
+                                value={item.systemName}
+                                onChange={(e) => updateMechanicalInspection(item.id, 'systemName', e.target.value)}
+                                placeholder="e.g. Nozzle Tip #1, Plunger Pump, Spray & Backleak..."
+                                className="w-full text-xs font-black text-slate-900 bg-white border border-slate-300 rounded-lg px-2.5 py-1 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                              />
+                            </div>
+                          ) : (
+                            <div>
+                              <span className="text-xs font-black uppercase text-slate-900 tracking-tight">
+                                {item.systemName}
+                              </span>
+                              <span className="text-[9px] text-slate-500 font-mono block">
+                                Sistem: {item.id.replace(/_/g, ' ')}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Status Radio Buttons with 4 Distinct Options & Delete Button */}
+                        <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => updateMechanicalInspection(item.id, 'status', 'NORMAL')}
+                            className={`px-2.5 py-1 rounded-lg text-[9.5px] font-black uppercase transition-all cursor-pointer flex items-center gap-1 border ${
+                              isNormal
+                                ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs ring-2 ring-emerald-200'
+                                : 'bg-white hover:bg-emerald-50 text-emerald-800 border-slate-300'
+                            }`}
+                          >
+                            ✓ Normal
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateMechanicalInspection(item.id, 'status', 'ISSUE_FOUND')}
+                            className={`px-2.5 py-1 rounded-lg text-[9.5px] font-black uppercase transition-all cursor-pointer flex items-center gap-1 border ${
+                              isIssue
+                                ? 'bg-rose-600 text-white border-rose-700 shadow-xs ring-2 ring-rose-200'
+                                : 'bg-white hover:bg-rose-50 text-rose-800 border-slate-300'
+                            }`}
+                          >
+                            ⚠️ Ditemukan Masalah
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateMechanicalInspection(item.id, 'status', 'FURTHER_TEST_NEEDED')}
+                            className={`px-2.5 py-1 rounded-lg text-[9.5px] font-black uppercase transition-all cursor-pointer flex items-center gap-1 border ${
+                              isFurther
+                                ? 'bg-amber-600 text-white border-amber-700 shadow-xs ring-2 ring-amber-200'
+                                : 'bg-white hover:bg-amber-50 text-amber-800 border-slate-300'
+                            }`}
+                          >
+                            🔍 Uji Lanjutan
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateMechanicalInspection(item.id, 'status', 'NOT_INSPECTED')}
+                            className={`px-2.5 py-1 rounded-lg text-[9.5px] font-medium uppercase transition-all cursor-pointer flex items-center gap-1 border ${
+                              isNotInspected
+                                ? 'bg-slate-700 text-white border-slate-800 shadow-xs'
+                                : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-300'
+                            }`}
+                          >
+                            Belum Diperiksa
+                          </button>
+
+                          {dropMethod === 'PARTS' && mechanicalInspections.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeMechanicalInspection(item.id)}
+                              className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-rose-200"
+                              title="Hapus baris pemeriksaan ini"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Input Details Grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 text-xs">
+                        {/* 1. Metode Pemeriksaan (4 cols) */}
+                        <div className="md:col-span-4 flex flex-col">
+                          <label className="text-[10px] font-black uppercase text-slate-700 mb-1 flex items-center justify-between">
+                            <span>Metode Pemeriksaan:</span>
+                            <span className="text-[8.5px] text-slate-400 font-normal">Teknik Diagnosa</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={item.method}
+                            onChange={(e) => updateMechanicalInspection(item.id, 'method', e.target.value)}
+                            placeholder="e.g. Uji Test bench FIP / Scanner OBD-II / Cek Visual"
+                            className="p-2 border border-slate-200 rounded-lg text-[10.5px] bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-medium text-slate-800"
+                          />
+                        </div>
+
+                        {/* 2. Hasil Temuan Pemeriksaan Faktual (8 cols) */}
+                        <div className="md:col-span-8 flex flex-col">
+                          <label className="text-[10px] font-black uppercase text-slate-700 mb-1 flex items-center justify-between">
+                            <span>Hasil Temuan Mekanik (Faktual):</span>
+                            {isIssue && <span className="text-[8.5px] font-bold text-rose-600">Wajib Diisi</span>}
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={item.findings}
+                            onChange={(e) => updateMechanicalInspection(item.id, 'findings', e.target.value)}
+                            placeholder={`Tuliskan temuan faktual pada ${item.systemName}... (e.g. Ditemukan penurunan debit semprotan pompa pada rpm tinggi)`}
+                            className="p-2 border border-slate-200 rounded-lg text-[10.5px] bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-medium text-slate-800 resize-none"
+                          />
+                        </div>
+
+                        {/* 3. Analisis / Dugaan Penyebab (Optional, 6 cols) */}
+                        <div className="md:col-span-6 flex flex-col">
+                          <label className="text-[10px] font-black uppercase text-slate-700 mb-1 flex items-center justify-between">
+                            <span>Analisis / Diagnosis Mekanik:</span>
+                            <span className="text-[8.5px] text-slate-400 font-normal">(Tidak wajib jika belum final)</span>
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={item.diagnosisNotes || ''}
+                            onChange={(e) => updateMechanicalInspection(item.id, 'diagnosisNotes', e.target.value)}
+                            placeholder="Penjelasan dugaan penyebab teknis berdasarkan bukti pemeriksaan..."
+                            className="p-2 border border-slate-200 rounded-lg text-[10.5px] bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-medium text-slate-800 resize-none"
+                          />
+                        </div>
+
+                        {/* 4. Rekomendasi Tindakan (6 cols) */}
+                        <div className="md:col-span-6 flex flex-col">
+                          <label className="text-[10px] font-black uppercase text-slate-700 mb-1 flex items-center justify-between">
+                            <span>Rekomendasi Tindakan / Perbaikan:</span>
+                            <span className="text-[8.5px] text-slate-400 font-normal">Saran Pekerjaan Bengkel</span>
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={item.recommendation || ''}
+                            onChange={(e) => updateMechanicalInspection(item.id, 'recommendation', e.target.value)}
+                            placeholder="Saran tindakan bengkel (e.g. Kalibrasi ulang di test bench & pembongkaran internal)..."
+                            className="p-2 border border-slate-200 rounded-lg text-[10.5px] bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-medium text-slate-800 resize-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Work Order Scope & Loose Parts */}
             <div className="bg-white p-5 rounded-xl shadow-md border border-slate-200 space-y-6">
               <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
                 <h3 className="text-sm font-black text-[#1e3a8a] uppercase tracking-wider flex items-center">
@@ -3116,16 +3970,32 @@ const SADashboard: React.FC = () => {
                 </h3>
               </div>
 
-              {/* Component Serialization */}
+              {/* Kondisi Komponen Saat Dibawa */}
               {dropMethod === 'PARTS' && (
                 <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
                   <div>
-                    <h4 className="text-[11px] font-black uppercase text-[#1e3a8a] tracking-wider">A. Pencatatan Nomor Seri Komponen (Component Serialization)</h4>
-                    <p className="text-[9px] text-slate-500 italic">Masukkan nama komponen, Part Number (P/N), dan kondisi saat diserahkan.</p>
+                    <h4 className="text-[11px] font-black uppercase text-[#1e3a8a] tracking-wider flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                      A. Kondisi Komponen Saat Dibawa (Loose Parts Condition)
+                    </h4>
+                    <p className="text-[9px] text-slate-500 italic">
+                      Catat nama komponen, Part Number (P/N) / No. Seri, dan kondisi fisik komponen saat dibawa oleh pelanggan (isi sendiri).
+                    </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="text-[9px] font-bold text-slate-500 uppercase mr-1">Preset Cepat:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLooseParts([
+                          { id: `p1`, description: 'Injector Nozzle 1', partNumber: '', physicalCondition: 'Normal / Baik' }
+                        ]);
+                      }}
+                      className="px-2 py-1 bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-900 border border-slate-300 rounded text-[9.5px] font-bold transition-colors cursor-pointer"
+                    >
+                      1 Komponen
+                    </button>
                     <button
                       type="button"
                       onClick={() => {
@@ -3133,7 +4003,7 @@ const SADashboard: React.FC = () => {
                           id: `p${i + 1}`,
                           description: `Injector Nozzle ${i + 1}`,
                           partNumber: '',
-                          physicalCondition: 'OK'
+                          physicalCondition: 'Normal / Baik'
                         })));
                       }}
                       className="px-2 py-1 bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-900 border border-slate-300 rounded text-[9.5px] font-bold transition-colors cursor-pointer"
@@ -3147,7 +4017,7 @@ const SADashboard: React.FC = () => {
                           id: `p${i + 1}`,
                           description: `Injector Nozzle ${i + 1}`,
                           partNumber: '',
-                          physicalCondition: 'OK'
+                          physicalCondition: 'Normal / Baik'
                         })));
                       }}
                       className="px-2 py-1 bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-900 border border-slate-300 rounded text-[9.5px] font-bold transition-colors cursor-pointer"
@@ -3161,7 +4031,7 @@ const SADashboard: React.FC = () => {
                           id: `p${i + 1}`,
                           description: `Injector Nozzle ${i + 1}`,
                           partNumber: '',
-                          physicalCondition: 'OK'
+                          physicalCondition: 'Normal / Baik'
                         })));
                       }}
                       className="px-2 py-1 bg-blue-50 hover:bg-blue-200 text-blue-800 border border-blue-300 rounded text-[9.5px] font-black transition-colors cursor-pointer shadow-xs"
@@ -3172,18 +4042,32 @@ const SADashboard: React.FC = () => {
                       type="button"
                       onClick={() => {
                         setLooseParts([
-                          { id: 'p_pump', description: 'Supply Pump / Bosch Pump', partNumber: '', physicalCondition: 'OK' },
+                          { id: 'p_pump', description: 'Supply Pump / Bosch Pump', partNumber: '', physicalCondition: 'Normal / Baik' },
                           ...Array.from({ length: 8 }, (_, i) => ({
                             id: `p_inj_${i + 1}`,
                             description: `Common Rail Injector ${i + 1}`,
                             partNumber: '',
-                            physicalCondition: 'OK'
+                            physicalCondition: 'Normal / Baik'
                           }))
                         ]);
                       }}
                       className="px-2 py-1 bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-900 border border-slate-300 rounded text-[9.5px] font-bold transition-colors cursor-pointer"
                     >
                       Pump + 8 Nozzle
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLooseParts(Array.from({ length: 10 }, (_, i) => ({
+                          id: `p${i + 1}`,
+                          description: `Komponen #${i + 1}`,
+                          partNumber: '',
+                          physicalCondition: 'Normal / Baik'
+                        })));
+                      }}
+                      className="px-2 py-1 bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-900 border border-slate-300 rounded text-[9.5px] font-bold transition-colors cursor-pointer"
+                    >
+                      10 Komponen
                     </button>
                     <button
                       type="button"
@@ -3253,7 +4137,7 @@ const SADashboard: React.FC = () => {
 
                         <div>
                           <label className="text-[9.5px] font-black uppercase text-slate-600 block mb-1">
-                            Part Number (P/N)
+                            Part Number (P/N) / No. Seri
                           </label>
                           <input
                             type="text"
@@ -3279,15 +4163,27 @@ const SADashboard: React.FC = () => {
 
                         <div>
                           <label className="text-[9.5px] font-black uppercase text-slate-600 block mb-1">
-                            Kondisi Fisik Komponen
+                            Kondisi Komponen Saat Dibawa (Isi Sendiri)
                           </label>
                           <input
                             type="text"
-                            placeholder="e.g. Drat Slek, Soket Retak, OK"
+                            placeholder="e.g. Normal / Baik, Drat Slek, Karat, Pernah Dibongkar"
                             className="w-full p-2.5 border border-slate-200 rounded-lg text-[15px] sm:text-xs text-slate-800 bg-slate-50 focus:bg-white focus:border-blue-500 outline-none"
                             value={part.physicalCondition}
                             onChange={(e) => updateLoosePart(index, 'physicalCondition', e.target.value)}
                           />
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {['Normal / Baik', 'Drat Slek', 'Karat', 'Pernah Dibongkar', 'Pecah'].map(preset => (
+                              <button
+                                key={preset}
+                                type="button"
+                                onClick={() => updateLoosePart(index, 'physicalCondition', preset)}
+                                className="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 hover:bg-blue-100 text-slate-700 font-bold cursor-pointer"
+                              >
+                                {preset}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     );
@@ -3300,8 +4196,8 @@ const SADashboard: React.FC = () => {
                     <thead className="bg-slate-100 text-slate-700 border-b border-slate-200">
                       <tr>
                         <th className="p-2 text-left font-bold uppercase tracking-wider w-1/3">Nama Komponen / Nozzle / Pump</th>
-                        <th className="p-2 text-left font-bold uppercase tracking-wider w-1/3">Part Number (P/N)</th>
-                        <th className="p-2 text-left font-bold uppercase tracking-wider w-1/4">Kondisi Fisik Komponen</th>
+                        <th className="p-2 text-left font-bold uppercase tracking-wider w-1/3">Part Number (P/N) / No. Seri</th>
+                        <th className="p-2 text-left font-bold uppercase tracking-wider w-1/4">Kondisi Komponen Saat Dibawa</th>
                         <th className="p-2 text-center font-bold uppercase tracking-wider w-12">Hapus</th>
                       </tr>
                     </thead>
@@ -3349,11 +4245,23 @@ const SADashboard: React.FC = () => {
                           <td className="p-2">
                             <input
                               type="text"
-                              placeholder="e.g. Drat Slek, Soket Retak, OK"
+                              placeholder="e.g. Normal / Baik, Drat Slek, Karat, Pernah Dibongkar"
                               className="w-full p-2 border border-slate-200 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none bg-slate-50/30 focus:bg-white text-xs text-slate-800 font-medium"
                               value={part.physicalCondition}
                               onChange={(e) => updateLoosePart(index, 'physicalCondition', e.target.value)}
                             />
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {['Normal / Baik', 'Drat Slek', 'Karat', 'Pernah Dibongkar', 'Pecah'].map(preset => (
+                                <button
+                                  key={preset}
+                                  type="button"
+                                  onClick={() => updateLoosePart(index, 'physicalCondition', preset)}
+                                  className="text-[8.5px] px-1 py-0.2 rounded bg-slate-100 hover:bg-blue-100 text-slate-700 font-medium cursor-pointer"
+                                >
+                                  {preset}
+                                </button>
+                              ))}
+                            </div>
                           </td>
                           <td className="p-2 text-center">
                             {looseParts.length > 1 ? (
@@ -3365,7 +4273,7 @@ const SADashboard: React.FC = () => {
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             ) : (
-                              <span className="text-slate-300">-</span>
+                              <span className="text-[10px] text-slate-300">-</span>
                             )}
                           </td>
                         </tr>
@@ -3374,7 +4282,7 @@ const SADashboard: React.FC = () => {
                   </table>
                 </div>
               </div>
-              )}
+            )}
 
               {/* Action Builder */}
               <div className="bg-slate-50/50 p-3.5 sm:p-4 rounded-xl border border-slate-100 space-y-3">

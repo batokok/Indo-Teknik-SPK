@@ -113,7 +113,7 @@ export const PrintGateDocument: React.FC = () => {
                     One Stop Solution for All Your Diesel Needs
                   </p>
                   <p className="text-[10px] text-black font-semibold leading-tight mt-0.5">
-                    Jl. Riau Ujung No.898-904, Pekanbaru • Telp: (0761) 853798
+                    Jl. Riau Ujung No.898-904, Pekanbaru • WA: wa.me/628117531881 • Email: customerservice@indo-teknik.com
                   </p>
                 </div>
               </div>

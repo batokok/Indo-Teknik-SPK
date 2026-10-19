@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { WorkOrder, LoosePartDetails, TodoAction, InventoryItem, Priority, WOStatus, User } from '../types';
+import { WorkOrder, LoosePartDetails, TodoAction, InventoryItem, Priority, WOStatus, User, MechanicalInspectionItem, DEFAULT_COMPONENT_CATEGORIES } from '../types';
+import { DEFAULT_MECHANICAL_INSPECTIONS } from './SADashboard';
 import { useApp } from '../store/AppContext';
 import { 
   X, 
@@ -46,7 +47,7 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
 }) => {
   const { updateWorkOrder, users, workOrders, addNotification, currentUser } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'CUSTOMER_VEHICLE' | 'PARTS_ACTIONS' | 'COMPLAINTS_INVENTORY' | 'STATUS_FLOW'>('CUSTOMER_VEHICLE');
+  const [activeTab, setActiveTab] = useState<'CUSTOMER_VEHICLE' | 'PARTS_ACTIONS' | 'MECHANICAL_DIAGNOSTICS' | 'COMPLAINTS_INVENTORY' | 'STATUS_FLOW'>('CUSTOMER_VEHICLE');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -72,10 +73,23 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
   const [garansi, setGaransi] = useState('');
   const [priority, setPriority] = useState<Priority>(2);
 
+  // Component Intake Identity (When dropMethod === 'PARTS')
+  const [componentCategory, setComponentCategory] = useState<string>('Injector');
+  const [componentName, setComponentName] = useState<string>('');
+  const [componentBrand, setComponentBrand] = useState<string>('');
+  const [componentPartNumber, setComponentPartNumber] = useState<string>('');
+  const [componentSerialNumber, setComponentSerialNumber] = useState<string>('');
+  const [componentQty, setComponentQty] = useState<number>(1);
+  const [componentOriginUnit, setComponentOriginUnit] = useState<string>('');
+  const [componentOriginPlate, setComponentOriginPlate] = useState<string>('');
+  const [componentIntakeCondition, setComponentIntakeCondition] = useState<string>('Normal / Baik (Utuh tanpa retak fisik)');
+  const [componentAccessories, setComponentAccessories] = useState<string>('Tanpa pipa nozzle / kelengkapan standar');
+
   const [customerVoice, setCustomerVoice] = useState('');
   const [looseParts, setLooseParts] = useState<LoosePartDetails[]>([]);
   const [todoActions, setTodoActions] = useState<TodoAction[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [mechanicalInspections, setMechanicalInspections] = useState<MechanicalInspectionItem[]>([]);
 
   const [status, setStatus] = useState<WOStatus>('QUEUE');
   const [cancelReason, setCancelReason] = useState<string>('');
@@ -110,10 +124,29 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
       setGaransi(wo.garansi || '');
       setPriority(wo.priority || 2);
 
+      // Populate component identity
+      setComponentCategory(wo.componentCategory || 'Injector');
+      setComponentName(wo.componentName || '');
+      setComponentBrand(wo.componentBrand || '');
+      setComponentPartNumber(wo.componentPartNumber || wo.assyNo || '');
+      setComponentSerialNumber(wo.componentSerialNumber || '');
+      setComponentQty(wo.componentQty || (wo.looseParts?.length || 1));
+      setComponentOriginUnit(wo.componentOriginUnit || (wo.vehicleBrand !== 'Copotan (Loose Parts)' ? wo.vehicleBrand : ''));
+      setComponentOriginPlate(wo.componentOriginPlate || (wo.plateNumber !== '-' ? wo.plateNumber : ''));
+      setComponentIntakeCondition(wo.componentIntakeCondition || 'Normal / Baik (Utuh tanpa retak fisik)');
+      setComponentAccessories(wo.componentAccessories || 'Tanpa pipa nozzle / kelengkapan standar');
+
       setCustomerVoice(wo.customerVoice || '');
       setLooseParts(wo.looseParts ? JSON.parse(JSON.stringify(wo.looseParts)) : []);
       setTodoActions(wo.todoActions ? JSON.parse(JSON.stringify(wo.todoActions)) : []);
       
+      // Setup mechanicalInspections
+      if (wo.mechanicalInspections && wo.mechanicalInspections.length > 0) {
+        setMechanicalInspections(JSON.parse(JSON.stringify(wo.mechanicalInspections)));
+      } else {
+        setMechanicalInspections(JSON.parse(JSON.stringify(DEFAULT_MECHANICAL_INSPECTIONS)));
+      }
+
       // Setup inventory
       if (wo.inventory && wo.inventory.length > 0) {
         setInventory(JSON.parse(JSON.stringify(wo.inventory)));
@@ -192,6 +225,37 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
     setInventory(updated);
   };
 
+  const handleUpdateMechanicalInspection = (
+    id: string,
+    field: keyof MechanicalInspectionItem,
+    value: any
+  ) => {
+    setMechanicalInspections(prev =>
+      prev.map(item => (item.id === id ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const handleAddMechanicalInspection = (name: string = 'Pemeriksaan Komponen Baru') => {
+    const newId = `mech_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    setMechanicalInspections(prev => [
+      ...prev,
+      {
+        id: newId,
+        systemName: name,
+        category: 'DIESEL_CORE',
+        method: 'Uji Kalibrasi Test Bench / Visual Lab',
+        status: 'NOT_INSPECTED',
+        findings: '',
+        diagnosisNotes: '',
+        recommendation: '',
+      }
+    ]);
+  };
+
+  const handleRemoveMechanicalInspection = (id: string) => {
+    setMechanicalInspections(prev => prev.filter(m => m.id !== id));
+  };
+
   const toggleDivisionInFlow = (div: 'SUPPLY_PUMP' | 'COMMON_RAIL' | 'TURBO') => {
     if (divisionFlow.includes(div)) {
       if (divisionFlow.length === 1) return; // Keep at least one
@@ -244,22 +308,35 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
         bringerAddress: bringerAddress.trim() || undefined,
 
         dropMethod,
-        vehicleBrand: dropMethod === 'PARTS' ? 'Copotan (Loose Parts)' : vehicleBrand.trim(),
-        plateNumber: dropMethod === 'PARTS' ? '-' : plateNumber.toUpperCase().trim(),
+        vehicleBrand: dropMethod === 'PARTS' ? (componentOriginUnit.trim() || vehicleBrand.trim() || 'Copotan (Loose Parts)') : vehicleBrand.trim(),
+        plateNumber: dropMethod === 'PARTS' ? (componentOriginPlate.trim() || plateNumber.trim() || '-') : plateNumber.toUpperCase().trim(),
         vin: dropMethod === 'PARTS' ? '' : vin.toUpperCase().trim(),
         odometer: dropMethod === 'PARTS' ? '-' : odometer.trim(),
         fuelLevel: dropMethod === 'PARTS' ? '1/2' : fuelLevel,
         fuelContaminated: dropMethod === 'PARTS' ? false : fuelContaminated,
-        assyNo: assyNo.trim() || undefined,
+        assyNo: (componentPartNumber || assyNo).trim() || undefined,
         intakeDate: intakeDate || undefined,
         estimasiPengerjaan: estimasiPengerjaan.trim(),
         garansi: garansi.trim(),
         priority,
 
+        // Component-Centric Intake Identity
+        componentCategory: dropMethod === 'PARTS' ? componentCategory : undefined,
+        componentName: dropMethod === 'PARTS' ? componentName : undefined,
+        componentBrand: dropMethod === 'PARTS' ? componentBrand : undefined,
+        componentPartNumber: dropMethod === 'PARTS' ? componentPartNumber : undefined,
+        componentSerialNumber: dropMethod === 'PARTS' ? componentSerialNumber : undefined,
+        componentQty: dropMethod === 'PARTS' ? componentQty : undefined,
+        componentOriginUnit: dropMethod === 'PARTS' ? componentOriginUnit : undefined,
+        componentOriginPlate: dropMethod === 'PARTS' ? componentOriginPlate : undefined,
+        componentIntakeCondition: dropMethod === 'PARTS' ? componentIntakeCondition : undefined,
+        componentAccessories: dropMethod === 'PARTS' ? componentAccessories : undefined,
+
         customerVoice: customerVoice.trim(),
         looseParts: dropMethod === 'PARTS' ? looseParts : [],
         todoActions,
         inventory,
+        mechanicalInspections,
 
         status,
         cancelReason: status === 'CANCELLED' ? (cancelReason.trim() || wo.cancelReason || 'Dibatalkan oleh Pelanggan') : undefined,
@@ -389,6 +466,19 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
           >
             <Wrench className="w-3.5 h-3.5 text-amber-600" />
             Komponen & Tindakan
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('MECHANICAL_DIAGNOSTICS')}
+            className={`flex-1 min-w-[140px] flex items-center justify-center gap-1.5 py-2 px-3 text-[11px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+              activeTab === 'MECHANICAL_DIAGNOSTICS'
+                ? 'bg-white text-[#0F2D59] shadow-sm border border-slate-200'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+            }`}
+          >
+            <ClipboardList className="w-3.5 h-3.5 text-blue-600" />
+            Pemeriksaan Mekanik
           </button>
 
           <button
@@ -668,8 +758,170 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                       </div>
                     </>
                   ) : (
-                    <div className="col-span-3 bg-amber-50 p-3 rounded-lg border border-amber-200 text-amber-900 text-xs">
-                      <strong>Komponen Copotan (Loose Parts):</strong> Rincian nomor seri dan part number diatur pada tab <em>"Komponen & Tindakan"</em>.
+                    <div className="col-span-1 sm:col-span-3 space-y-3 bg-amber-50/50 p-3.5 rounded-xl border border-amber-200">
+                      <div className="flex items-center justify-between border-b border-amber-200 pb-1.5">
+                        <h5 className="text-[11px] font-black uppercase text-[#0F2D59] tracking-wider flex items-center gap-1.5">
+                          <Wrench className="w-3.5 h-3.5 text-amber-600" />
+                          IDENTITAS KOMPONEN YANG DITERIMA
+                        </h5>
+                        <span className="text-[9px] font-mono font-bold bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.2 rounded">
+                          Loose Component Intake
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-3 text-xs">
+                        {/* 1. Jenis Komponen */}
+                        <div className="md:col-span-6 flex flex-col">
+                          <label className="text-[9.5px] font-black uppercase text-slate-700 mb-1">
+                            1. Jenis Komponen <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={componentCategory}
+                            onChange={(e) => setComponentCategory(e.target.value)}
+                            className="p-2 min-h-[38px] border border-slate-300 rounded-lg bg-white font-bold text-slate-900 outline-none cursor-pointer"
+                          >
+                            {DEFAULT_COMPONENT_CATEGORIES.map(cat => (
+                              <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* 2. Nama / Model Komponen */}
+                        <div className="md:col-span-6 flex flex-col">
+                          <label className="text-[9.5px] font-black uppercase text-slate-700 mb-1">
+                            2. Nama / Model Komponen <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={componentName}
+                            onChange={(e) => setComponentName(e.target.value)}
+                            placeholder="e.g. Common Rail Injector G3S33"
+                            className="p-2 min-h-[38px] border border-slate-300 rounded-lg bg-white font-bold text-slate-900 outline-none"
+                          />
+                        </div>
+
+                        {/* 3. Merek */}
+                        <div className="md:col-span-3 flex flex-col">
+                          <label className="text-[9.5px] font-black uppercase text-slate-700 mb-1">
+                            3. Merek / Manufacturer
+                          </label>
+                          <input
+                            type="text"
+                            value={componentBrand}
+                            onChange={(e) => setComponentBrand(e.target.value)}
+                            placeholder="e.g. Denso / Bosch"
+                            className="p-2 border border-slate-300 rounded-lg bg-white font-semibold text-slate-800 outline-none"
+                          />
+                        </div>
+
+                        {/* 4. Part Number */}
+                        <div className="md:col-span-3 flex flex-col">
+                          <label className="text-[9.5px] font-black uppercase text-slate-700 mb-1">
+                            4. Part Number (P/N)
+                          </label>
+                          <input
+                            type="text"
+                            value={componentPartNumber}
+                            onChange={(e) => {
+                              setComponentPartNumber(e.target.value);
+                              setAssyNo(e.target.value);
+                            }}
+                            placeholder="e.g. 095000-5471"
+                            className="p-2 border border-slate-300 rounded-lg bg-white font-mono font-bold text-slate-900 outline-none"
+                          />
+                        </div>
+
+                        {/* 5. Serial Number */}
+                        <div className="md:col-span-3 flex flex-col">
+                          <label className="text-[9.5px] font-black uppercase text-slate-700 mb-1">
+                            5. Serial Number (S/N)
+                          </label>
+                          <input
+                            type="text"
+                            value={componentSerialNumber}
+                            onChange={(e) => setComponentSerialNumber(e.target.value)}
+                            placeholder="e.g. SN-8829104"
+                            className="p-2 border border-slate-300 rounded-lg bg-white font-mono font-semibold text-slate-800 outline-none"
+                          />
+                        </div>
+
+                        {/* 6. Jumlah */}
+                        <div className="md:col-span-3 flex flex-col">
+                          <label className="text-[9.5px] font-black uppercase text-slate-700 mb-1">
+                            6. Jumlah Komponen (Qty) <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="30"
+                            value={componentQty}
+                            onChange={(e) => setComponentQty(Math.max(1, parseInt(e.target.value) || 1))}
+                            className="p-2 border border-slate-300 rounded-lg bg-white font-mono font-black text-slate-900 outline-none"
+                          />
+                        </div>
+
+                        {/* 7. Asal Mesin */}
+                        <div className="md:col-span-6 flex flex-col">
+                          <label className="text-[9.5px] font-black uppercase text-slate-700 mb-1">
+                            7. Asal Mesin / Kendaraan (Opsional)
+                          </label>
+                          <input
+                            type="text"
+                            value={componentOriginUnit}
+                            onChange={(e) => {
+                              setComponentOriginUnit(e.target.value);
+                              setVehicleBrand(e.target.value);
+                            }}
+                            placeholder="e.g. Canter PS125 / Hilux 2GD"
+                            className="p-2 border border-slate-300 rounded-lg bg-white font-semibold text-slate-800 outline-none"
+                          />
+                        </div>
+
+                        {/* 8. Plat Asal */}
+                        <div className="md:col-span-6 flex flex-col">
+                          <label className="text-[9.5px] font-black uppercase text-slate-700 mb-1">
+                            8. Nomor Polisi / Identitas Unit Asal
+                          </label>
+                          <input
+                            type="text"
+                            value={componentOriginPlate}
+                            onChange={(e) => {
+                              setComponentOriginPlate(e.target.value);
+                              setPlateNumber(e.target.value);
+                            }}
+                            placeholder="e.g. BM 8899 QA / Genset 02"
+                            className="p-2 border border-slate-300 rounded-lg bg-white font-mono font-bold uppercase text-slate-900 outline-none"
+                          />
+                        </div>
+
+                        {/* 9. Kondisi Saat Diterima */}
+                        <div className="md:col-span-6 flex flex-col">
+                          <label className="text-[9.5px] font-black uppercase text-slate-700 mb-1">
+                            9. Kondisi Komponen Saat Diterima
+                          </label>
+                          <input
+                            type="text"
+                            value={componentIntakeCondition}
+                            onChange={(e) => setComponentIntakeCondition(e.target.value)}
+                            placeholder="e.g. Utuh tanpa retak fisik, drat baik"
+                            className="p-2 border border-slate-300 rounded-lg bg-white font-semibold text-slate-800 outline-none"
+                          />
+                        </div>
+
+                        {/* 10. Aksesori / Kelengkapan */}
+                        <div className="md:col-span-6 flex flex-col">
+                          <label className="text-[9.5px] font-black uppercase text-slate-700 mb-1">
+                            10. Kelengkapan & Aksesori yang Diserahkan
+                          </label>
+                          <input
+                            type="text"
+                            value={componentAccessories}
+                            onChange={(e) => setComponentAccessories(e.target.value)}
+                            placeholder="e.g. Unit komponen saja / Pipa return terpasang"
+                            className="p-2 border border-slate-300 rounded-lg bg-white font-semibold text-slate-800 outline-none"
+                          />
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -750,19 +1002,33 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                   <div>
                     <h4 className="text-xs font-black uppercase text-[#0F2D59] tracking-wider flex items-center gap-2">
                       <Wrench className="w-4 h-4 text-amber-600" />
-                      Daftar Komponen / Injektor / Supply Pump (P/N Details)
+                      Kondisi Komponen Saat Dibawa (Loose Parts Condition)
                     </h4>
                     <p className="text-[10px] text-slate-500 mt-0.5">
-                      Input Part Number komponen untuk pelacakan histori dan masa garansi.
+                      Catat nama komponen, Part Number (P/N) / No. Seri, dan kondisi fisik komponen saat dibawa oleh pelanggan (isi sendiri).
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleAddLoosePart}
-                    className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white text-[11px] sm:text-[10px] font-black uppercase rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer min-h-[38px] active:scale-95"
-                  >
-                    <Plus className="w-4 h-4 sm:w-3.5 sm:h-3.5" /> Tambah Baris Komponen
-                  </button>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLooseParts([
+                          ...looseParts,
+                          { id: `p_${Date.now()}`, description: `Komponen #${looseParts.length + 1}`, partNumber: '', physicalCondition: 'Normal / Baik' }
+                        ]);
+                      }}
+                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-900 border border-slate-300 rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
+                    >
+                      + 1 Komponen
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddLoosePart}
+                      className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white text-[11px] sm:text-[10px] font-black uppercase rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer min-h-[38px] active:scale-95"
+                    >
+                      <Plus className="w-4 h-4 sm:w-3.5 sm:h-3.5" /> Tambah Baris Komponen
+                    </button>
+                  </div>
                 </div>
 
                 {looseParts.length === 0 ? (
@@ -1146,6 +1412,191 @@ export const EditWorkOrderModal: React.FC<EditWorkOrderModalProps> = ({
                 )}
               </div>
 
+            </div>
+          )}
+
+          {/* TAB: MECHANICAL DIAGNOSTICS */}
+          {activeTab === 'MECHANICAL_DIAGNOSTICS' && (
+            <div className="space-y-4">
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3 mb-3">
+                  <div>
+                    <h4 className="text-xs font-black uppercase text-[#0F2D59] tracking-wider flex items-center gap-2">
+                      <Wrench className="w-4 h-4 text-blue-600" />
+                      Hasil Pemeriksaan Mekanik (Diesel & Mechanical Findings)
+                    </h4>
+                    <p className="text-[10px] text-slate-500 font-medium mt-0.5">
+                      Pemeriksaan teknis sistem mesin diesel & komponen mekanik (Kustom dapat ditulis sendiri)
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="text-[9px] font-mono font-bold bg-white px-2.5 py-1 rounded border border-slate-200 text-slate-700">
+                      {mechanicalInspections.filter(m => m.status === 'ISSUE_FOUND').length} Masalah •{' '}
+                      {mechanicalInspections.filter(m => m.status === 'NORMAL').length} Normal
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleAddMechanicalInspection()}
+                      className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-black uppercase flex items-center gap-1 shadow-xs cursor-pointer transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> + Pemeriksaan
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {mechanicalInspections.map((item, idx) => {
+                    const isIssue = item.status === 'ISSUE_FOUND';
+                    const isNormal = item.status === 'NORMAL';
+                    const isFurther = item.status === 'FURTHER_TEST_NEEDED';
+                    const isNotInspected = item.status === 'NOT_INSPECTED';
+
+                    return (
+                      <div
+                        key={item.id}
+                        className={`rounded-xl border p-3.5 space-y-3 transition-all ${
+                          isIssue
+                            ? 'bg-rose-50/50 border-rose-300 ring-1 ring-rose-200'
+                            : isNormal
+                              ? 'bg-emerald-50/40 border-emerald-300'
+                              : isFurther
+                                ? 'bg-amber-50/40 border-amber-300'
+                                : 'bg-white border-slate-200'
+                        }`}
+                      >
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-slate-200 pb-2">
+                          <div className="flex items-center gap-2 flex-1 min-w-0 mr-2">
+                            <span className="w-5 h-5 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-mono font-bold shrink-0">
+                              {String(idx + 1).padStart(2, '0')}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <input
+                                type="text"
+                                value={item.systemName}
+                                onChange={(e) => handleUpdateMechanicalInspection(item.id, 'systemName', e.target.value)}
+                                placeholder="Bagian / Komponen Diperiksa..."
+                                className="w-full text-xs font-black uppercase text-slate-900 bg-white border border-slate-300 rounded px-2 py-0.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateMechanicalInspection(item.id, 'status', 'NORMAL')}
+                              className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase transition-all cursor-pointer border ${
+                                isNormal
+                                  ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
+                                  : 'bg-white hover:bg-emerald-50 text-emerald-800 border-slate-300'
+                              }`}
+                            >
+                              ✓ Normal
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateMechanicalInspection(item.id, 'status', 'ISSUE_FOUND')}
+                              className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase transition-all cursor-pointer border ${
+                                isIssue
+                                  ? 'bg-rose-600 text-white border-rose-700 shadow-xs'
+                                  : 'bg-white hover:bg-rose-50 text-rose-800 border-slate-300'
+                              }`}
+                            >
+                              ⚠️ Masalah
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateMechanicalInspection(item.id, 'status', 'FURTHER_TEST_NEEDED')}
+                              className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase transition-all cursor-pointer border ${
+                                isFurther
+                                  ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
+                                  : 'bg-white hover:bg-amber-50 text-amber-800 border-slate-300'
+                              }`}
+                            >
+                              🔍 Uji Lanjutan
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateMechanicalInspection(item.id, 'status', 'NOT_INSPECTED')}
+                              className={`px-2 py-1 rounded-lg text-[9px] font-medium uppercase transition-all cursor-pointer border ${
+                                isNotInspected
+                                  ? 'bg-slate-700 text-white border-slate-800 shadow-xs'
+                                  : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-300'
+                              }`}
+                            >
+                              Belum Diperiksa
+                            </button>
+
+                            {mechanicalInspections.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveMechanicalInspection(item.id)}
+                                className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                title="Hapus pemeriksaan ini"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 text-xs">
+                          <div className="md:col-span-4 flex flex-col">
+                            <label className="text-[9.5px] font-black uppercase text-slate-600 mb-1">
+                              Metode Pemeriksaan:
+                            </label>
+                            <input
+                              type="text"
+                              value={item.method}
+                              onChange={(e) => handleUpdateMechanicalInspection(item.id, 'method', e.target.value)}
+                              placeholder="e.g. Uji test bench FIP / Cek visual / Scanner"
+                              className="p-2 border border-slate-200 rounded-lg text-[10px] bg-white outline-none font-medium text-slate-800"
+                            />
+                          </div>
+
+                          <div className="md:col-span-8 flex flex-col">
+                            <label className="text-[9.5px] font-black uppercase text-slate-600 mb-1">
+                              Hasil Temuan Pemeriksaan Mekanik:
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={item.findings}
+                              onChange={(e) => handleUpdateMechanicalInspection(item.id, 'findings', e.target.value)}
+                              placeholder="Temuan faktual hasil inspeksi..."
+                              className="p-2 border border-slate-200 rounded-lg text-[10px] bg-white outline-none font-medium text-slate-800 resize-none"
+                            />
+                          </div>
+
+                          <div className="md:col-span-6 flex flex-col">
+                            <label className="text-[9.5px] font-black uppercase text-slate-600 mb-1">
+                              Analisis / Diagnosis Mekanik:
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={item.diagnosisNotes || ''}
+                              onChange={(e) => handleUpdateMechanicalInspection(item.id, 'diagnosisNotes', e.target.value)}
+                              placeholder="Dugaan teknis atau analisis penyebab masalah..."
+                              className="p-2 border border-slate-200 rounded-lg text-[10px] bg-white outline-none font-medium text-slate-800 resize-none"
+                            />
+                          </div>
+
+                          <div className="md:col-span-6 flex flex-col">
+                            <label className="text-[9.5px] font-black uppercase text-slate-600 mb-1">
+                              Rekomendasi Tindakan:
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={item.recommendation || ''}
+                              onChange={(e) => handleUpdateMechanicalInspection(item.id, 'recommendation', e.target.value)}
+                              placeholder="Pekerjaan atau servis yang disarankan..."
+                              className="p-2 border border-slate-200 rounded-lg text-[10px] bg-white outline-none font-medium text-slate-800 resize-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
 
